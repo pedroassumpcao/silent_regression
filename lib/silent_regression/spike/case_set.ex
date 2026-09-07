@@ -392,6 +392,17 @@ defmodule SilentRegression.Spike.CaseSet do
     end
   end
 
+  defp validate_check(%{"type" => "forbidden_fact", "id" => id, "any_of" => alternatives}) do
+    with :ok <- validate_non_empty_string(id, :invalid_fact_id),
+         :ok <- validate_non_empty_string_list(alternatives, :invalid_fact_alternatives) do
+      :ok
+    end
+  end
+
+  defp validate_check(%{"type" => "normalized_equals", "expected" => expected}) do
+    validate_non_empty_string(expected, :invalid_normalized_expected_value)
+  end
+
   defp validate_check(%{"type" => "required_source_ids", "source_ids" => source_ids}) do
     validate_non_empty_string_list(source_ids, :invalid_source_ids)
   end

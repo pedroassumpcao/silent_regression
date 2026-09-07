@@ -1,6 +1,6 @@
 # Silent Regression Feasibility Spike — Codex Implementation Plan
 
-> **Status:** Task 2 complete; Task 3 is next
+> **Status:** Task 3 complete; Task 4 is next
 >
 > **Last revised:** 2026-09-07
 >
@@ -318,6 +318,8 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 **Verify:** Tests assert unique IDs, valid check specifications, stable known fingerprints, and the intended presence/absence of exact expectations; `mix precommit` passes.
 
 ### Task 3 — Deterministic evaluation layer
+
+**Status:** Complete
 
 **Objective:** Implement concrete quality checks for structured, grounded, citation, and abstention cases.
 
