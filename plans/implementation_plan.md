@@ -355,6 +355,8 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 
 ### Task 6 — Anthropic Messages API client
 
+**Status:** Complete
+
 **Objective:** Implement and mock the second provider without changing the normalized contract.
 
 **Files:** Create `providers/anthropic.ex` and tests.
