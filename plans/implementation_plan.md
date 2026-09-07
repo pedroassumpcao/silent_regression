@@ -1,6 +1,6 @@
 # Silent Regression Feasibility Spike — Codex Implementation Plan
 
-> **Status:** Task 1 complete; Task 2 is next
+> **Status:** Task 2 complete; Task 3 is next
 >
 > **Last revised:** 2026-09-07
 >
@@ -304,6 +304,8 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 **Verify:** Unit tests cover valid round trips, malformed artifacts, unsupported schema versions, and missing required fields; `mix precommit` passes.
 
 ### Task 2 — Versioned RAG case suite
+
+**Status:** Complete
 
 **Objective:** Implement the four synthetic RAG cases and stable fingerprints.
 

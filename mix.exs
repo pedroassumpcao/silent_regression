@@ -21,7 +21,7 @@ defmodule SilentRegression.MixProject do
   def application do
     [
       mod: {SilentRegression.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :crypto]
     ]
   end
 
