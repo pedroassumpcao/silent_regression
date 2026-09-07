@@ -1,6 +1,6 @@
 # Silent Regression Feasibility Spike — Codex Implementation Plan
 
-> **Status:** Approved direction; implementation has not started
+> **Status:** Task 1 complete; Task 2 is next
 >
 > **Last revised:** 2026-09-07
 >
@@ -292,6 +292,8 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 ## 9. Implementation tasks
 
 ### Task 1 — Spike foundation and data contracts
+
+**Status:** Complete
 
 **Objective:** Establish the isolated namespace, core structs, provider behaviour, artifact schema version, and directory conventions without adding dependencies.
 
