@@ -1,6 +1,6 @@
 # Silent Regression Feasibility Spike — Codex Implementation Plan
 
-> **Status:** Task 4 complete; Task 5 is next
+> **Status:** Task 5 complete; Task 6 is next
 >
 > **Last revised:** 2026-09-07
 >
@@ -342,6 +342,8 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 **Verify:** Hand-computed small examples, symmetry/property tests, identical-distribution cases, separated-distribution cases, deterministic-repeatability tests, and a test proving regression labels cannot enter calibration; `mix precommit` passes.
 
 ### Task 5 — OpenAI Responses API client
+
+**Status:** Complete
 
 **Objective:** Implement and fully mock the first provider integration.
 
