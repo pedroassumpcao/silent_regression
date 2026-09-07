@@ -1,6 +1,6 @@
 # Silent Regression Feasibility Spike — Codex Implementation Plan
 
-> **Status:** Task 3 complete; Task 4 is next
+> **Status:** Task 4 complete; Task 5 is next
 >
 > **Last revised:** 2026-09-07
 >
@@ -330,6 +330,8 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 **Verify:** Table-driven tests cover correct outputs, well-formed wrong outputs, extra/missing keys, numeric representation, fenced JSON, prose-wrapped JSON, wrong citations, unsupported claims, and empty text; `mix precommit` passes.
 
 ### Task 4 — Lexical and statistical layer
+
+**Status:** Complete
 
 **Objective:** Implement Jaccard normalization, within/cross distances, energy distance, permutation testing, null resampling, and Benjamini-Hochberg correction.
 
