@@ -69,13 +69,14 @@ defmodule SilentRegression.Spike.CaseSet do
   defp structured_extract do
     build_case(%{
       id: "rag_structured_extract",
-      version: 1,
+      version: 2,
       category: "rag_structured",
       description: "Extract facts spread across two retrieved passages into strict JSON.",
       system_prompt: "Use only the supplied sources. Do not add outside information.",
       context: """
       [brief-7]
-      The Meridian Lantern pilot will open on November 18, 2042, in Bellweather Harbor.
+      The project is named Meridian Lantern. Its pilot will open on November 18, 2042,
+      in Bellweather Harbor.
 
       [finance-2]
       The approved budget for the Meridian Lantern pilot is $480,000.
@@ -204,7 +205,7 @@ defmodule SilentRegression.Spike.CaseSet do
   defp open_synthesis do
     build_case(%{
       id: "rag_open_synthesis",
-      version: 2,
+      version: 3,
       category: "rag_open_synthesis",
       description:
         "Synthesize a rollout plan and its tradeoffs without a single reference answer.",
@@ -237,21 +238,37 @@ defmodule SilentRegression.Spike.CaseSet do
       """,
       checks: [
         %{
-          "type" => "required_fact",
+          "type" => "required_fact_groups",
           "id" => "full_fleet",
-          "any_of" => [
-            "12 electric ferries",
-            "12 electric ferry",
-            "twelve electric ferries",
-            "fleet of 12"
-          ]
+          "groups" => [
+            [
+              "12 ferries",
+              "12 ferry",
+              "12 electric ferries",
+              "12 electric ferry",
+              "twelve ferries",
+              "twelve ferry",
+              "twelve electric ferries",
+              "twelve electric ferry"
+            ],
+            ["electric"]
+          ],
+          "max_span_tokens" => 32
         },
         %{
           "type" => "required_fact_groups",
           "id" => "phase_one_fleet",
           "groups" => [
             ["phase one", "first phase", "initial rollout", "rollout will begin"],
-            ["six ferries", "6 ferries"]
+            [
+              "six ferries",
+              "6 ferries",
+              "first six ferries",
+              "first six of the planned 12 ferries",
+              "first six of 12 ferries",
+              "six of the planned 12 ferries",
+              "six of 12 ferries"
+            ]
           ],
           "max_span_tokens" => 24
         },

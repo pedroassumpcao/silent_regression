@@ -17,8 +17,8 @@ defmodule SilentRegression.Spike.CaseSetTest do
     assert Map.new(cases, &{&1.id, &1.version}) == %{
              "rag_abstain_when_unsupported" => 1,
              "rag_answer_with_citations" => 1,
-             "rag_open_synthesis" => 2,
-             "rag_structured_extract" => 1
+             "rag_open_synthesis" => 3,
+             "rag_structured_extract" => 2
            }
 
     assert Enum.all?(cases, &(&1.fingerprint =~ ~r/\A[0-9a-f]{64}\z/))
@@ -40,9 +40,9 @@ defmodule SilentRegression.Spike.CaseSetTest do
              "rag_answer_with_citations" =>
                "3f81ddbd3e6a5ce49ea7df8a43ac28634e2e4724c86272fc7c6cb8e0c380e24f",
              "rag_open_synthesis" =>
-               "a95f536a31ec5f15accf4f8e388f2fb79b15aa8f4f477deab1ceb1e6b514502f",
+               "f0798b6b773ccc3038b4da6b214de5706495c73ed995514298d3bd143199584a",
              "rag_structured_extract" =>
-               "1a447c1637282a105294fe8c052016d7144a03c65661f53991e94395d2b67240"
+               "6b6048633bd60ae0dd046bcb14044066eacacfa58a88d4c9ff00da45394473f0"
            }
   end
 
@@ -50,7 +50,7 @@ defmodule SilentRegression.Spike.CaseSetTest do
     {:ok, original} = CaseSet.fetch("rag_structured_extract")
 
     mutations = [
-      %{original | version: 2},
+      %{original | version: original.version + 1},
       %{original | category: "different_category"},
       %{original | system_prompt: original.system_prompt <> " Be brief."},
       %{original | context: original.context <> "\nAdditional context."},

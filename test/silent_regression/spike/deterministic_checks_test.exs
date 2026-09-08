@@ -59,6 +59,62 @@ defmodule SilentRegression.Spike.DeterministicChecksTest do
       assert result["passed_checks"] == 6
       assert Enum.all?(result["checks"], &is_binary(&1["reason"]))
     end
+
+    test "accepts valid fleet and phase-one paraphrases from the live baseline" do
+      case_definition = fetch_case!("rag_open_synthesis")
+
+      outputs = [
+        """
+        The plan uses a 12-ferry electric fleet to reach a 19-minute crossing by 2044
+        [transit-plan]. Phase one covers the first six ferries [phase-one-budget].
+        From March through July, service near the islands is limited to 12 knots
+        [habitat-rules].
+        """,
+        """
+        The electric-ferry plan targets a 19-minute crossing by 2044. The full plan
+        calls for 12 ferries [transit-plan]. Funded phase one covers the first six of
+        the planned 12 ferries [phase-one-budget]. The island limit is 12 knots from
+        March through July [habitat-rules].
+        """
+      ]
+
+      assert Enum.all?(outputs, &evaluate!(case_definition, &1)["all_passed"])
+    end
+
+    test "rejects nearby numbers that do not establish the electric 12-ferry fleet" do
+      case_definition = fetch_case!("rag_open_synthesis")
+
+      output = """
+      The city plans to introduce electric ferries and targets a 19-minute crossing by
+      2044 [transit-plan]. Phase one covers six ferries [phase-one-budget]. From March
+      through July, ferries near the islands are limited to 12 knots [habitat-rules].
+      """
+
+      result = evaluate!(case_definition, output)
+      full_fleet = Enum.find(result["checks"], &(&1["check_id"] == "full_fleet"))
+
+      refute result["all_passed"]
+      refute full_fleet["passed"]
+      assert full_fleet["reason"] == "required_fact_groups_missing"
+    end
+
+    test "rejects a rollout that omits the funded six-ferry phase" do
+      case_definition = fetch_case!("rag_open_synthesis")
+
+      output = """
+      The full plan calls for 12 electric ferries and targets a 19-minute crossing by
+      2044 [transit-plan]. Phase one funds only the terminal; all ferries require later
+      approval [phase-one-budget]. From March through July, service near the islands is
+      limited to 12 knots [habitat-rules].
+      """
+
+      result = evaluate!(case_definition, output)
+      phase_one = Enum.find(result["checks"], &(&1["check_id"] == "phase_one_fleet"))
+
+      refute result["all_passed"]
+      refute phase_one["passed"]
+      assert phase_one["reason"] == "required_fact_groups_missing"
+    end
   end
 
   describe "JSON object checks" do
