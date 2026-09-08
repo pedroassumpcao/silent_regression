@@ -379,6 +379,8 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 
 ### Task 8 — Baseline capture
 
+**Status:** Complete
+
 **Objective:** Capture a versioned baseline pool and compute its deterministic/within-run characteristics.
 
 **Files:** Create `drift_spike.baseline` and supporting comparison/storage functions.
