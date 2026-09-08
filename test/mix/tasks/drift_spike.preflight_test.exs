@@ -27,7 +27,7 @@ defmodule Mix.Tasks.DriftSpike.PreflightTest do
           "--model",
           "explicit-model",
           "--max-output-tokens",
-          "256",
+          "512",
           "--samples",
           "2",
           "--max-retries",
@@ -53,7 +53,7 @@ defmodule Mix.Tasks.DriftSpike.PreflightTest do
     assert output =~ "Maximum provider calls: 16"
     assert output =~ "Approved --max-calls cap: 16"
     assert output =~ "Concurrency: 3"
-    assert output =~ ~s(max_output_tokens: 256)
+    assert output =~ ~s(max_output_tokens: 512)
     assert output =~ ~s(max_retries: 1)
     assert output =~ ~s(model: "explicit-model")
     assert output =~ ~s(api_endpoint: "https://api.openai.com/v1/responses")
@@ -77,7 +77,7 @@ defmodule Mix.Tasks.DriftSpike.PreflightTest do
           "--case",
           "rag_structured_extract",
           "--max-output-tokens",
-          "128",
+          "512",
           "--max-calls",
           "2"
         ])
@@ -102,7 +102,7 @@ defmodule Mix.Tasks.DriftSpike.PreflightTest do
           "--case",
           "rag_structured_extract",
           "--max-output-tokens",
-          "128",
+          "512",
           "--samples",
           "2",
           "--max-retries",
@@ -125,7 +125,7 @@ defmodule Mix.Tasks.DriftSpike.PreflightTest do
           "--model",
           "explicit-model",
           "--max-output-tokens",
-          "128",
+          "512",
           "--max-calls",
           "4"
         ])
@@ -142,7 +142,7 @@ defmodule Mix.Tasks.DriftSpike.PreflightTest do
           "--model",
           "explicit-model",
           "--max-output-tokens",
-          "128"
+          "512"
         ])
       end)
     end

@@ -174,6 +174,43 @@ defmodule SilentRegression.Spike.DeterministicChecksTest do
       refute evaluate!(case_definition, "The tour is a 175-minute experience.")["all_passed"]
     end
 
+    test "matches grouped fact alternatives within a bounded token span" do
+      case_definition =
+        case_with_checks([
+          %{
+            "type" => "required_fact_groups",
+            "id" => "phase_one_fleet",
+            "groups" => [
+              ["phase one", "first phase"],
+              ["six ferries", "6 ferries"]
+            ],
+            "max_span_tokens" => 12
+          }
+        ])
+
+      matching =
+        evaluate!(
+          case_definition,
+          "The funded first phase covers the terminal conversion and six ferries."
+        )
+
+      assert matching["all_passed"]
+      assert hd(matching["checks"])["reason"] == "all_fact_groups_matched"
+
+      missing = evaluate!(case_definition, "Phase one funds only the terminal conversion.")
+      refute missing["all_passed"]
+      assert hd(missing["checks"])["reason"] == "required_fact_groups_missing"
+
+      distant =
+        evaluate!(
+          case_definition,
+          "Phase one " <> String.duplicate("unrelated ", 20) <> "covers six ferries."
+        )
+
+      refute distant["all_passed"]
+      assert hd(distant["checks"])["reason"] == "required_fact_groups_too_distant"
+    end
+
     test "supports exact normalized labels without substring matching" do
       case_definition =
         case_with_checks([%{"type" => "normalized_equals", "expected" => "Needs Review"}])
@@ -324,7 +361,13 @@ defmodule SilentRegression.Spike.DeterministicChecksTest do
       case_definition =
         case_with_checks([
           %{"type" => "normalized_equals", "expected" => "approved"},
-          %{"type" => "forbidden_fact", "id" => "rejected", "any_of" => ["rejected"]}
+          %{"type" => "forbidden_fact", "id" => "rejected", "any_of" => ["rejected"]},
+          %{
+            "type" => "required_fact_groups",
+            "id" => "funded_fleet",
+            "groups" => [["phase one"], ["six ferries"]],
+            "max_span_tokens" => 12
+          }
         ])
 
       fingerprint = CaseSet.fingerprint(case_definition)

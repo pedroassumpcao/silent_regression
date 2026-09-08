@@ -248,6 +248,35 @@ defmodule SilentRegression.Spike.RunnerTest do
              )
   end
 
+  test "refuses an undersized output-token budget for open synthesis" do
+    {:ok, open_synthesis} = SilentRegression.Spike.CaseSet.fetch("rag_open_synthesis")
+    callback = fn _case_definition, _options -> {:ok, response()} end
+
+    assert {:error, error} =
+             Runner.plan([open_synthesis], SpikeFakeProvider,
+               model: "fake-model",
+               max_calls: 1,
+               provider_options: [callback: callback, max_output_tokens: 256],
+               environment: %{}
+             )
+
+    assert error["type"] == "configuration_error"
+    assert error["details"]["field"] == "provider_options.max_output_tokens"
+    assert error["details"]["actual"] == 256
+    assert error["details"]["minimum"] == 512
+    assert error["details"]["case_ids"] == ["rag_open_synthesis"]
+
+    assert {:ok, plan} =
+             Runner.plan([open_synthesis], SpikeFakeProvider,
+               model: "fake-model",
+               max_calls: 1,
+               provider_options: [callback: callback, max_output_tokens: 512],
+               environment: %{}
+             )
+
+    assert plan["request_config"]["max_output_tokens"] == 512
+  end
+
   test "converts an unexpected provider exception into a failed sample" do
     callback = fn _case_definition, _options -> raise "synthetic provider crash" end
 

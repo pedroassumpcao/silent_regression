@@ -6,12 +6,14 @@ defmodule Mix.Tasks.DriftSpike.Baseline do
   within-run lexical variability.
 
   First inspect the call-free plan. With all four cases, the default `n=30`,
-  and no retries, the one model-access check brings the cap to 121 requests:
+  and no retries, the one model-access check brings the cap to 121 requests.
+  The 512-token ceiling leaves room for both reasoning and the open-synthesis
+  answer:
 
       mix drift_spike.baseline \
         --provider openai \
         --model gpt-5.6-luna \
-        --max-output-tokens 256 \
+        --max-output-tokens 512 \
         --max-calls 121 \
         --dry-run
 
@@ -200,6 +202,17 @@ defmodule Mix.Tasks.DriftSpike.Baseline do
     )
 
     Mix.shell().info(
+      "Completions: #{totals["completed_samples"]} complete, " <>
+        "#{totals["incomplete_samples"]} incomplete, " <>
+        "#{totals["unknown_completion_samples"]} unknown"
+    )
+
+    Mix.shell().info(
+      "Quality: #{totals["quality_passed_samples"]} passed, " <>
+        "#{totals["quality_failed_samples"]} failed"
+    )
+
+    Mix.shell().info(
       "Provider calls: #{totals["actual_calls"]} actual (#{totals["maximum_calls"]} maximum)"
     )
 
@@ -213,12 +226,24 @@ defmodule Mix.Tasks.DriftSpike.Baseline do
 
     Enum.each(result["metrics"]["by_case"], fn case_metrics ->
       deterministic = case_metrics["deterministic"]
+      completion = case_metrics["completion"]
+      quality = case_metrics["quality"]
       within_distance = case_metrics["within_distance"]
 
       Mix.shell().info("  - #{case_metrics["case_id"]}")
 
       Mix.shell().info(
         "    samples: #{case_metrics["successful_samples"]} successful, #{case_metrics["failed_samples"]} failed"
+      )
+
+      Mix.shell().info(
+        "    completion rate: #{format_rate(completion["completion_rate"])} " <>
+          "(#{completion["completed_samples"]}/#{completion["evaluated_samples"]})"
+      )
+
+      Mix.shell().info(
+        "    quality pass rate: #{format_rate(quality["pass_rate"])} " <>
+          "(#{quality["passed_samples"]}/#{quality["evaluated_samples"]})"
       )
 
       Mix.shell().info(

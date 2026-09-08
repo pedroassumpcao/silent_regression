@@ -8,7 +8,7 @@ defmodule Mix.Tasks.DriftSpike.Preflight do
       mix drift_spike.preflight \
         --provider openai \
         --model gpt-5.6-luna \
-        --max-output-tokens 256 \
+        --max-output-tokens 512 \
         --samples 1 \
         --max-retries 0 \
         --max-calls 4 \

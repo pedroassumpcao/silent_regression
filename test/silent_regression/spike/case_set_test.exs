@@ -14,7 +14,13 @@ defmodule SilentRegression.Spike.CaseSetTest do
              "rag_open_synthesis"
            ]
 
-    assert Enum.all?(cases, &(&1.version == 1))
+    assert Map.new(cases, &{&1.id, &1.version}) == %{
+             "rag_abstain_when_unsupported" => 1,
+             "rag_answer_with_citations" => 1,
+             "rag_open_synthesis" => 2,
+             "rag_structured_extract" => 1
+           }
+
     assert Enum.all?(cases, &(&1.fingerprint =~ ~r/\A[0-9a-f]{64}\z/))
     assert :ok = CaseSet.validate(cases)
   end
@@ -34,7 +40,7 @@ defmodule SilentRegression.Spike.CaseSetTest do
              "rag_answer_with_citations" =>
                "3f81ddbd3e6a5ce49ea7df8a43ac28634e2e4724c86272fc7c6cb8e0c380e24f",
              "rag_open_synthesis" =>
-               "7bae68db01207a1e69622763b10f8c8ca0b4b2aaca74bbb1ef81934b55041117",
+               "a95f536a31ec5f15accf4f8e388f2fb79b15aa8f4f477deab1ceb1e6b514502f",
              "rag_structured_extract" =>
                "1a447c1637282a105294fe8c052016d7144a03c65661f53991e94395d2b67240"
            }
@@ -123,11 +129,37 @@ defmodule SilentRegression.Spike.CaseSetTest do
             }} = CaseSet.validate([invalid])
   end
 
+  test "rejects malformed grouped fact checks" do
+    [first | _rest] = CaseSet.all()
+
+    invalid = %{
+      first
+      | checks: [
+          %{
+            "type" => "required_fact_groups",
+            "id" => "related_facts",
+            "groups" => [["phase one"], []],
+            "max_span_tokens" => 0
+          }
+        ]
+    }
+
+    invalid = %{invalid | fingerprint: CaseSet.fingerprint(invalid)}
+
+    assert {:error,
+            %{
+              type: :invalid_check_spec,
+              check_index: 0,
+              reason: :invalid_fact_groups
+            }} = CaseSet.validate([invalid])
+  end
+
   test "open synthesis intentionally has no exact expected answer" do
     {:ok, synthesis} = CaseSet.fetch("rag_open_synthesis")
 
     refute Enum.any?(synthesis.checks, &(&1["type"] == "json_equals"))
     assert Enum.any?(synthesis.checks, &(&1["type"] == "required_fact"))
+    assert Enum.any?(synthesis.checks, &(&1["type"] == "required_fact_groups"))
     assert Enum.any?(synthesis.checks, &(&1["type"] == "required_source_ids"))
   end
 end

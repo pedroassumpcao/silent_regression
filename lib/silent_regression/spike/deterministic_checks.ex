@@ -5,8 +5,11 @@ defmodule SilentRegression.Spike.DeterministicChecks do
   Fact normalization applies Unicode NFKC normalization and full Unicode case
   folding, replaces punctuation with spaces, and collapses whitespace.
   Phrase checks compare complete normalized token sequences, so `six` does not
-  match `sixteen`. Source citations are deliberately stricter: an ID only
-  counts when it appears exactly inside square brackets.
+  match `sixteen`. Grouped fact checks require one phrase from every group to
+  occur within a bounded token span, allowing controlled relational paraphrase
+  without accepting facts scattered across an answer. Source citations are
+  deliberately stricter: an ID only counts when it appears exactly inside
+  square brackets.
 
   JSON checks accept either a bare JSON object or one JSON object enclosed by a
   single Markdown fence. Prose outside the object is invalid. When extra keys
@@ -22,6 +25,7 @@ defmodule SilentRegression.Spike.DeterministicChecks do
     "json_equals",
     "normalized_equals",
     "required_fact",
+    "required_fact_groups",
     "forbidden_fact",
     "required_source_ids",
     "abstains"
@@ -170,6 +174,41 @@ defmodule SilentRegression.Spike.DeterministicChecks do
       if matched_alternative,
         do: {true, "matched", details},
         else: {false, "required_fact_missing", details}
+    else
+      false -> {false, "malformed_check", %{}}
+    end
+  end
+
+  defp do_evaluate_check(
+         %{
+           "type" => "required_fact_groups",
+           "groups" => groups,
+           "max_span_tokens" => max_span_tokens
+         } = check,
+         output_text
+       )
+       when is_list(groups) and is_integer(max_span_tokens) do
+    with true <- valid_fact_groups?(groups) and max_span_tokens > 0 do
+      output_tokens = output_text |> normalize_fact() |> String.split()
+      occurrences_by_group = Enum.map(groups, &group_occurrences(output_tokens, &1))
+      match = find_group_match(occurrences_by_group, max_span_tokens)
+
+      missing_group_indexes = missing_group_indexes(occurrences_by_group)
+
+      details = %{
+        "fact_id" => Map.get(check, "id"),
+        "groups" => groups,
+        "max_span_tokens" => max_span_tokens,
+        "matched_alternatives" => matched_alternatives(match),
+        "match_span_tokens" => match_span_tokens(match),
+        "missing_group_indexes" => missing_group_indexes
+      }
+
+      cond do
+        match -> {true, "all_fact_groups_matched", details}
+        missing_group_indexes != [] -> {false, "required_fact_groups_missing", details}
+        true -> {false, "required_fact_groups_too_distant", details}
+      end
     else
       false -> {false, "malformed_check", %{}}
     end
@@ -420,7 +459,67 @@ defmodule SilentRegression.Spike.DeterministicChecks do
   end
 
   defp valid_phrases?(phrases) do
-    phrases != [] and Enum.all?(phrases, &(is_binary(&1) and String.trim(&1) != ""))
+    phrases != [] and
+      Enum.all?(phrases, fn phrase ->
+        is_binary(phrase) and String.trim(phrase) != "" and normalize_fact(phrase) != ""
+      end)
+  end
+
+  defp valid_fact_groups?(groups) do
+    groups != [] and Enum.all?(groups, &valid_phrases?/1)
+  end
+
+  defp group_occurrences(output_tokens, alternatives) do
+    Enum.flat_map(alternatives, fn alternative ->
+      phrase_tokens = alternative |> normalize_fact() |> String.split()
+      phrase_length = length(phrase_tokens)
+
+      output_tokens
+      |> Enum.chunk_every(phrase_length, 1, :discard)
+      |> Enum.with_index()
+      |> Enum.flat_map(fn
+        {^phrase_tokens, start_token} ->
+          [
+            %{
+              "alternative" => alternative,
+              "start_token" => start_token,
+              "end_token" => start_token + phrase_length - 1
+            }
+          ]
+
+        {_tokens, _start_token} ->
+          []
+      end)
+    end)
+  end
+
+  defp find_group_match(occurrences_by_group, max_span_tokens) do
+    occurrences_by_group
+    |> Enum.reduce([[]], fn group_occurrences, combinations ->
+      for combination <- combinations,
+          occurrence <- group_occurrences,
+          do: combination ++ [occurrence]
+    end)
+    |> Enum.find(&(span_tokens(&1) <= max_span_tokens))
+  end
+
+  defp missing_group_indexes(occurrences_by_group) do
+    occurrences_by_group
+    |> Enum.with_index()
+    |> Enum.filter(fn {occurrences, _index} -> occurrences == [] end)
+    |> Enum.map(fn {_occurrences, index} -> index end)
+  end
+
+  defp matched_alternatives(nil), do: []
+  defp matched_alternatives(match), do: Enum.map(match, & &1["alternative"])
+
+  defp match_span_tokens(nil), do: nil
+  defp match_span_tokens(match), do: span_tokens(match)
+
+  defp span_tokens(occurrences) do
+    first_token = occurrences |> Enum.map(& &1["start_token"]) |> Enum.min()
+    last_token = occurrences |> Enum.map(& &1["end_token"]) |> Enum.max()
+    last_token - first_token + 1
   end
 
   defp compile_patterns(patterns) do

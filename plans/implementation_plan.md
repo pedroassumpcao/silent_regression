@@ -385,7 +385,7 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 
 **Files:** Create `drift_spike.baseline` and supporting comparison/storage functions.
 
-**Requirements:** Default to `n=30` but require explicit provider, model, and `--max-calls`; write a single atomic artifact; show success/failure counts, deterministic pass rates, within-distance statistics, latency, and usage.
+**Requirements:** Default to `n=30` but require explicit provider, model, and `--max-calls`; use at least 512 maximum output tokens for the frozen four-case baseline; write a single atomic artifact; distinguish provider failures, incomplete responses, deterministic failures, and combined quality failures; exclude incomplete responses from within-distance statistics; show completion and quality pass rates, deterministic pass rates, within-distance statistics, latency, and usage.
 
 **Verify:** End-to-end tests use a fake provider and temporary directory; `mix precommit` passes.
 
@@ -535,3 +535,4 @@ Provider details must be rechecked when their client task begins and again befor
 - **2026-09-07:** Assigned Codex to draft semantic fixtures and the user to approve their ground-truth labels.
 - **2026-09-07:** Replaced raw mean cross-similarity with within/cross Jaccard energy distance, permutation testing, null calibration, and explicit false-alert gates.
 - **2026-09-07:** Deferred a ReqLLM adapter evaluation until after the spike so provider abstraction, cost metadata, and telemetry can be assessed without changing the experimental transport mid-study.
+- **2026-09-07:** A live `n=30` pilot showed that 256 output tokens truncated one-third of open-synthesis responses and that contiguous phrase checks rejected valid paraphrases. Raised the frozen baseline ceiling to 512, made incomplete responses explicit quality failures excluded from drift statistics, and introduced bounded grouped-fact checks before calibration.

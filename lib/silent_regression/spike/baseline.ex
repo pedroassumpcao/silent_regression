@@ -299,7 +299,12 @@ defmodule SilentRegression.Spike.Baseline do
         "maximum_calls" => baseline_plan["maximum_calls"],
         "actual_calls" => 0,
         "successful_samples" => 0,
-        "failed_samples" => 0
+        "failed_samples" => 0,
+        "completed_samples" => 0,
+        "incomplete_samples" => 0,
+        "unknown_completion_samples" => 0,
+        "quality_passed_samples" => 0,
+        "quality_failed_samples" => 0
       }
     }
   end
@@ -312,7 +317,7 @@ defmodule SilentRegression.Spike.Baseline do
          {:ok, %{"samples" => samples, "metrics" => metrics}} <-
            RunAnalysis.analyze(cases, runner_result["samples"]),
          {:ok, completed_at} <- timestamp(options),
-         totals <- build_totals(baseline_plan, runner_result["totals"], samples),
+         totals <- build_totals(baseline_plan, runner_result["totals"], samples, metrics),
          {:ok, run} <-
            build_run(
              baseline_plan,
@@ -476,8 +481,10 @@ defmodule SilentRegression.Spike.Baseline do
     Runner.run(cases, provider, generation_options)
   end
 
-  defp build_totals(baseline_plan, runner_totals, samples) do
+  defp build_totals(baseline_plan, runner_totals, samples, metrics) do
     success_totals = RunAnalysis.success_totals(samples)
+    completion = metrics["overall"]["completion"]
+    quality = metrics["overall"]["quality"]
 
     %{
       "planned_samples" => baseline_plan["planned_samples"],
@@ -488,6 +495,11 @@ defmodule SilentRegression.Spike.Baseline do
       "generation_calls" => runner_totals["actual_calls"],
       "successful_samples" => runner_totals["successful_samples"],
       "failed_samples" => runner_totals["failed_samples"],
+      "completed_samples" => completion["completed_samples"],
+      "incomplete_samples" => completion["incomplete_samples"],
+      "unknown_completion_samples" => completion["unknown_samples"],
+      "quality_passed_samples" => quality["passed_samples"],
+      "quality_failed_samples" => quality["failed_samples"],
       "latency_ms" => success_totals["latency_ms"],
       "input_tokens" => success_totals["input_tokens"],
       "output_tokens" => success_totals["output_tokens"],

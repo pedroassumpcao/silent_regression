@@ -204,7 +204,7 @@ defmodule SilentRegression.Spike.CaseSet do
   defp open_synthesis do
     build_case(%{
       id: "rag_open_synthesis",
-      version: 1,
+      version: 2,
       category: "rag_open_synthesis",
       description:
         "Synthesize a rollout plan and its tradeoffs without a single reference answer.",
@@ -239,17 +239,30 @@ defmodule SilentRegression.Spike.CaseSet do
         %{
           "type" => "required_fact",
           "id" => "full_fleet",
-          "any_of" => ["12 electric ferries", "twelve electric ferries", "fleet of 12"]
+          "any_of" => [
+            "12 electric ferries",
+            "12 electric ferry",
+            "twelve electric ferries",
+            "fleet of 12"
+          ]
         },
         %{
-          "type" => "required_fact",
+          "type" => "required_fact_groups",
           "id" => "phase_one_fleet",
-          "any_of" => ["first six ferries", "initial six ferries", "six ferries in phase one"]
+          "groups" => [
+            ["phase one", "first phase", "initial rollout", "rollout will begin"],
+            ["six ferries", "6 ferries"]
+          ],
+          "max_span_tokens" => 24
         },
         %{
-          "type" => "required_fact",
+          "type" => "required_fact_groups",
           "id" => "crossing_target",
-          "any_of" => ["19 minutes by 2044", "19-minute crossing by 2044"]
+          "groups" => [
+            ["19 minutes", "19-minute"],
+            ["2044"]
+          ],
+          "max_span_tokens" => 32
         },
         %{
           "type" => "required_fact",
@@ -392,6 +405,19 @@ defmodule SilentRegression.Spike.CaseSet do
     end
   end
 
+  defp validate_check(%{
+         "type" => "required_fact_groups",
+         "id" => id,
+         "groups" => groups,
+         "max_span_tokens" => max_span_tokens
+       }) do
+    with :ok <- validate_non_empty_string(id, :invalid_fact_id),
+         :ok <- validate_non_empty_string_groups(groups, :invalid_fact_groups),
+         :ok <- validate_positive_integer(max_span_tokens, :invalid_max_span_tokens) do
+      :ok
+    end
+  end
+
   defp validate_check(%{"type" => "forbidden_fact", "id" => id, "any_of" => alternatives}) do
     with :ok <- validate_non_empty_string(id, :invalid_fact_id),
          :ok <- validate_non_empty_string_list(alternatives, :invalid_fact_alternatives) do
@@ -433,6 +459,22 @@ defmodule SilentRegression.Spike.CaseSet do
     else
       {:error, error}
     end
+  end
+
+  defp validate_non_empty_string_groups(groups, error) do
+    if is_list(groups) and groups != [] and
+         Enum.all?(groups, fn group ->
+           is_list(group) and group != [] and
+             Enum.all?(group, &(is_binary(&1) and String.trim(&1) != ""))
+         end) do
+      :ok
+    else
+      {:error, error}
+    end
+  end
+
+  defp validate_positive_integer(value, error) do
+    if is_integer(value) and value > 0, do: :ok, else: {:error, error}
   end
 
   defp validate_regexes(patterns) do

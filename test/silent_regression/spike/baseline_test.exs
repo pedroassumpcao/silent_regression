@@ -35,7 +35,7 @@ defmodule SilentRegression.Spike.BaselineTest do
                run_id: "dry-run",
                git_revision: "abc123",
                availability_checker: availability_checker,
-               provider_options: [callback: provider_callback, max_output_tokens: 128],
+               provider_options: [callback: provider_callback, max_output_tokens: 512],
                environment: %{}
              )
 
@@ -47,6 +47,10 @@ defmodule SilentRegression.Spike.BaselineTest do
     assert result["plan"]["planned_calls"] == 121
     assert result["plan"]["maximum_calls"] == 121
     assert result["totals"]["actual_calls"] == 0
+    assert result["totals"]["completed_samples"] == 0
+    assert result["totals"]["incomplete_samples"] == 0
+    assert result["totals"]["quality_passed_samples"] == 0
+    assert result["totals"]["quality_failed_samples"] == 0
     refute File.exists?(artifact_path)
     refute_received :unexpected_availability_call
     refute_received :unexpected_generation_call
@@ -87,7 +91,7 @@ defmodule SilentRegression.Spike.BaselineTest do
                git_revision: "abc123",
                clock: fn -> @run_time end,
                availability_checker: availability_checker,
-               provider_options: [callback: provider_callback, max_output_tokens: 128],
+               provider_options: [callback: provider_callback, max_output_tokens: 512],
                environment: %{}
              )
 
@@ -108,7 +112,7 @@ defmodule SilentRegression.Spike.BaselineTest do
     assert Enum.all?(persisted_run.samples, &(&1["deterministic"]["all_passed"] == true))
 
     assert persisted_run.request_config["model"] == "fake-model"
-    assert persisted_run.request_config["max_output_tokens"] == 128
+    assert persisted_run.request_config["max_output_tokens"] == 512
     assert persisted_run.request_config["samples_per_case"] == 2
 
     assert persisted_run.request_config["api_endpoint"] ==
@@ -127,6 +131,11 @@ defmodule SilentRegression.Spike.BaselineTest do
              "generation_calls" => 8,
              "successful_samples" => 8,
              "failed_samples" => 0,
+             "completed_samples" => 8,
+             "incomplete_samples" => 0,
+             "unknown_completion_samples" => 0,
+             "quality_passed_samples" => 8,
+             "quality_failed_samples" => 0,
              "latency_ms" => 400,
              "input_tokens" => 80,
              "output_tokens" => 40,
@@ -136,10 +145,13 @@ defmodule SilentRegression.Spike.BaselineTest do
     assert Enum.all?(persisted_run.metrics["by_case"], fn case_metrics ->
              case_metrics["successful_samples"] == 2 and
                case_metrics["failed_samples"] == 0 and
+               case_metrics["completion"]["completion_rate"] == 1.0 and
+               case_metrics["quality"]["pass_rate"] == 1.0 and
                case_metrics["deterministic"]["sample_pass_rate"] == 1.0 and
                case_metrics["deterministic"]["check_pass_rate"] == 1.0 and
                case_metrics["within_distance"]["status"] == "available" and
                case_metrics["within_distance"]["pair_count"] == 1 and
+               case_metrics["within_distance"]["excluded_incomplete_samples"] == 0 and
                case_metrics["within_distance"]["mean"] == 0.0 and
                case_metrics["within_distance"]["sample_standard_deviation"] == nil and
                case_metrics["latency_ms"]["mean"] == 50.0 and
@@ -192,11 +204,63 @@ defmodule SilentRegression.Spike.BaselineTest do
              "status" => "insufficient_data",
              "successful_samples" => 1,
              "minimum_successful_samples" => 2,
+             "excluded_incomplete_samples" => 0,
              "pair_count" => 0
            }
 
     assert {:ok, persisted_run} = Storage.read(artifact_path)
     assert Enum.map(persisted_run.samples, & &1["status"]) == ["ok", "error"]
+  end
+
+  @tag :tmp_dir
+  test "persists incomplete responses as explicit quality failures", %{tmp_dir: tmp_dir} do
+    call_count = start_supervised!({Agent, fn -> 0 end})
+    [case_definition | _rest] = CaseSet.all()
+    artifact_path = Path.join(tmp_dir, "incomplete.json")
+
+    provider_callback = fn _case_definition, _options ->
+      call_number = Agent.get_and_update(call_count, &{&1 + 1, &1 + 1})
+
+      finish_reason =
+        if call_number == 1, do: "completed", else: "incomplete:max_output_tokens"
+
+      {:ok, response(passing_output(case_definition.id), %{finish_reason: finish_reason})}
+    end
+
+    assert {:ok, result} =
+             Baseline.run([case_definition], SpikeFakeProvider,
+               model: "fake-model",
+               samples_per_case: 2,
+               max_calls: 3,
+               run_id: "incomplete-baseline",
+               output_path: artifact_path,
+               git_revision: nil,
+               clock: fn -> @run_time end,
+               availability_checker: fn _provider, _model, _options ->
+                 {:ok, availability()}
+               end,
+               provider_options: [callback: provider_callback],
+               environment: %{}
+             )
+
+    assert result["totals"]["successful_samples"] == 2
+    assert result["totals"]["failed_samples"] == 0
+    assert result["totals"]["completed_samples"] == 1
+    assert result["totals"]["incomplete_samples"] == 1
+    assert result["totals"]["quality_passed_samples"] == 1
+    assert result["totals"]["quality_failed_samples"] == 1
+
+    [case_metrics] = result["metrics"]["by_case"]
+    assert case_metrics["completion"]["completion_rate"] == 0.5
+    assert case_metrics["quality"]["pass_rate"] == 0.5
+    assert case_metrics["within_distance"]["excluded_incomplete_samples"] == 1
+    assert case_metrics["within_distance"]["successful_samples"] == 1
+
+    assert {:ok, persisted_run} = Storage.read(artifact_path)
+    [completed_sample, incomplete_sample] = persisted_run.samples
+    assert completed_sample["quality"]["passed"]
+    refute incomplete_sample["quality"]["passed"]
+    assert incomplete_sample["quality"]["reason"] == "response_incomplete"
   end
 
   @tag :tmp_dir
@@ -323,8 +387,8 @@ defmodule SilentRegression.Spike.BaselineTest do
     }
   end
 
-  defp response(output_text) do
-    SpikeFixtures.response(%{
+  defp response(output_text, overrides \\ %{}) do
+    attributes = %{
       provider: "fake",
       requested_model: "fake-model",
       returned_model: "fake-model-snapshot",
@@ -333,7 +397,9 @@ defmodule SilentRegression.Spike.BaselineTest do
       latency_ms: 50,
       captured_at: @captured_at,
       attempts: 1
-    })
+    }
+
+    SpikeFixtures.response(Map.merge(attributes, overrides))
   end
 
   defp passing_output("rag_structured_extract") do

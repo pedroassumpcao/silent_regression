@@ -27,7 +27,7 @@ defmodule Mix.Tasks.DriftSpike.BaselineTest do
           "--model",
           "explicit-model",
           "--max-output-tokens",
-          "256",
+          "512",
           "--max-calls",
           "121",
           "--dry-run"
@@ -46,7 +46,7 @@ defmodule Mix.Tasks.DriftSpike.BaselineTest do
     assert output =~ "Maximum provider calls: 121"
     assert output =~ "Approved --max-calls cap: 121"
     assert output =~ "Concurrency: 3"
-    assert output =~ ~s(max_output_tokens: 256)
+    assert output =~ ~s(max_output_tokens: 512)
     assert output =~ ~s(max_retries: 0)
     assert output =~ ~s(model: "explicit-model")
     assert output =~ ~s(api_endpoint: "https://api.openai.com/v1/responses")
@@ -70,7 +70,7 @@ defmodule Mix.Tasks.DriftSpike.BaselineTest do
           "--samples",
           "2",
           "--max-output-tokens",
-          "128",
+          "512",
           "--max-calls",
           "3",
           "--output",
@@ -98,9 +98,27 @@ defmodule Mix.Tasks.DriftSpike.BaselineTest do
           "--model",
           "explicit-model",
           "--max-output-tokens",
-          "128",
+          "512",
           "--max-calls",
           "120",
+          "--dry-run"
+        ])
+      end)
+    end
+  end
+
+  test "refuses the truncating output-token budget before making calls" do
+    assert_raise Mix.Error, ~r/require a larger output-token budget/, fn ->
+      capture_io(fn ->
+        Baseline.run([
+          "--provider",
+          "openai",
+          "--model",
+          "explicit-model",
+          "--max-output-tokens",
+          "256",
+          "--max-calls",
+          "121",
           "--dry-run"
         ])
       end)

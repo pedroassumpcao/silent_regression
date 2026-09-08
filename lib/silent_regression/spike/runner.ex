@@ -30,6 +30,7 @@ defmodule SilentRegression.Spike.Runner do
     :top_p
   ]
   @request_provenance_keys ~w(api_endpoint api_version http_method)
+  @minimum_output_tokens_by_case %{"rag_open_synthesis" => 512}
   @allowed_options [
     :dry_run,
     :environment,
@@ -51,6 +52,7 @@ defmodule SilentRegression.Spike.Runner do
          {:ok, request_provenance} <- request_provenance(provider),
          {:ok, validated_cases} <- validate_cases(cases),
          {:ok, config} <- build_config(options),
+         :ok <- validate_case_output_budget(validated_cases, config.provider_options),
          {:ok, credential} <- validate_credential(provider_id, config.environment),
          {:ok, call_budget} <- build_call_budget(validated_cases, config),
          {:ok, request_config} <- build_request_config(config, request_provenance) do
@@ -211,6 +213,31 @@ defmodule SilentRegression.Spike.Runner do
       :ok
     else
       configuration_error("Runner case IDs must be unique", %{"field" => "cases"})
+    end
+  end
+
+  defp validate_case_output_budget(cases, provider_options) do
+    requirements =
+      cases
+      |> Enum.flat_map(fn case_definition ->
+        case Map.fetch(@minimum_output_tokens_by_case, case_definition.id) do
+          {:ok, minimum} -> [{case_definition.id, minimum}]
+          :error -> []
+        end
+      end)
+
+    minimum = requirements |> Enum.map(&elem(&1, 1)) |> Enum.max(fn -> 0 end)
+    configured = Keyword.get(provider_options, :max_output_tokens)
+
+    if minimum == 0 or (is_integer(configured) and configured >= minimum) do
+      :ok
+    else
+      configuration_error("Selected cases require a larger output-token budget", %{
+        "field" => "provider_options.max_output_tokens",
+        "actual" => configured,
+        "minimum" => minimum,
+        "case_ids" => Enum.map(requirements, &elem(&1, 0))
+      })
     end
   end
 
