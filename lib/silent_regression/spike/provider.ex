@@ -11,8 +11,10 @@ defmodule SilentRegression.Spike.Provider do
   alias SilentRegression.Spike.Validation
 
   @type error :: %{required(String.t()) => term()}
+  @type request_provenance :: %{required(String.t()) => String.t()}
 
   @callback id() :: String.t()
+  @callback request_provenance() :: request_provenance()
   @callback complete(Case.t(), keyword()) :: {:ok, Response.t()} | {:error, error()}
 
   @spec error(atom(), String.t(), keyword()) :: error()

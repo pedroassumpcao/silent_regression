@@ -29,6 +29,7 @@ defmodule SilentRegression.Spike.Runner do
     :top_k,
     :top_p
   ]
+  @request_provenance_keys ~w(api_endpoint api_version http_method)
   @allowed_options [
     :dry_run,
     :environment,
@@ -47,11 +48,12 @@ defmodule SilentRegression.Spike.Runner do
   def plan(cases, provider, options) do
     with :ok <- validate_options(options),
          {:ok, provider_id} <- validate_provider(provider),
+         {:ok, request_provenance} <- request_provenance(provider),
          {:ok, validated_cases} <- validate_cases(cases),
          {:ok, config} <- build_config(options),
          {:ok, credential} <- validate_credential(provider_id, config.environment),
          {:ok, call_budget} <- build_call_budget(validated_cases, config),
-         {:ok, request_config} <- build_request_config(config) do
+         {:ok, request_config} <- build_request_config(config, request_provenance) do
       {:ok,
        %{
          "provider" => provider_id,
@@ -111,6 +113,7 @@ defmodule SilentRegression.Spike.Runner do
 
   defp validate_provider(provider) when is_atom(provider) do
     if Code.ensure_loaded?(provider) and function_exported?(provider, :id, 0) and
+         function_exported?(provider, :request_provenance, 0) and
          function_exported?(provider, :complete, 2) do
       case provider.id() do
         provider_id when is_binary(provider_id) ->
@@ -133,10 +136,35 @@ defmodule SilentRegression.Spike.Runner do
   defp validate_provider(_provider), do: invalid_provider()
 
   defp invalid_provider do
-    configuration_error("Provider must implement id/0 and complete/2", %{
+    configuration_error("Provider must implement id/0, request_provenance/0, and complete/2", %{
       "field" => "provider"
     })
   end
+
+  defp request_provenance(provider) do
+    provenance = provider.request_provenance()
+
+    if is_map(provenance) and Enum.sort(Map.keys(provenance)) == @request_provenance_keys and
+         Enum.all?(@request_provenance_keys, &valid_provenance_value?(provenance[&1])) do
+      {:ok, provenance}
+    else
+      configuration_error("Provider request provenance is invalid", %{
+        "field" => "request_provenance",
+        "required_keys" => @request_provenance_keys
+      })
+    end
+  rescue
+    _error ->
+      configuration_error("Provider request provenance is invalid", %{
+        "field" => "request_provenance",
+        "required_keys" => @request_provenance_keys
+      })
+  end
+
+  defp valid_provenance_value?(value) when is_binary(value),
+    do: String.valid?(value) and String.trim(value) != ""
+
+  defp valid_provenance_value?(_value), do: false
 
   defp validate_cases(cases) when is_list(cases) and cases != [] do
     with :ok <- validate_each_case(cases),
@@ -383,7 +411,7 @@ defmodule SilentRegression.Spike.Runner do
     end
   end
 
-  defp build_request_config(config) do
+  defp build_request_config(config, request_provenance) do
     config.provider_options
     |> Keyword.take(@behavior_option_keys)
     |> Enum.reduce_while({:ok, %{}}, fn {key, value}, {:ok, request_config} ->
@@ -400,7 +428,8 @@ defmodule SilentRegression.Spike.Runner do
     |> case do
       {:ok, behavior_options} ->
         {:ok,
-         behavior_options
+         request_provenance
+         |> Map.merge(behavior_options)
          |> Map.put("model", config.model)
          |> Map.put("max_retries", config.max_retries)}
 

@@ -55,6 +55,15 @@ defmodule SilentRegression.Spike.Providers.Anthropic do
   def id, do: "anthropic"
 
   @impl true
+  def request_provenance do
+    %{
+      "api_endpoint" => @endpoint,
+      "api_version" => @api_version,
+      "http_method" => "POST"
+    }
+  end
+
+  @impl true
   def complete(case_definition, options) when is_list(options) do
     started_at = System.monotonic_time(:millisecond)
 

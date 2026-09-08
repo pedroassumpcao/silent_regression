@@ -56,6 +56,9 @@ defmodule Mix.Tasks.DriftSpike.PreflightTest do
     assert output =~ ~s(max_output_tokens: 256)
     assert output =~ ~s(max_retries: 1)
     assert output =~ ~s(model: "explicit-model")
+    assert output =~ ~s(api_endpoint: "https://api.openai.com/v1/responses")
+    assert output =~ ~s(api_version: "v1")
+    assert output =~ ~s(http_method: "POST")
     assert output =~ "Credential: OPENAI_API_KEY is present"
     assert output =~ "No provider requests were made."
     refute output =~ "preflight-test-secret"

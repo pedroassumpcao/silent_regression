@@ -110,6 +110,12 @@ defmodule SilentRegression.Spike.BaselineTest do
     assert persisted_run.request_config["model"] == "fake-model"
     assert persisted_run.request_config["max_output_tokens"] == 128
     assert persisted_run.request_config["samples_per_case"] == 2
+
+    assert persisted_run.request_config["api_endpoint"] ==
+             "https://fake.invalid/v1/completions"
+
+    assert persisted_run.request_config["api_version"] == "v1"
+    assert persisted_run.request_config["http_method"] == "POST"
     assert persisted_run.request_config["model_availability"] == availability()
 
     assert persisted_run.totals == %{

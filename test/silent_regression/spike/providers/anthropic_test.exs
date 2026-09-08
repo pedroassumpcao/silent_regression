@@ -9,8 +9,14 @@ defmodule SilentRegression.Spike.Providers.AnthropicTest do
 
   setup {Req.Test, :verify_on_exit!}
 
-  test "identifies the provider" do
+  test "identifies the provider and declares request provenance" do
     assert Anthropic.id() == "anthropic"
+
+    assert Anthropic.request_provenance() == %{
+             "api_endpoint" => "https://api.anthropic.com/v1/messages",
+             "api_version" => "2023-06-01",
+             "http_method" => "POST"
+           }
   end
 
   test "posts a versioned Messages API request and normalizes every response field" do

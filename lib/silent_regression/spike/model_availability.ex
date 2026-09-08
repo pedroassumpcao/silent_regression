@@ -46,6 +46,9 @@ defmodule SilentRegression.Spike.ModelAvailability do
          "requested_model" => model,
          "returned_model" => returned_model,
          "request_id" => request_id(provider_id, response),
+         "api_endpoint" => endpoint(provider_id, model),
+         "api_version" => api_version(provider_id),
+         "http_method" => "GET",
          "attempts" => 1
        }}
     end
@@ -232,6 +235,9 @@ defmodule SilentRegression.Spike.ModelAvailability do
 
   defp endpoint("anthropic", model),
     do: "https://api.anthropic.com/v1/models/#{URI.encode(model)}"
+
+  defp api_version("openai"), do: "v1"
+  defp api_version("anthropic"), do: @anthropic_api_version
 
   defp headers("openai", api_key) do
     [{"accept", "application/json"}, {"authorization", "Bearer #{api_key}"}]

@@ -9,8 +9,14 @@ defmodule SilentRegression.Spike.Providers.OpenAITest do
 
   setup {Req.Test, :verify_on_exit!}
 
-  test "identifies the provider" do
+  test "identifies the provider and declares request provenance" do
     assert OpenAI.id() == "openai"
+
+    assert OpenAI.request_provenance() == %{
+             "api_endpoint" => "https://api.openai.com/v1/responses",
+             "api_version" => "v1",
+             "http_method" => "POST"
+           }
   end
 
   test "posts a stateless Responses API request and normalizes every response field" do

@@ -20,6 +20,7 @@ defmodule SilentRegression.Spike.Providers.OpenAI do
   alias SilentRegression.Spike.Validation
 
   @endpoint "https://api.openai.com/v1/responses"
+  @api_version "v1"
   @maximum_retries 5
   @maximum_retry_delay_ms 5_000
   @retryable_statuses [408, 429, 500, 502, 503, 504]
@@ -48,6 +49,15 @@ defmodule SilentRegression.Spike.Providers.OpenAI do
 
   @impl true
   def id, do: "openai"
+
+  @impl true
+  def request_provenance do
+    %{
+      "api_endpoint" => @endpoint,
+      "api_version" => @api_version,
+      "http_method" => "POST"
+    }
+  end
 
   @impl true
   def complete(case_definition, options) when is_list(options) do

@@ -35,6 +35,9 @@ defmodule SilentRegression.Spike.RunnerTest do
     assert plan["max_concurrency"] == 3
 
     assert plan["request_config"] == %{
+             "api_endpoint" => "https://fake.invalid/v1/completions",
+             "api_version" => "v1",
+             "http_method" => "POST",
              "max_output_tokens" => 128,
              "max_retries" => 1,
              "model" => "fake-model"

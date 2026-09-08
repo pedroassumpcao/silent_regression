@@ -28,6 +28,9 @@ defmodule SilentRegression.Spike.ModelAvailabilityTest do
              )
 
     assert result == %{
+             "api_endpoint" => "https://api.openai.com/v1/models/requested-model",
+             "api_version" => "v1",
+             "http_method" => "GET",
              "provider" => "openai",
              "requested_model" => "requested-model",
              "returned_model" => "requested-model",
@@ -61,6 +64,12 @@ defmodule SilentRegression.Spike.ModelAvailabilityTest do
     assert result["returned_model"] == "claude-requested-model"
     assert result["request_id"] == "req_anthropic_model"
     assert result["attempts"] == 1
+
+    assert result["api_endpoint"] ==
+             "https://api.anthropic.com/v1/models/claude-requested-model"
+
+    assert result["api_version"] == "2023-06-01"
+    assert result["http_method"] == "GET"
   end
 
   test "returns an unavailable error for a non-success response without retrying" do

@@ -7,6 +7,15 @@ defmodule SilentRegression.SpikeFakeProvider do
   def id, do: "fake"
 
   @impl true
+  def request_provenance do
+    %{
+      "api_endpoint" => "https://fake.invalid/v1/completions",
+      "api_version" => "v1",
+      "http_method" => "POST"
+    }
+  end
+
+  @impl true
   def complete(case_definition, options) do
     options
     |> Keyword.fetch!(:callback)
