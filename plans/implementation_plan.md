@@ -1,10 +1,12 @@
 # Silent Regression Feasibility Spike — Codex Implementation Plan
 
-> **Status:** Task 5 complete; Task 6 is next
+> **Status:** Tasks 1–9 implementation complete; v4 pilot recapture and the Task 9 manual gate are next
 >
-> **Last revised:** 2026-09-07
+> **Last revised:** 2026-09-08
 >
 > **Purpose:** Persistent product, experiment, and implementation reference for Codex
+
+If the feasibility gates pass, use the separate [productization plan](productization_plan.md) to plan the transition from this controlled spike to a general hosted product. That document records gaps and future requirements; it does not expand the current spike scope.
 
 Before implementing a task, Codex must read this entire document. Work on one numbered task at a time, run the task-specific verification, run `mix precommit` before considering the task complete, and create one focused commit with the message format `feat(spike): <summary>` unless the user asks for a different workflow.
 
