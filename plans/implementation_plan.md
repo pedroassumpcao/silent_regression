@@ -467,6 +467,28 @@ Include aggregate results only alongside their denominators and per-case results
 
 The conclusion must name which hypotheses passed, which failed, and the experiment's limitations.
 
+### Optional Task 14 — ReqLLM adapter evaluation
+
+**Status:** Deferred until after Task 13
+
+**Objective:** Determine whether ReqLLM should replace the hand-written OpenAI and Anthropic transports for the hosted product without changing the completed spike's experimental surface.
+
+**Approach:** Implement ReqLLM behind the existing `SilentRegression.Spike.Provider` behaviour and compare it against the current Req clients. Do not rewrite or invalidate historical spike artifacts. Keep the authenticated account-level model availability check independent from catalog metadata.
+
+**Requirements:**
+
+- pin an explicit ReqLLM version and review its dependency, compatibility, and upgrade policies;
+- disable dotenv loading and pass customer credentials per request;
+- preserve explicit provider, model, and API selection without silent substitution;
+- disable library retries or expose every HTTP attempt so `--max-calls` remains enforceable;
+- preserve requested and returned model IDs, request IDs, raw provider metadata, finish reasons, latency, usage, cost estimates, and structured failures;
+- prove that OpenAI uses the intended Responses API path and Anthropic uses the intended Messages API path;
+- treat ReqLLM model metadata and cost data as advisory rather than a substitute for provider-side access and billing truth.
+
+**Verify:** Run mocked parity tests for successful responses, malformed responses, provider errors, returned-model differences, usage normalization, retry accounting, and secret redaction. `mix test` must make zero real provider calls. Any live parity smoke test requires its own dry-run, exact call count, and user authorization.
+
+**Decision gate:** Adopt ReqLLM only if parity is demonstrated and it materially reduces production integration and maintenance cost without weakening provenance or spend guardrails. Otherwise retain the current Req adapters and revisit when provider breadth becomes a product requirement.
+
 ## 10. Escalation path
 
 If lexical energy distance fails the Task 11 gate, preserve the artifacts and discuss a new, separately approved experiment. Candidate next layers, in order of increasing cost/complexity, are:
@@ -500,6 +522,7 @@ Provider details must be rechecked when their client task begins and again befor
 - [Anthropic models overview](https://platform.claude.com/docs/en/models/overview)
 - [Anthropic model IDs and versioning](https://platform.claude.com/docs/en/about-claude/models/model-ids-and-versions)
 - [Anthropic Messages API — create message](https://platform.claude.com/docs/en/api/http/messages/create)
+- [ReqLLM repository and documentation](https://github.com/agentjido/req_llm)
 
 ## 13. Decision log
 
@@ -511,3 +534,4 @@ Provider details must be rechecked when their client task begins and again befor
 - **2026-09-07:** Reduced initial providers to OpenAI and Anthropic, with staged testing across cost-oriented and capable models.
 - **2026-09-07:** Assigned Codex to draft semantic fixtures and the user to approve their ground-truth labels.
 - **2026-09-07:** Replaced raw mean cross-similarity with within/cross Jaccard energy distance, permutation testing, null calibration, and explicit false-alert gates.
+- **2026-09-07:** Deferred a ReqLLM adapter evaluation until after the spike so provider abstraction, cost metadata, and telemetry can be assessed without changing the experimental transport mid-study.
