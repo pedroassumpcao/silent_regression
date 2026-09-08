@@ -86,9 +86,16 @@ defmodule SilentRegression.Spike.Baseline do
       if Keyword.get(options, :dry_run, false) do
         {:ok, dry_run_result(baseline_plan)}
       else
-        execute(cases, provider, options, baseline_plan)
+        execute_plan(cases, provider, options, baseline_plan)
       end
     end
+  end
+
+  @doc false
+  @spec execute_plan([SilentRegression.Spike.Case.t()], module(), keyword(), plan()) ::
+          {:ok, result()} | {:error, Provider.error() | map()}
+  def execute_plan(cases, provider, options, capture_plan) do
+    execute(cases, provider, options, capture_plan)
   end
 
   defp validate_options(options) when is_list(options) do
@@ -525,7 +532,7 @@ defmodule SilentRegression.Spike.Baseline do
     Run.new(%{
       run_id: baseline_plan["run_id"],
       label: baseline_plan["label"],
-      condition: "baseline",
+      condition: baseline_plan["condition"],
       started_at: started_at,
       completed_at: completed_at,
       git_revision: baseline_plan["git_revision"],

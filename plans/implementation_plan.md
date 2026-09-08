@@ -393,11 +393,13 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 
 ### Task 9 — Control runs and null calibration
 
+**Status:** Complete
+
 **Objective:** Establish ordinary same-model variability before looking at regression fixtures.
 
 **Files:** Create `drift_spike.control`, calibration/comparison logic, and tests.
 
-**Requirements:** Reject provenance mismatches; default to `n=20`; compare independent controls to the baseline; construct the seeded resampling null distribution; persist the frozen threshold separately with its source run IDs and seed.
+**Requirements:** Reject provenance mismatches; default to `n=20`; compare independent controls to the baseline; construct the seeded resampling null distribution; persist the frozen threshold separately with its source run IDs and seed. Keep live capture separate from call-free calibration so a held-out run cannot silently calibrate its own threshold; reject any calibration source run later presented as held out.
 
 **Verify:** Fixture/fake-provider tests cover compatible and incompatible runs, threshold reproducibility, and alert outcomes; `mix precommit` passes.
 
@@ -537,3 +539,4 @@ Provider details must be rechecked when their client task begins and again befor
 - **2026-09-07:** Deferred a ReqLLM adapter evaluation until after the spike so provider abstraction, cost metadata, and telemetry can be assessed without changing the experimental transport mid-study.
 - **2026-09-07:** A live `n=30` pilot showed that 256 output tokens truncated one-third of open-synthesis responses and that contiguous phrase checks rejected valid paraphrases. Raised the frozen baseline ceiling to 512, made incomplete responses explicit quality failures excluded from drift statistics, and introduced bounded grouped-fact checks before calibration.
 - **2026-09-07:** The replacement 512-token baseline completed all 120 generations but exposed one ambiguous structured-source label and seven valid open-synthesis paraphrases rejected by the evaluator. Clarified the structured project name and generalized the fleet and phase-one invariants before null calibration.
+- **2026-09-07:** Separated Task 9 into provenance-checked live control capture and call-free immutable calibration. Threshold artifacts record every source run ID and seed, while held-out comparisons reject calibration-source reuse to prevent leakage.
