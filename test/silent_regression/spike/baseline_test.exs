@@ -1,5 +1,5 @@
 defmodule SilentRegression.Spike.BaselineTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias SilentRegression.Spike.Baseline
   alias SilentRegression.Spike.CaseSet
@@ -251,6 +251,60 @@ defmodule SilentRegression.Spike.BaselineTest do
     assert error["details"]["maximum_calls"] == 3
     assert error["details"]["max_calls"] == 2
     refute_received :unexpected_availability_call
+  end
+
+  test "starts Req before a live model availability check" do
+    assert :ok = Application.stop(:req)
+    on_exit(fn -> Application.ensure_all_started(:req) end)
+    refute Process.whereis(Req.Finch)
+
+    availability_checker = fn _provider, _model, _options ->
+      assert is_pid(Process.whereis(Req.Finch))
+
+      {:error,
+       Provider.error(:expected_test_stop, "stop after startup check",
+         details: %{"attempts" => 1}
+       )}
+    end
+
+    assert {:error, error} =
+             Baseline.run([hd(CaseSet.all())], SpikeFakeProvider,
+               model: "fake-model",
+               samples_per_case: 1,
+               max_calls: 2,
+               git_revision: nil,
+               availability_checker: availability_checker,
+               provider_options: [callback: fn _case, _options -> :not_called end],
+               environment: %{}
+             )
+
+    assert error["type"] == "expected_test_stop"
+    assert is_pid(Process.whereis(Req.Finch))
+  end
+
+  test "reports and redacts the reason when a model availability check raises" do
+    availability_checker = fn _provider, _model, _options ->
+      raise ArgumentError, "synthetic failure containing super-secret"
+    end
+
+    assert {:error, error} =
+             Baseline.run([hd(CaseSet.all())], SpikeFakeProvider,
+               model: "fake-model",
+               samples_per_case: 1,
+               max_calls: 2,
+               git_revision: nil,
+               availability_checker: availability_checker,
+               provider_options: [
+                 api_key: "super-secret",
+                 callback: fn _case, _options -> :not_called end
+               ],
+               environment: %{}
+             )
+
+    assert error["type"] == "model_availability_exception"
+    assert error["details"]["exception"] == "ArgumentError"
+    assert error["details"]["reason"] == "synthetic failure containing [REDACTED]"
+    refute inspect(error) =~ "super-secret"
   end
 
   defp availability do

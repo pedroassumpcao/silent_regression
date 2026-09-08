@@ -305,7 +305,8 @@ defmodule SilentRegression.Spike.Baseline do
   end
 
   defp execute(cases, provider, options, baseline_plan) do
-    with {:ok, started_at} <- timestamp(options),
+    with :ok <- ensure_http_client_started(),
+         {:ok, started_at} <- timestamp(options),
          {:ok, availability} <- check_availability(provider, options, baseline_plan),
          {:ok, runner_result} <- run_generation(cases, provider, options, baseline_plan),
          {:ok, %{"samples" => samples, "metrics" => metrics}} <-
@@ -333,6 +334,22 @@ defmodule SilentRegression.Spike.Baseline do
          "totals" => totals,
          "metrics" => metrics
        }}
+    end
+  end
+
+  defp ensure_http_client_started do
+    case Application.ensure_all_started(:req) do
+      {:ok, _started_applications} ->
+        :ok
+
+      {:error, {application, reason}} ->
+        {:error,
+         Provider.error(:http_client_start_failed, "The HTTP client could not be started",
+           details: %{
+             "application" => Atom.to_string(application),
+             "reason" => inspect(reason)
+           }
+         )}
     end
   end
 
@@ -390,7 +407,11 @@ defmodule SilentRegression.Spike.Baseline do
     exception ->
       {:error,
        Provider.error(:model_availability_exception, "The model availability check raised",
-         details: %{"attempts" => 1, "exception" => exception_name(exception)}
+         details: %{
+           "attempts" => 1,
+           "exception" => exception_name(exception),
+           "reason" => safe_exception_message(exception, options)
+         }
        )}
   catch
     kind, _reason ->
@@ -506,6 +527,26 @@ defmodule SilentRegression.Spike.Baseline do
   end
 
   defp exception_name(%{__struct__: module}) when is_atom(module), do: inspect(module)
+
+  defp safe_exception_message(exception, options) do
+    options
+    |> sensitive_values()
+    |> Enum.reduce(Exception.message(exception), fn sensitive_value, message ->
+      String.replace(message, sensitive_value, "[REDACTED]")
+    end)
+  end
+
+  defp sensitive_values(options) do
+    environment = Keyword.get(options, :environment, %{})
+
+    [
+      Keyword.get(options, :api_key),
+      environment["OPENAI_API_KEY"],
+      environment["ANTHROPIC_API_KEY"]
+    ]
+    |> Enum.filter(&non_empty_string?/1)
+    |> Enum.uniq()
+  end
 
   defp configuration_error(message, details) do
     {:error, Provider.error(:configuration_error, message, details: details)}
