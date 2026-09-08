@@ -367,6 +367,8 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 
 ### Task 7 — Runner, preflight, and spend guardrails
 
+**Status:** Complete
+
 **Objective:** Execute provider calls consistently while preserving ordering, failures, provenance, and request budgets.
 
 **Files:** Create `runner.ex`, `drift_spike.preflight`, and tests.
