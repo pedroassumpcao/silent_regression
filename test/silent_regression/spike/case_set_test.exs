@@ -17,7 +17,7 @@ defmodule SilentRegression.Spike.CaseSetTest do
     assert Map.new(cases, &{&1.id, &1.version}) == %{
              "rag_abstain_when_unsupported" => 1,
              "rag_answer_with_citations" => 1,
-             "rag_open_synthesis" => 3,
+             "rag_open_synthesis" => 4,
              "rag_structured_extract" => 2
            }
 
@@ -40,7 +40,7 @@ defmodule SilentRegression.Spike.CaseSetTest do
              "rag_answer_with_citations" =>
                "3f81ddbd3e6a5ce49ea7df8a43ac28634e2e4724c86272fc7c6cb8e0c380e24f",
              "rag_open_synthesis" =>
-               "f0798b6b773ccc3038b4da6b214de5706495c73ed995514298d3bd143199584a",
+               "2203ade86203a3d3a401f7a68a17f978ae9d90409be0d7b3b300957545373636",
              "rag_structured_extract" =>
                "6b6048633bd60ae0dd046bcb14044066eacacfa58a88d4c9ff00da45394473f0"
            }

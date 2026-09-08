@@ -81,6 +81,42 @@ defmodule SilentRegression.Spike.DeterministicChecksTest do
       assert Enum.all?(outputs, &evaluate!(case_definition, &1)["all_passed"])
     end
 
+    test "accepts an implied repeated crossing-time unit from a live control" do
+      case_definition = fetch_case!("rag_open_synthesis")
+
+      output = """
+      Larkspur Bay will deploy 12 electric ferries, reducing harbor crossings from
+      34 minutes to 19 by 2044 [transit-plan]. Phase one funds the first six ferries
+      [phase-one-budget]. From March through July, ferries near the islands are limited
+      to 12 knots [habitat-rules].
+      """
+
+      result = evaluate!(case_definition, output)
+      crossing_target = Enum.find(result["checks"], &(&1["check_id"] == "crossing_target"))
+
+      assert result["all_passed"]
+      assert crossing_target["passed"]
+      assert "34 minutes to 19" in crossing_target["details"]["matched_alternatives"]
+    end
+
+    test "does not accept a different implied crossing target" do
+      case_definition = fetch_case!("rag_open_synthesis")
+
+      output = """
+      Larkspur Bay will deploy 12 electric ferries, reducing harbor crossings from
+      34 minutes to 18 by 2044 [transit-plan]. Phase one funds the first six ferries
+      [phase-one-budget]. From March through July, ferries near the islands are limited
+      to 12 knots [habitat-rules].
+      """
+
+      result = evaluate!(case_definition, output)
+      crossing_target = Enum.find(result["checks"], &(&1["check_id"] == "crossing_target"))
+
+      refute result["all_passed"]
+      refute crossing_target["passed"]
+      assert crossing_target["reason"] == "required_fact_groups_missing"
+    end
+
     test "rejects nearby numbers that do not establish the electric 12-ferry fleet" do
       case_definition = fetch_case!("rag_open_synthesis")
 

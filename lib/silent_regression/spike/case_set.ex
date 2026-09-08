@@ -205,7 +205,7 @@ defmodule SilentRegression.Spike.CaseSet do
   defp open_synthesis do
     build_case(%{
       id: "rag_open_synthesis",
-      version: 3,
+      version: 4,
       category: "rag_open_synthesis",
       description:
         "Synthesize a rollout plan and its tradeoffs without a single reference answer.",
@@ -276,7 +276,7 @@ defmodule SilentRegression.Spike.CaseSet do
           "type" => "required_fact_groups",
           "id" => "crossing_target",
           "groups" => [
-            ["19 minutes", "19-minute"],
+            ["19 minutes", "19-minute", "34 minutes to 19"],
             ["2044"]
           ],
           "max_span_tokens" => 32
