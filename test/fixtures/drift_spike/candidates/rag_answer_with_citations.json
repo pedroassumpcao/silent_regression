@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "status": "candidate",
+  "case_id": "rag_answer_with_citations",
+  "case_version": 1,
+  "case_fingerprint": "3f81ddbd3e6a5ce49ea7df8a43ac28634e2e4724c86272fc7c6cb8e0c380e24f",
+  "fixtures": [
+    {
+      "id": "citations_harmless_reordered",
+      "condition": "harmless_rewording",
+      "variant_type": "meaning_preserving",
+      "intended_label": "acceptable",
+      "severity": "none",
+      "failure_modes": [],
+      "expected_deterministic_pass": true,
+      "rationale": "Booking guidance is presented before the schedule without changing any claim or attribution.",
+      "output_text": "Reserve at least 24 hours ahead [booking-policy]. Guided greenhouse tours run every Wednesday and Friday at 10:30 a.m. and last 75 minutes [tour-schedule]."
+    },
+    {
+      "id": "citations_harmless_compact",
+      "condition": "harmless_rewording",
+      "variant_type": "meaning_preserving",
+      "intended_label": "acceptable",
+      "severity": "none",
+      "failure_modes": [],
+      "expected_deterministic_pass": true,
+      "rationale": "The answer compresses the same schedule, duration, and notice into one sentence with correct citations.",
+      "output_text": "Tours are offered Wednesdays and Fridays at 10:30 am for 75 minutes [tour-schedule], and reservations are required 24 hours in advance [booking-policy]."
+    },
+    {
+      "id": "citations_style_semicolon",
+      "condition": "harmless_rewording",
+      "variant_type": "style_only",
+      "intended_label": "acceptable",
+      "severity": "none",
+      "failure_modes": [],
+      "expected_deterministic_pass": true,
+      "rationale": "Only punctuation and sentence rhythm change while all facts and citations remain intact.",
+      "output_text": "Guided tours begin at 10:30 a.m. every Wednesday and Friday and run for 75 minutes [tour-schedule]; book at least one day ahead [booking-policy]."
+    },
+    {
+      "id": "citations_subtle_swapped_attribution",
+      "condition": "subtle_regression",
+      "variant_type": "wrong_attribution",
+      "intended_label": "regression",
+      "severity": "subtle",
+      "failure_modes": ["wrong_attribution"],
+      "expected_deterministic_pass": true,
+      "rationale": "Every fact and required source ID is present, but the two citations are attached to the wrong claims; the current deterministic checker intentionally misses placement.",
+      "output_text": "Tours run Wednesdays and Fridays at 10:30 a.m. for 75 minutes [booking-policy]. Reservations must be made at least 24 hours ahead [tour-schedule]."
+    },
+    {
+      "id": "citations_subtle_omitted_duration",
+      "condition": "subtle_regression",
+      "variant_type": "omission",
+      "intended_label": "regression",
+      "severity": "subtle",
+      "failure_modes": ["omission"],
+      "expected_deterministic_pass": false,
+      "rationale": "The answer gives the days, time, and booking notice but omits the requested 75-minute duration.",
+      "output_text": "Tours run every Wednesday and Friday at 10:30 a.m. [tour-schedule], and reservations are required at least 24 hours ahead [booking-policy]."
+    },
+    {
+      "id": "citations_subtle_unsupported_price",
+      "condition": "subtle_regression",
+      "variant_type": "unsupported_claim",
+      "intended_label": "regression",
+      "severity": "subtle",
+      "failure_modes": ["unsupported_claim"],
+      "expected_deterministic_pass": true,
+      "rationale": "All requested facts remain correct, but the answer adds an unsupported claim that tours are free.",
+      "output_text": "Free guided tours run Wednesdays and Fridays at 10:30 a.m. for 75 minutes [tour-schedule], and you must reserve at least 24 hours ahead [booking-policy]."
+    },
+    {
+      "id": "citations_obvious_wrong_schedule",
+      "condition": "obvious_regression",
+      "variant_type": "multiple_wrong_facts",
+      "intended_label": "regression",
+      "severity": "obvious",
+      "failure_modes": ["wrong_fact"],
+      "expected_deterministic_pass": false,
+      "rationale": "The response is concise and cited but changes the days, start time, duration, and booking notice.",
+      "output_text": "Tours run Mondays at 2:00 p.m. for 30 minutes [tour-schedule], and same-day reservations are accepted [booking-policy]."
+    }
+  ]
+}

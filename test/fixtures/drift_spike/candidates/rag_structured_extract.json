@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "status": "candidate",
+  "case_id": "rag_structured_extract",
+  "case_version": 2,
+  "case_fingerprint": "6b6048633bd60ae0dd046bcb14044066eacacfa58a88d4c9ff00da45394473f0",
+  "fixtures": [
+    {
+      "id": "structured_harmless_key_order",
+      "condition": "harmless_rewording",
+      "variant_type": "meaning_preserving",
+      "intended_label": "acceptable",
+      "severity": "none",
+      "failure_modes": [],
+      "expected_deterministic_pass": true,
+      "rationale": "The same grounded JSON values are returned with a different object-key order.",
+      "output_text": "{\"source_ids\":[\"brief-7\",\"finance-2\"],\"budget_usd\":480000,\"city\":\"Bellweather Harbor\",\"launch_date\":\"2042-11-18\",\"project_name\":\"Meridian Lantern\"}"
+    },
+    {
+      "id": "structured_harmless_numeric_representation",
+      "condition": "harmless_rewording",
+      "variant_type": "meaning_preserving",
+      "intended_label": "acceptable",
+      "severity": "none",
+      "failure_modes": [],
+      "expected_deterministic_pass": true,
+      "rationale": "The mathematical budget is unchanged when represented as a JSON float.",
+      "output_text": "{\"project_name\":\"Meridian Lantern\",\"launch_date\":\"2042-11-18\",\"city\":\"Bellweather Harbor\",\"budget_usd\":480000.0,\"source_ids\":[\"brief-7\",\"finance-2\"]}"
+    },
+    {
+      "id": "structured_style_pretty_json",
+      "condition": "harmless_rewording",
+      "variant_type": "style_only",
+      "intended_label": "acceptable",
+      "severity": "none",
+      "failure_modes": [],
+      "expected_deterministic_pass": true,
+      "rationale": "Only JSON whitespace and layout change; structure and values remain identical.",
+      "output_text": "{\n  \"project_name\": \"Meridian Lantern\",\n  \"launch_date\": \"2042-11-18\",\n  \"city\": \"Bellweather Harbor\",\n  \"budget_usd\": 480000,\n  \"source_ids\": [\"brief-7\", \"finance-2\"]\n}"
+    },
+    {
+      "id": "structured_subtle_wrong_budget",
+      "condition": "subtle_regression",
+      "variant_type": "wrong_fact",
+      "intended_label": "regression",
+      "severity": "subtle",
+      "failure_modes": ["wrong_fact"],
+      "expected_deterministic_pass": false,
+      "rationale": "The JSON is well formed, but the budget loses a zero and changes from $480,000 to $48,000.",
+      "output_text": "{\"project_name\":\"Meridian Lantern\",\"launch_date\":\"2042-11-18\",\"city\":\"Bellweather Harbor\",\"budget_usd\":48000,\"source_ids\":[\"brief-7\",\"finance-2\"]}"
+    },
+    {
+      "id": "structured_subtle_wrong_source",
+      "condition": "subtle_regression",
+      "variant_type": "wrong_attribution",
+      "intended_label": "regression",
+      "severity": "subtle",
+      "failure_modes": ["wrong_attribution"],
+      "expected_deterministic_pass": false,
+      "rationale": "All extracted values are correct, but the financial source is attributed to a nonexistent source ID.",
+      "output_text": "{\"project_name\":\"Meridian Lantern\",\"launch_date\":\"2042-11-18\",\"city\":\"Bellweather Harbor\",\"budget_usd\":480000,\"source_ids\":[\"brief-7\",\"finance-9\"]}"
+    },
+    {
+      "id": "structured_subtle_wrong_date",
+      "condition": "subtle_regression",
+      "variant_type": "wrong_fact",
+      "intended_label": "regression",
+      "severity": "subtle",
+      "failure_modes": ["wrong_fact"],
+      "expected_deterministic_pass": false,
+      "rationale": "The response preserves the required shape but changes the launch date by ten days.",
+      "output_text": "{\"project_name\":\"Meridian Lantern\",\"launch_date\":\"2042-11-08\",\"city\":\"Bellweather Harbor\",\"budget_usd\":480000,\"source_ids\":[\"brief-7\",\"finance-2\"]}"
+    },
+    {
+      "id": "structured_obvious_wrong_record",
+      "condition": "obvious_regression",
+      "variant_type": "multiple_wrong_facts",
+      "intended_label": "regression",
+      "severity": "obvious",
+      "failure_modes": ["wrong_fact", "wrong_attribution"],
+      "expected_deterministic_pass": false,
+      "rationale": "The response remains parseable and structurally compliant while replacing every material value.",
+      "output_text": "{\"project_name\":\"Northern Beacon\",\"launch_date\":\"2043-01-05\",\"city\":\"Rookhaven\",\"budget_usd\":950000,\"source_ids\":[\"brief-3\",\"finance-8\"]}"
+    }
+  ]
+}

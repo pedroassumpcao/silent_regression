@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "status": "candidate",
+  "case_id": "rag_open_synthesis",
+  "case_version": 4,
+  "case_fingerprint": "2203ade86203a3d3a401f7a68a17f978ae9d90409be0d7b3b300957545373636",
+  "fixtures": [
+    {
+      "id": "synthesis_harmless_benefit_first",
+      "condition": "harmless_rewording",
+      "variant_type": "meaning_preserving",
+      "intended_label": "acceptable",
+      "severity": "none",
+      "failure_modes": [],
+      "expected_deterministic_pass": true,
+      "rationale": "The answer preserves every material fact while leading with the rider benefit.",
+      "output_text": "Riders are meant to benefit from a typical crossing shortened from 34 minutes to 19 by 2044 as Larkspur Bay builds a 12-ferry electric fleet [transit-plan]. Phase one funds the Dock 3 terminal and only the first six ferries; the remaining six need another appropriation [phase-one-budget].\n\nFrom March through July, ferries within two kilometers of the nesting islands must remain at or below 12 knots, and nearby pile-driving is prohibited, so leaders must balance rollout speed with habitat protection [habitat-rules]."
+    },
+    {
+      "id": "synthesis_harmless_constraint_first",
+      "condition": "harmless_rewording",
+      "variant_type": "meaning_preserving",
+      "intended_label": "acceptable",
+      "severity": "none",
+      "failure_modes": [],
+      "expected_deterministic_pass": true,
+      "rationale": "The funding constraint is presented first, but the fleet, benefit, and habitat tradeoff remain accurate.",
+      "output_text": "Only the Dock 3 conversion and the first six ferries are funded in phase one; completing the planned 12 electric ferries requires a later appropriation [phase-one-budget]. The full plan targets a 19-minute crossing by 2044 [transit-plan].\n\nLeaders must accommodate the March through July nesting period, when nearby ferries are capped at 12 knots and pile-driving is barred near the islands [habitat-rules]."
+    },
+    {
+      "id": "synthesis_style_headings",
+      "condition": "harmless_rewording",
+      "variant_type": "style_only",
+      "intended_label": "acceptable",
+      "severity": "none",
+      "failure_modes": [],
+      "expected_deterministic_pass": true,
+      "rationale": "Short inline headings change presentation while retaining two concise paragraphs and all supported claims.",
+      "output_text": "Rider benefit — The planned 12 electric ferries target a 19-minute harbor crossing by 2044 [transit-plan]. Rollout — Phase one pays for Dock 3 and six ferries, while the other six need later funding [phase-one-budget].\n\nEnvironmental constraint — From March through July, island-area operations are limited to 12 knots and pile-driving is prohibited, requiring a balance between construction and nesting-habitat protection [habitat-rules]."
+    },
+    {
+      "id": "synthesis_subtle_swapped_attribution",
+      "condition": "subtle_regression",
+      "variant_type": "wrong_attribution",
+      "intended_label": "regression",
+      "severity": "subtle",
+      "failure_modes": ["wrong_attribution"],
+      "expected_deterministic_pass": true,
+      "rationale": "All facts and source IDs are present, but each paragraph attaches a source to claims it does not support; current checks only require source-ID presence.",
+      "output_text": "The planned 12 electric ferries target a 19-minute crossing by 2044 [phase-one-budget]. Phase one funds the Dock 3 conversion and first six ferries, with the remaining six dependent on later funding [habitat-rules].\n\nFrom March through July, ferries near the nesting islands must stay at or below 12 knots and pile-driving is prohibited, creating the environmental tradeoff [transit-plan]."
+    },
+    {
+      "id": "synthesis_subtle_unsupported_fare_claim",
+      "condition": "subtle_regression",
+      "variant_type": "unsupported_claim",
+      "intended_label": "regression",
+      "severity": "subtle",
+      "failure_modes": ["unsupported_claim"],
+      "expected_deterministic_pass": true,
+      "rationale": "The grounded summary is preserved but adds an unsupported promise that fares will fall by 25 percent.",
+      "output_text": "Larkspur Bay's 12 electric ferries are intended to cut crossings to 19 minutes by 2044 and lower passenger fares by 25 percent [transit-plan]. Phase one covers Dock 3 and the first six ferries, while six more await later funding [phase-one-budget].\n\nFrom March through July, ferries near the nesting islands must remain at or below 12 knots and pile-driving is prohibited, so leaders must balance service goals with habitat protection [habitat-rules]."
+    },
+    {
+      "id": "synthesis_subtle_omitted_rider_target",
+      "condition": "subtle_regression",
+      "variant_type": "omission",
+      "intended_label": "regression",
+      "severity": "subtle",
+      "failure_modes": ["omission"],
+      "expected_deterministic_pass": false,
+      "rationale": "The response describes the fleet, rollout, and habitat rule but omits the requested 19-minute-by-2044 rider benefit.",
+      "output_text": "Larkspur Bay plans a fleet of 12 electric ferries using a converted Dock 3 charging terminal [transit-plan]. Phase one funds the terminal and six ferries; purchasing the remaining six requires another appropriation [phase-one-budget].\n\nFrom March through July, ferries near the nesting islands must remain at or below 12 knots and pile-driving is prohibited, so leaders must balance deployment with habitat protection [habitat-rules]."
+    },
+    {
+      "id": "synthesis_obvious_wrong_plan",
+      "condition": "obvious_regression",
+      "variant_type": "multiple_wrong_facts",
+      "intended_label": "regression",
+      "severity": "obvious",
+      "failure_modes": ["wrong_fact", "wrong_attribution"],
+      "expected_deterministic_pass": false,
+      "rationale": "The answer remains polished and cited but reverses the fleet technology, size, funding, crossing target, and habitat restriction.",
+      "output_text": "Larkspur Bay will deploy two diesel ferries and increase the crossing to 45 minutes by 2044 [transit-plan]. Phase one already funds the entire fleet and no later appropriation is needed [phase-one-budget].\n\nFerries may travel at 30 knots near the nesting islands year-round, and construction has no seasonal restrictions [habitat-rules]."
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Silent Regression Feasibility Spike — Codex Implementation Plan
 
-> **Status:** Tasks 1–9 implementation complete; v4 pilot recapture and the Task 9 manual gate are next
+> **Status:** Tasks 1–9 complete; Task 10 candidates drafted and awaiting human approval, with the first calibrated held-out control still pending
 >
 > **Last revised:** 2026-09-08
 >
@@ -409,6 +409,8 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 
 ### Task 10 — Codex-drafted semantic fixture candidates
 
+**Status:** Candidate draft complete; awaiting human approval
+
 **Objective:** Create candidate batches for obvious regression, subtle regression, mixed regression rates, harmless rewording, and style-only changes across all relevant RAG cases.
 
 **Files:** Add candidates under `test/fixtures/drift_spike/candidates/` with a manifest explaining each mutation and intended label.
@@ -543,3 +545,4 @@ Provider details must be rechecked when their client task begins and again befor
 - **2026-09-07:** The replacement 512-token baseline completed all 120 generations but exposed one ambiguous structured-source label and seven valid open-synthesis paraphrases rejected by the evaluator. Clarified the structured project name and generalized the fleet and phase-one invariants before null calibration.
 - **2026-09-07:** Separated Task 9 into provenance-checked live control capture and call-free immutable calibration. Threshold artifacts record every source run ID and seed, while held-out comparisons reject calibration-source reuse to prevent leakage.
 - **2026-09-08:** The first same-model control exposed a valid shared-unit phrasing ("from 34 minutes to 19") that the open-synthesis crossing invariant rejected. User review approved the meaning, so the case was versioned to v4 with a narrow relational alternative before calibration was frozen; the v3 baseline and control remain historical artifacts and must not be mixed with v4 captures.
+- **2026-09-09:** Froze `calibration-20260909T144653Z-1` from the v4 baseline and three clean same-model controls captured across roughly 24 hours. The artifact uses seed `20260907`, 2,000 null resamples per case, the 95th percentile, and adjusted-p alpha `0.05`; it must not be changed after reviewing regression fixtures.

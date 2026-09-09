@@ -1,0 +1,230 @@
+{
+  "schema_version": 1,
+  "status": "candidate",
+  "review_required": true,
+  "description": "Human-review candidates for call-free drift-spike sensitivity analysis. No entry is experimental ground truth until explicitly approved and promoted.",
+  "sample_size": 20,
+  "fixture_files": [
+    {
+      "file": "rag_structured_extract.json",
+      "case_id": "rag_structured_extract",
+      "expected_fixture_ids": [
+        "structured_harmless_key_order",
+        "structured_harmless_numeric_representation",
+        "structured_style_pretty_json",
+        "structured_subtle_wrong_budget",
+        "structured_subtle_wrong_source",
+        "structured_subtle_wrong_date",
+        "structured_obvious_wrong_record"
+      ]
+    },
+    {
+      "file": "rag_answer_with_citations.json",
+      "case_id": "rag_answer_with_citations",
+      "expected_fixture_ids": [
+        "citations_harmless_reordered",
+        "citations_harmless_compact",
+        "citations_style_semicolon",
+        "citations_subtle_swapped_attribution",
+        "citations_subtle_omitted_duration",
+        "citations_subtle_unsupported_price",
+        "citations_obvious_wrong_schedule"
+      ]
+    },
+    {
+      "file": "rag_abstain_when_unsupported.json",
+      "case_id": "rag_abstain_when_unsupported",
+      "expected_fixture_ids": [
+        "abstain_harmless_cannot_determine",
+        "abstain_harmless_not_stated",
+        "abstain_style_insufficient_information",
+        "abstain_subtle_invented_six_weeks",
+        "abstain_subtle_hedged_invention",
+        "abstain_subtle_wrong_source",
+        "abstain_obvious_invented_year"
+      ]
+    },
+    {
+      "file": "rag_open_synthesis.json",
+      "case_id": "rag_open_synthesis",
+      "expected_fixture_ids": [
+        "synthesis_harmless_benefit_first",
+        "synthesis_harmless_constraint_first",
+        "synthesis_style_headings",
+        "synthesis_subtle_swapped_attribution",
+        "synthesis_subtle_unsupported_fare_claim",
+        "synthesis_subtle_omitted_rider_target",
+        "synthesis_obvious_wrong_plan"
+      ]
+    }
+  ],
+  "batch_blueprints": [
+    {
+      "id": "harmless_rewording",
+      "applies_to_case_ids": [
+        "rag_structured_extract",
+        "rag_answer_with_citations",
+        "rag_abstain_when_unsupported",
+        "rag_open_synthesis"
+      ],
+      "condition": "harmless_rewording",
+      "intended_label": "acceptable",
+      "expected_regression_rate": 0.0,
+      "sample_size": 20,
+      "assembly": {
+        "type": "cycle_matching_fixtures",
+        "fixture_filter": {
+          "condition": "harmless_rewording",
+          "variant_type": "meaning_preserving"
+        }
+      },
+      "rationale": "Tests whether meaning-preserving wording and ordering changes cause false drift-review alerts."
+    },
+    {
+      "id": "style_only",
+      "applies_to_case_ids": [
+        "rag_structured_extract",
+        "rag_answer_with_citations",
+        "rag_abstain_when_unsupported",
+        "rag_open_synthesis"
+      ],
+      "condition": "harmless_rewording",
+      "intended_label": "acceptable",
+      "expected_regression_rate": 0.0,
+      "sample_size": 20,
+      "assembly": {
+        "type": "cycle_matching_fixtures",
+        "fixture_filter": {
+          "condition": "harmless_rewording",
+          "variant_type": "style_only"
+        }
+      },
+      "rationale": "Isolates formatting, punctuation, and presentation changes that preserve requested meaning and structure."
+    },
+    {
+      "id": "subtle_regression",
+      "applies_to_case_ids": [
+        "rag_structured_extract",
+        "rag_answer_with_citations",
+        "rag_abstain_when_unsupported",
+        "rag_open_synthesis"
+      ],
+      "condition": "subtle_regression",
+      "intended_label": "regression",
+      "expected_regression_rate": 1.0,
+      "sample_size": 20,
+      "assembly": {
+        "type": "cycle_matching_fixtures",
+        "fixture_filter": {
+          "condition": "subtle_regression"
+        }
+      },
+      "rationale": "Measures sensitivity to plausible, well-formed errors including wrong facts, attribution, unsupported claims, omissions, and failed abstention."
+    },
+    {
+      "id": "obvious_regression",
+      "applies_to_case_ids": [
+        "rag_structured_extract",
+        "rag_answer_with_citations",
+        "rag_abstain_when_unsupported",
+        "rag_open_synthesis"
+      ],
+      "condition": "obvious_regression",
+      "intended_label": "regression",
+      "expected_regression_rate": 1.0,
+      "sample_size": 20,
+      "assembly": {
+        "type": "cycle_matching_fixtures",
+        "fixture_filter": {
+          "condition": "obvious_regression"
+        }
+      },
+      "rationale": "Provides a parseable sanity check with strongly incorrect content rather than malformed or unrelated output."
+    },
+    {
+      "id": "mixed_regression_10",
+      "applies_to_case_ids": [
+        "rag_structured_extract",
+        "rag_answer_with_citations",
+        "rag_abstain_when_unsupported",
+        "rag_open_synthesis"
+      ],
+      "condition": "mixed_regression",
+      "intended_label": "regression",
+      "expected_regression_rate": 0.1,
+      "sample_size": 20,
+      "assembly": {
+        "type": "replace_control_samples",
+        "base_condition": "control",
+        "sample_indexes": [1, 11],
+        "fixture_filter": {
+          "condition": "subtle_regression"
+        }
+      },
+      "rationale": "Replaces two held-out control outputs per case to measure detection at a 10 percent seeded regression rate."
+    },
+    {
+      "id": "mixed_regression_25",
+      "applies_to_case_ids": [
+        "rag_structured_extract",
+        "rag_answer_with_citations",
+        "rag_abstain_when_unsupported",
+        "rag_open_synthesis"
+      ],
+      "condition": "mixed_regression",
+      "intended_label": "regression",
+      "expected_regression_rate": 0.25,
+      "sample_size": 20,
+      "assembly": {
+        "type": "replace_control_samples",
+        "base_condition": "control",
+        "sample_indexes": [1, 5, 9, 13, 17],
+        "fixture_filter": {
+          "condition": "subtle_regression"
+        }
+      },
+      "rationale": "Replaces five held-out control outputs per case to measure detection at a 25 percent seeded regression rate."
+    },
+    {
+      "id": "mixed_regression_50",
+      "applies_to_case_ids": [
+        "rag_structured_extract",
+        "rag_answer_with_citations",
+        "rag_abstain_when_unsupported",
+        "rag_open_synthesis"
+      ],
+      "condition": "mixed_regression",
+      "intended_label": "regression",
+      "expected_regression_rate": 0.5,
+      "sample_size": 20,
+      "assembly": {
+        "type": "replace_control_samples",
+        "base_condition": "control",
+        "sample_indexes": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18],
+        "fixture_filter": {
+          "condition": "subtle_regression"
+        }
+      },
+      "rationale": "Replaces ten held-out control outputs per case to measure detection at a 50 percent seeded regression rate."
+    }
+  ],
+  "required_failure_modes": [
+    "wrong_fact",
+    "wrong_attribution",
+    "unsupported_claim",
+    "omission",
+    "failed_abstention"
+  ],
+  "review_instructions": [
+    "Review every fixture ID, intended label, rationale, and output text.",
+    "Confirm acceptable fixtures preserve the source-grounded meaning and requested output structure.",
+    "Confirm regression fixtures are well formed but materially worse for the stated failure mode.",
+    "Request edits for ambiguous examples; do not approve the directory partially without recording exclusions.",
+    "Promote only explicitly approved fixtures into test/fixtures/drift_spike/approved/."
+  ],
+  "known_limitations": [
+    "Pure synthetic batches cycle a small reviewed fixture pool to reach 20 samples, which can amplify repetition-related lexical signals.",
+    "Mixed batches avoid that confound for unaffected samples by replacing selected outputs in a fresh held-out control run.",
+    "These fixtures test controlled failure modes and do not establish generalization to arbitrary customer prompts."
+  ]
+}

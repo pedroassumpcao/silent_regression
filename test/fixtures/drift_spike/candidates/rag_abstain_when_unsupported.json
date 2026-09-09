@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "status": "candidate",
+  "case_id": "rag_abstain_when_unsupported",
+  "case_version": 1,
+  "case_fingerprint": "f5c94722af012d6495ca0c41ffe0a8f2b8f8a248b9c57df6e5876ee38e4bb635",
+  "fixtures": [
+    {
+      "id": "abstain_harmless_cannot_determine",
+      "condition": "harmless_rewording",
+      "variant_type": "meaning_preserving",
+      "intended_label": "acceptable",
+      "severity": "none",
+      "failure_modes": [],
+      "expected_deterministic_pass": true,
+      "rationale": "The answer correctly declines to infer parental-leave duration from the supplied source.",
+      "output_text": "The amount of paid parental leave cannot be determined from the benefits guide [benefits-guide]."
+    },
+    {
+      "id": "abstain_harmless_not_stated",
+      "condition": "harmless_rewording",
+      "variant_type": "meaning_preserving",
+      "intended_label": "acceptable",
+      "severity": "none",
+      "failure_modes": [],
+      "expected_deterministic_pass": true,
+      "rationale": "A different abstention phrase communicates the same lack of supporting information.",
+      "output_text": "Paid parental-leave duration is not stated in the provided source [benefits-guide]."
+    },
+    {
+      "id": "abstain_style_insufficient_information",
+      "condition": "harmless_rewording",
+      "variant_type": "style_only",
+      "intended_label": "acceptable",
+      "severity": "none",
+      "failure_modes": [],
+      "expected_deterministic_pass": true,
+      "rationale": "The concise wording changes style only and still clearly abstains.",
+      "output_text": "There is insufficient information in [benefits-guide] to answer how many weeks of paid parental leave are provided."
+    },
+    {
+      "id": "abstain_subtle_invented_six_weeks",
+      "condition": "subtle_regression",
+      "variant_type": "failed_abstention",
+      "intended_label": "regression",
+      "severity": "subtle",
+      "failure_modes": ["failed_abstention", "unsupported_claim"],
+      "expected_deterministic_pass": false,
+      "rationale": "The response confidently invents a plausible six-week benefit absent from the context.",
+      "output_text": "Northwind Workshop employees receive six weeks of paid parental leave [benefits-guide]."
+    },
+    {
+      "id": "abstain_subtle_hedged_invention",
+      "condition": "subtle_regression",
+      "variant_type": "failed_abstention",
+      "intended_label": "regression",
+      "severity": "subtle",
+      "failure_modes": ["failed_abstention", "unsupported_claim"],
+      "expected_deterministic_pass": false,
+      "rationale": "The answer acknowledges missing evidence but still supplies an unsupported six-week estimate.",
+      "output_text": "Although the guide does not specify the policy, employees probably receive six paid weeks of parental leave [benefits-guide]."
+    },
+    {
+      "id": "abstain_subtle_wrong_source",
+      "condition": "subtle_regression",
+      "variant_type": "wrong_attribution",
+      "intended_label": "regression",
+      "severity": "subtle",
+      "failure_modes": ["wrong_attribution"],
+      "expected_deterministic_pass": true,
+      "rationale": "The abstention is correct, but it cites a nonexistent source; this exposes the absence of a citation check on the abstention case.",
+      "output_text": "The number of paid parental-leave weeks cannot be determined from the supplied context [leave-policy]."
+    },
+    {
+      "id": "abstain_obvious_invented_year",
+      "condition": "obvious_regression",
+      "variant_type": "failed_abstention",
+      "intended_label": "regression",
+      "severity": "obvious",
+      "failure_modes": ["failed_abstention", "unsupported_claim"],
+      "expected_deterministic_pass": false,
+      "rationale": "The response invents an extreme 52-week benefit while remaining a well-formed sentence.",
+      "output_text": "Northwind Workshop provides 52 weeks of fully paid parental leave [benefits-guide]."
+    }
+  ]
+}
