@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "candidate",
+  "status": "approved",
   "case_id": "rag_abstain_when_unsupported",
   "case_version": 1,
   "case_fingerprint": "f5c94722af012d6495ca0c41ffe0a8f2b8f8a248b9c57df6e5876ee38e4bb635",

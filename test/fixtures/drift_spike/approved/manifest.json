@@ -1,8 +1,13 @@
 {
   "schema_version": 1,
-  "status": "candidate",
-  "review_required": true,
-  "description": "Human-review candidates for call-free drift-spike sensitivity analysis. No entry is experimental ground truth until explicitly approved and promoted.",
+  "status": "approved",
+  "review_required": false,
+  "approval_record": {
+    "approved_on": "2026-09-10",
+    "scope": "all_28_fixtures",
+    "method": "explicit_user_review_in_codex_task"
+  },
+  "description": "Human-approved fixtures for call-free drift-spike sensitivity analysis.",
   "sample_size": 20,
   "fixture_files": [
     {
@@ -216,11 +221,10 @@
     "failed_abstention"
   ],
   "review_instructions": [
-    "Review every fixture ID, intended label, rationale, and output text.",
-    "Confirm acceptable fixtures preserve the source-grounded meaning and requested output structure.",
-    "Confirm regression fixtures are well formed but materially worse for the stated failure mode.",
-    "Request edits for ambiguous examples; do not approve the directory partially without recording exclusions.",
-    "Promote only explicitly approved fixtures into test/fixtures/drift_spike/approved/."
+    "All fixture IDs, intended labels, rationales, and output texts were reviewed.",
+    "Acceptable fixtures were confirmed to preserve source-grounded meaning and requested output structure.",
+    "Regression fixtures were confirmed to be well formed but materially worse for the stated failure mode.",
+    "Any future edit requires a new review and approval record before official comparison."
   ],
   "known_limitations": [
     "Pure synthetic batches cycle a small reviewed fixture pool to reach 20 samples, which can amplify repetition-related lexical signals.",

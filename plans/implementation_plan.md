@@ -1,6 +1,6 @@
 # Silent Regression Feasibility Spike — Codex Implementation Plan
 
-> **Status:** Tasks 1–9 complete; Task 10 candidates drafted and awaiting human approval, with the first calibrated held-out control still pending
+> **Status:** Tasks 1–10 complete; Task 11 is next
 >
 > **Last revised:** 2026-09-08
 >
@@ -409,7 +409,7 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 
 ### Task 10 — Codex-drafted semantic fixture candidates
 
-**Status:** Candidate draft complete; awaiting human approval
+**Status:** Complete
 
 **Objective:** Create candidate batches for obvious regression, subtle regression, mixed regression rates, harmless rewording, and style-only changes across all relevant RAG cases.
 
@@ -546,3 +546,4 @@ Provider details must be rechecked when their client task begins and again befor
 - **2026-09-07:** Separated Task 9 into provenance-checked live control capture and call-free immutable calibration. Threshold artifacts record every source run ID and seed, while held-out comparisons reject calibration-source reuse to prevent leakage.
 - **2026-09-08:** The first same-model control exposed a valid shared-unit phrasing ("from 34 minutes to 19") that the open-synthesis crossing invariant rejected. User review approved the meaning, so the case was versioned to v4 with a narrow relational alternative before calibration was frozen; the v3 baseline and control remain historical artifacts and must not be mixed with v4 captures.
 - **2026-09-09:** Froze `calibration-20260909T144653Z-1` from the v4 baseline and three clean same-model controls captured across roughly 24 hours. The artifact uses seed `20260907`, 2,000 null resamples per case, the 95th percentile, and adjusted-p alpha `0.05`; it must not be changed after reviewing regression fixtures.
+- **2026-09-10:** The first calibrated held-out control produced zero drift-review alerts across four case comparisons. The user then reviewed and approved all 28 Task 10 fixtures and their proposed semantic labels; the frozen set was promoted to `test/fixtures/drift_spike/approved/` for Task 11.

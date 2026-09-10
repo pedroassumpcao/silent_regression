@@ -1,19 +1,26 @@
-defmodule SilentRegression.Spike.CandidateFixturesTest do
+defmodule SilentRegression.Spike.ApprovedFixturesTest do
   use ExUnit.Case, async: true
 
   alias SilentRegression.Spike.CaseSet
   alias SilentRegression.Spike.DeterministicChecks
   alias SilentRegression.Spike.Run
 
-  @fixture_root Path.expand("../../fixtures/drift_spike/candidates", __DIR__)
+  @fixture_root Path.expand("../../fixtures/drift_spike/approved", __DIR__)
   @manifest_path Path.join(@fixture_root, "manifest.json")
 
-  test "manifest inventories every candidate fixture file and ID" do
+  test "manifest inventories every approved fixture file and ID" do
     manifest = read_json!(@manifest_path)
 
     assert manifest["schema_version"] == 1
-    assert manifest["status"] == "candidate"
-    assert manifest["review_required"] == true
+    assert manifest["status"] == "approved"
+    assert manifest["review_required"] == false
+
+    assert manifest["approval_record"] == %{
+             "approved_on" => "2026-09-10",
+             "method" => "explicit_user_review_in_codex_task",
+             "scope" => "all_28_fixtures"
+           }
+
     assert manifest["sample_size"] == 20
 
     declared_files = Enum.map(manifest["fixture_files"], & &1["file"])
@@ -41,7 +48,7 @@ defmodule SilentRegression.Spike.CandidateFixturesTest do
     assert MapSet.size(MapSet.new(fixture_ids)) == length(fixture_ids)
   end
 
-  test "candidate files match the frozen cases and declared deterministic outcomes" do
+  test "approved files match the frozen cases and declared deterministic outcomes" do
     manifest = read_json!(@manifest_path)
     cases_by_id = Map.new(CaseSet.all(), &{&1.id, &1})
 
@@ -51,12 +58,13 @@ defmodule SilentRegression.Spike.CandidateFixturesTest do
         case_definition = Map.fetch!(cases_by_id, document["case_id"])
 
         assert document["schema_version"] == 1
-        assert document["status"] == "candidate"
+        assert document["status"] == "approved"
         assert document["case_version"] == case_definition.version
         assert document["case_fingerprint"] == case_definition.fingerprint
 
         Enum.map(document["fixtures"], fn fixture ->
-          assert valid_fixture_shape?(fixture), "invalid candidate shape: #{inspect(fixture)}"
+          assert valid_fixture_shape?(fixture),
+                 "invalid approved fixture shape: #{inspect(fixture)}"
 
           assert {:ok, result} =
                    DeterministicChecks.evaluate(case_definition, fixture["output_text"])
@@ -140,7 +148,7 @@ defmodule SilentRegression.Spike.CandidateFixturesTest do
         assert_in_delta batch["expected_regression_rate"], length(indexes) / sample_size, 1.0e-12
 
       type ->
-        flunk("unsupported candidate batch assembly: #{inspect(type)}")
+        flunk("unsupported approved batch assembly: #{inspect(type)}")
     end
 
     filter = assembly["fixture_filter"]
