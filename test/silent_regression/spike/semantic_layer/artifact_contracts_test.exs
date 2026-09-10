@@ -230,6 +230,9 @@ defmodule SilentRegression.Spike.SemanticLayer.ArtifactContractsTest do
           "case_id" => "rag_open_synthesis",
           "split" => "heldout",
           "label" => label,
+          "failure_modes" => if(label == "subtle_regression", do: ["wrong_fact"], else: []),
+          "expected_contract_pass" => label != "subtle_regression",
+          "rationale" => "Proposed #{label} judgment for parent #{parent}.",
           "output_text" => "Distinct #{suffix} derivative for parent #{parent}.",
           "approval" => approved_approval()
         }

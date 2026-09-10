@@ -237,7 +237,7 @@ defmodule SilentRegression.Spike.SemanticLayer.PairedFixtureSet do
 
   defp valid_fixture?(fixture, case_id) do
     keys =
-      ~w(fixture_id parent_observation_id parent_sample_index parent_output_sha256 case_id split label output_text approval)
+      ~w(fixture_id parent_observation_id parent_sample_index parent_output_sha256 case_id split label failure_modes expected_contract_pass rationale output_text approval)
 
     ArtifactValidation.exact_json_keys(fixture, keys, :fixtures, __MODULE__) == :ok and
       non_empty_string?(fixture["fixture_id"]) and
@@ -245,7 +245,25 @@ defmodule SilentRegression.Spike.SemanticLayer.PairedFixtureSet do
       is_integer(fixture["parent_sample_index"]) and fixture["parent_sample_index"] >= 0 and
       valid_sha256?(fixture["parent_output_sha256"]) and fixture["case_id"] == case_id and
       fixture["split"] in @splits and fixture["label"] in @labels and
+      valid_fixture_judgment?(fixture) and non_empty_string?(fixture["rationale"]) and
       non_empty_string?(fixture["output_text"]) and valid_approval?(fixture["approval"])
+  end
+
+  defp valid_fixture_judgment?(fixture) do
+    failure_modes = fixture["failure_modes"]
+
+    is_list(failure_modes) and Enum.all?(failure_modes, &non_empty_string?/1) and
+      Enum.uniq(failure_modes) == failure_modes and
+      case fixture["label"] do
+        label when label in ~w(meaning_preserving style_only) ->
+          failure_modes == [] and fixture["expected_contract_pass"] == true
+
+        label when label in ~w(subtle_regression obvious_regression) ->
+          failure_modes != [] and fixture["expected_contract_pass"] == false
+
+        _label ->
+          false
+      end
   end
 
   defp valid_approval?(approval) do
