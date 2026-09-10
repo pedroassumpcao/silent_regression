@@ -1,12 +1,12 @@
 # Silent Regression Next-Layer Experiment Plan
 
-> **Status:** Proposed after the Task 11 lexical decision gate; not yet authorized
+> **Status:** Authorized; Follow-up Task A complete and Task B is next
 >
 > **Last revised:** 2026-09-10
 >
 > **Purpose:** Define the separate experiment required before making label-free semantic-drift claims or expanding the provider/model matrix
 
-This plan is a follow-up to the [feasibility spike](implementation_plan.md). It does not change the frozen v4 baseline, controls, calibration, approved Task 10 fixtures, or Task 11 result. It is not authorization to add embeddings, an LLM judge, dependencies, or live provider calls. Finish the original spike report first, then explicitly choose whether to run this experiment or pursue a deterministic-only product wedge.
+This plan is a follow-up to the [feasibility spike](implementation_plan.md). The user authorized the staged local experiment after approving the Task 13 verdict. It does not change the frozen v4 baseline, controls, calibration, approved Task 10 fixtures, or Task 11 result. The authorization covers the local artifact, paired-fixture, generic-contract, and cheap-representation tasks; it does not authorize Layer C model-based semantics, new dependencies, or live provider calls.
 
 ## 1. Why this follow-up exists
 
@@ -104,9 +104,13 @@ An LLM-derived score is evidence, not ground truth. It must produce inspectable 
 
 ### Follow-up Task A — Benchmark and artifact contracts
 
+**Status:** Complete
+
 Define versioned paired-fixture, representation, calibration, and result schemas. Record parent observation IDs, fixture approval, authoring/tuning/held-out split, duplicate counts, and method versions.
 
 **Gate:** Schema tests prove that approved labels cannot enter null calibration and that Task 11 artifacts remain unchanged.
+
+**Result:** Added strict, versioned JSON-compatible contracts for paired fixture sets, representation specifications, semantic calibrations, and benchmark results, plus atomic no-overwrite storage restricted to those artifact types. Parent observations cannot cross authoring/tuning/held-out partitions; every parent must have meaning-preserving, style-only, and subtle-regression derivatives with consistent provenance; stored duplicate counts must match the actual outputs; representation fitting and null calibration accept only baseline/control sources and explicitly exclude fixture labels; and final benchmark results accept held-out batches only with one unique parent per sample and every predeclared seed. Focused tests round-trip all four contracts, exercise leakage failures, and prove that the semantic storage boundary refuses Task 11 artifact types without changing their bytes.
 
 ### Follow-up Task B — Unique paired fixture candidates
 
@@ -142,3 +146,8 @@ Choose one:
 The deterministic results support further investigation of a contract-first product: customers provide or approve explicit facts, fields, citations, abstention rules, and tolerances, while ambiguous changes go to review. They do not yet justify a claim that Silent Regression generically understands arbitrary prompt outputs.
 
 The [productization plan](productization_plan.md) remains the broader hosted-product reference. This experiment should change that plan only after a new gate passes and the user chooses a product direction.
+
+## 7. Decision log
+
+- **2026-09-10:** The user selected the semantic-layer experiment before the optional ReqLLM evaluation. The experiment will retain the working Req transports so representation quality remains the isolated variable.
+- **2026-09-10:** Follow-up Task A adopted strict internal Elixir contracts rather than a new schema dependency, matching the completed spike's serialization approach. Parent-level partition isolation and baseline/control-only fit sources make leakage violations invalid artifacts rather than reporting conventions. The frozen Task 11 baseline, calibration, fixture comparison, and approved fixture manifest hashes remained unchanged.
