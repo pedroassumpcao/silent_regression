@@ -1,6 +1,6 @@
 # Silent Regression Next-Layer Experiment Plan
 
-> **Status:** Authorized; Follow-up Task A complete and Task B is next
+> **Status:** Authorized; Follow-up Task A complete and Task B awaiting human review
 >
 > **Last revised:** 2026-09-10
 >
@@ -114,9 +114,17 @@ Define versioned paired-fixture, representation, calibration, and result schemas
 
 ### Follow-up Task B — Unique paired fixture candidates
 
+**Status:** Awaiting human review
+
 Draft diversity-matched open-synthesis derivatives from distinct held-out outputs. Stop for human review before promotion. Do not cycle fixtures to reach a target sample size.
 
 **Gate:** The user approves every semantic label and the final held-out partition is frozen.
+
+**Candidate result:** The existing approved Task 10 examples remain authoring references. Control `control-20260909T143004Z-1` supplies 20 distinct tuning parents and control `control-20260910T042832Z-1` supplies 20 distinct held-out parents. Each parent has one meaning-preserving rewrite, one presentation-only restyle, and one controlled subtle regression, producing 60 candidates per split and 120 judgments in total. The regressions cover small changes to crossing time, target year, fleet size, habitat-window start, and speed cap, plus pile-driving reversal and wrong source attribution; Task 10 retains the broader omission, unsupported-claim, and abstention authoring examples. Every label batch has 20 unique parents and 20 unique outputs, the two splits have zero candidate-output overlap, and all 80 proposed valid candidates pass the frozen v4 deterministic checks. The artifacts remain `candidate`; no approval identity or timestamp has been recorded.
+
+The lexical diagnostic confirms that uniqueness is substantive rather than a changed prefix on a repeated template. Tuning candidate within-Jaccard means are 0.345909, 0.341914, and 0.367166 for meaning-preserving, style-only, and subtle-regression batches versus 0.348307 for their parents. Held-out means are 0.318068, 0.288057, and 0.314121 versus 0.293690. Drafting refuses a batch whose within-candidate mean falls below 75% of its parent mean. These values describe fixture-distribution quality only; they are not semantic performance results and will not select or tune a representation.
+
+Review uses `mix drift_spike.review_semantic_pairs` in five-parent pages. The task validates the exact source artifact hash and every parent output hash before rendering the original beside its three derivatives. Review the tuning split first, then the held-out split. Held-out judgments may correct fixture labels or fixture text before sealing, but they must never drive evaluator logic, representation choice, weights, thresholds, or seeds. No benchmark is run until those choices are predeclared and frozen.
 
 ### Follow-up Task C — Generic contract primitives
 
@@ -151,3 +159,4 @@ The [productization plan](productization_plan.md) remains the broader hosted-pro
 
 - **2026-09-10:** The user selected the semantic-layer experiment before the optional ReqLLM evaluation. The experiment will retain the working Req transports so representation quality remains the isolated variable.
 - **2026-09-10:** Follow-up Task A adopted strict internal Elixir contracts rather than a new schema dependency, matching the completed spike's serialization approach. Parent-level partition isolation and baseline/control-only fit sources make leakage violations invalid artifacts rather than reporting conventions. The frozen Task 11 baseline, calibration, fixture comparison, and approved fixture manifest hashes remained unchanged.
+- **2026-09-10:** Follow-up Task B allocated the September 9 control to tuning and the September 10 independent control to held-out evaluation. All derivatives of a parent remain in the same split. Candidate generation is local and call-free, and review is provenance-checked and read-only. The held-out benchmark may run only after evaluator and representation settings are frozen, preventing final-label performance from becoming a tuning input.
