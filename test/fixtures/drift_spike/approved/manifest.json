@@ -12,6 +12,7 @@
   "fixture_files": [
     {
       "file": "rag_structured_extract.json",
+      "content_sha256": "1fb041c7d681080686e298f7d90592daa3de9e6ab07947a535c261a7c284754c",
       "case_id": "rag_structured_extract",
       "expected_fixture_ids": [
         "structured_harmless_key_order",
@@ -25,6 +26,7 @@
     },
     {
       "file": "rag_answer_with_citations.json",
+      "content_sha256": "96fee39ed56c1dce980d206508d4e5caba0a38ee07336ab60c379e67b4bf75fb",
       "case_id": "rag_answer_with_citations",
       "expected_fixture_ids": [
         "citations_harmless_reordered",
@@ -38,6 +40,7 @@
     },
     {
       "file": "rag_abstain_when_unsupported.json",
+      "content_sha256": "d8ae5f0181502e274583fb449359582137701c3c678e0f4e1e8ba806f04b6c0a",
       "case_id": "rag_abstain_when_unsupported",
       "expected_fixture_ids": [
         "abstain_harmless_cannot_determine",
@@ -51,6 +54,7 @@
     },
     {
       "file": "rag_open_synthesis.json",
+      "content_sha256": "f8e5c3a343a3bcde23b2c07e37422c6ff8518bc43dd7eb9249cc1f1eab785231",
       "case_id": "rag_open_synthesis",
       "expected_fixture_ids": [
         "synthesis_harmless_benefit_first",

@@ -1,12 +1,14 @@
 # Silent Regression Feasibility Spike — Codex Implementation Plan
 
-> **Status:** Tasks 1–10 complete; Task 11 is next
+> **Status:** Tasks 1–11 complete; Task 12 is gated off and Task 13 is next
 >
-> **Last revised:** 2026-09-08
+> **Last revised:** 2026-09-10
 >
 > **Purpose:** Persistent product, experiment, and implementation reference for Codex
 
 If the feasibility gates pass, use the separate [productization plan](productization_plan.md) to plan the transition from this controlled spike to a general hosted product. That document records gaps and future requirements; it does not expand the current spike scope.
+
+The Task 11 lexical decision gate did not pass. The separately scoped [next-layer experiment plan](semantic_layer_plan.md) records the evidence, benchmark corrections, and possible semantic follow-up; it is not authorization to implement another metric. Task 12 provider/model expansion is paused. Task 13 should close the original pilot with an explicit, appropriately scoped verdict.
 
 Before implementing a task, Codex must read this entire document. Work on one numbered task at a time, run the task-specific verification, run `mix precommit` before considering the task complete, and create one focused commit with the message format `feat(spike): <summary>` unless the user asks for a different workflow.
 
@@ -423,6 +425,8 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 
 ### Task 11 — Fixture comparison and sensitivity analysis
 
+**Status:** Complete — lexical decision gate did not pass
+
 **Objective:** Evaluate approved fixture batches against the frozen baseline/calibration without live API calls.
 
 **Files:** Create `drift_spike.compare_fixtures`, comparison orchestration, and tests.
@@ -433,7 +437,11 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 
 **Decision gate:** If Jaccard energy distance cannot separate subtle regression from controls/rewording, stop and write a new plan for the next semantic layer. Do not add embeddings opportunistically inside this task.
 
+**Result:** `fixture-comparison-20260910T152531Z-1` used the frozen v4 baseline, calibration, held-out control, approved fixtures, seed `20260907`, and 999 permutations with zero provider calls. The held-out control produced 0/4 drift reviews, but harmless/style batches produced 7/8, so the lexical false-review and separation gates failed. Combined deterministic-or-drift signals occurred in 19/20 seeded-regression case comparisons; mixed batches produced signals in 3/4 cases at 10% and 4/4 at both 25% and 50%. These combined counts must not be described as label-free semantic recall. The follow-up is documented in [semantic_layer_plan.md](semantic_layer_plan.md).
+
 ### Task 12 — Expanded provider/model experiment
+
+**Status:** Paused — Task 11 decision gate did not pass
 
 **Objective:** Repeat the validated protocol across the approved two-by-two provider/model matrix.
 
@@ -547,3 +555,4 @@ Provider details must be rechecked when their client task begins and again befor
 - **2026-09-08:** The first same-model control exposed a valid shared-unit phrasing ("from 34 minutes to 19") that the open-synthesis crossing invariant rejected. User review approved the meaning, so the case was versioned to v4 with a narrow relational alternative before calibration was frozen; the v3 baseline and control remain historical artifacts and must not be mixed with v4 captures.
 - **2026-09-09:** Froze `calibration-20260909T144653Z-1` from the v4 baseline and three clean same-model controls captured across roughly 24 hours. The artifact uses seed `20260907`, 2,000 null resamples per case, the 95th percentile, and adjusted-p alpha `0.05`; it must not be changed after reviewing regression fixtures.
 - **2026-09-10:** The first calibrated held-out control produced zero drift-review alerts across four case comparisons. The user then reviewed and approved all 28 Task 10 fixtures and their proposed semantic labels; the frozen set was promoted to `test/fixtures/drift_spike/approved/` for Task 11.
+- **2026-09-10:** Task 11 preserved the calibration SHA-256 `60dcc1d5d68050d98b7c26978d5248a123323aac0aad3e86c272a6cfeefde256` and made zero provider calls. Jaccard produced 7/8 drift reviews on approved harmless/style case batches despite a clean 0/4 held-out control, so the lexical decision gate failed. Provider/model expansion is paused; Task 13 will record a scoped pilot verdict, and any next semantic experiment requires separate approval under `semantic_layer_plan.md`.

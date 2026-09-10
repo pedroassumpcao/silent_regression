@@ -40,7 +40,15 @@ defmodule SilentRegression.Spike.ApprovedFixturesTest do
         document = read_json!(Path.join(@fixture_root, entry["file"]))
         actual_ids = Enum.map(document["fixtures"], & &1["id"])
 
+        actual_sha256 =
+          @fixture_root
+          |> Path.join(entry["file"])
+          |> File.read!()
+          |> then(&:crypto.hash(:sha256, &1))
+          |> Base.encode16(case: :lower)
+
         assert document["case_id"] == entry["case_id"]
+        assert actual_sha256 == entry["content_sha256"]
         assert actual_ids == entry["expected_fixture_ids"]
         actual_ids
       end)
