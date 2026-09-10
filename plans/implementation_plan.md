@@ -1,6 +1,6 @@
 # Silent Regression Feasibility Spike — Codex Implementation Plan
 
-> **Status:** Tasks 1–11 complete; Task 12 is gated off and Task 13 is next
+> **Status:** Tasks 1–13 complete; Task 12 is gated off and optional Task 14 remains deferred
 >
 > **Last revised:** 2026-09-10
 >
@@ -8,7 +8,7 @@
 
 If the feasibility gates pass, use the separate [productization plan](productization_plan.md) to plan the transition from this controlled spike to a general hosted product. That document records gaps and future requirements; it does not expand the current spike scope.
 
-The Task 11 lexical decision gate did not pass. The separately scoped [next-layer experiment plan](semantic_layer_plan.md) records the evidence, benchmark corrections, and possible semantic follow-up; it is not authorization to implement another metric. Task 12 provider/model expansion is paused. Task 13 should close the original pilot with an explicit, appropriately scoped verdict.
+The Task 11 lexical decision gate did not pass. The separately scoped [next-layer experiment plan](semantic_layer_plan.md) records the evidence, benchmark corrections, and possible semantic follow-up; it is not authorization to implement another metric. Task 12 provider/model expansion remains paused. Task 13 closed the original pilot with the human-approved verdict `NEEDS_A_SEMANTIC_LAYER` for the original two-signal product.
 
 Before implementing a task, Codex must read this entire document. Work on one numbered task at a time, run the task-specific verification, run `mix precommit` before considering the task complete, and create one focused commit with the message format `feat(spike): <summary>` unless the user asks for a different workflow.
 
@@ -453,6 +453,8 @@ Statistical functions must define behavior for empty/undersized samples, use sam
 
 ### Task 13 — Consolidated report and human verdict
 
+**Status:** Complete — final verdict `NEEDS_A_SEMANTIC_LAYER`
+
 **Objective:** Produce a reproducible evidence summary without overstating what the spike proved.
 
 **Files:** Create `report.ex`, `drift_spike.report`, tests, and generated `results/drift_spike/SUMMARY.md`.
@@ -480,6 +482,8 @@ Include aggregate results only alongside their denominators and per-case results
 - `NOT_VIABLE_AS_DESIGNED`
 
 The conclusion must name which hypotheses passed, which failed, and the experiment's limitations.
+
+**Result:** The reproducible reporter anchors the selected baseline, frozen calibration, and approved fixture comparison by path, ID, provenance, and SHA-256; includes all four compatible controls; warns about five historical baselines and one incompatible v3 control; and makes zero provider calls. The report records 28/28 deterministic fixture judgments matching their human-approved expectations, 0/4 drift reviews on the held-out same-model control, 7/8 drift reviews on harmless/style case comparisons, and 19/20 combined deterministic-or-drift signals on seeded-regression case comparisons. The user approved `NEEDS_A_SEMANTIC_LAYER` because deterministic contracts were promising within their configured scope, while label-free lexical separation and reviewed-rewording false-alert control failed. Provider/model expansion remains untested and appropriately gated off.
 
 ### Optional Task 14 — ReqLLM adapter evaluation
 
@@ -556,3 +560,4 @@ Provider details must be rechecked when their client task begins and again befor
 - **2026-09-09:** Froze `calibration-20260909T144653Z-1` from the v4 baseline and three clean same-model controls captured across roughly 24 hours. The artifact uses seed `20260907`, 2,000 null resamples per case, the 95th percentile, and adjusted-p alpha `0.05`; it must not be changed after reviewing regression fixtures.
 - **2026-09-10:** The first calibrated held-out control produced zero drift-review alerts across four case comparisons. The user then reviewed and approved all 28 Task 10 fixtures and their proposed semantic labels; the frozen set was promoted to `test/fixtures/drift_spike/approved/` for Task 11.
 - **2026-09-10:** Task 11 preserved the calibration SHA-256 `60dcc1d5d68050d98b7c26978d5248a123323aac0aad3e86c272a6cfeefde256` and made zero provider calls. Jaccard produced 7/8 drift reviews on approved harmless/style case batches despite a clean 0/4 held-out control, so the lexical decision gate failed. Provider/model expansion is paused; Task 13 will record a scoped pilot verdict, and any next semantic experiment requires separate approval under `semantic_layer_plan.md`.
+- **2026-09-10:** Task 13 generated a reproducible summary from immutable source artifacts, exposed per-case and aggregate evidence with denominators, preserved deterministic and drift outcomes as separate signals, and made zero provider calls. The user selected `NEEDS_A_SEMANTIC_LAYER` as the final verdict for the original two-signal product. This closes the spike without authorizing Task 12, Task 14, or the separate semantic-layer experiment.
