@@ -15,6 +15,12 @@ defmodule SilentRegression.Spike.SemanticLayer.CheapBenchmarkConfigTest do
              CheapBenchmarkConfig.heldout().source_run_id
            ]
 
+    assert CheapBenchmarkConfig.tuning().fixture_set_id ==
+             "semantic-pairs-tuning-control-20260909T143004Z-1-v1-approved"
+
+    assert CheapBenchmarkConfig.heldout().fixture_set_id ==
+             "semantic-pairs-heldout-control-20260910T042832Z-1-v1-approved"
+
     for source <- null_sources,
         do: assert_file_hash(source.path, source.artifact_sha256)
 

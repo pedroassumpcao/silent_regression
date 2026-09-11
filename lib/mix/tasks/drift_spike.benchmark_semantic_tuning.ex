@@ -91,9 +91,10 @@ defmodule Mix.Tasks.DriftSpike.BenchmarkSemanticTuning do
       {spec, spec_sha256} = read_semantic_artifact!(spec_path)
       {calibration, calibration_sha256} = read_semantic_artifact!(calibration_path)
 
-      if spec.git_revision != git_revision or calibration.git_revision != git_revision do
+      if spec.git_revision != calibration.git_revision or
+           not ancestor_revision?(spec.git_revision, git_revision) do
         Mix.raise(
-          "Semantic artifacts were not calibrated from current committed revision #{git_revision}"
+          "Semantic artifacts do not share a committed ancestor of revision #{git_revision}"
         )
       end
 
@@ -222,6 +223,18 @@ defmodule Mix.Tasks.DriftSpike.BenchmarkSemanticTuning do
       {output, status} -> Mix.raise("Could not read git revision (#{status}): #{output}")
     end
   end
+
+  defp ancestor_revision?(ancestor, current)
+       when is_binary(ancestor) and is_binary(current) do
+    case System.cmd("git", ["merge-base", "--is-ancestor", ancestor, current],
+           stderr_to_stdout: true
+         ) do
+      {_output, 0} -> true
+      {_output, _status} -> false
+    end
+  end
+
+  defp ancestor_revision?(_ancestor, _current), do: false
 
   defp verify_hash!(path, expected) do
     actual = file_sha256!(path)

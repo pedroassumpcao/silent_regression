@@ -32,13 +32,13 @@ defmodule SilentRegression.Spike.SemanticLayer.CheapBenchmarkConfig do
   ]
   @tuning %{
     path: "test/fixtures/drift_spike/semantic_layer/approved/tuning-pairs.json",
-    fixture_set_id: "semantic-open-synthesis-tuning-approved-v1",
+    fixture_set_id: "semantic-pairs-tuning-control-20260909T143004Z-1-v1-approved",
     source_run_id: "control-20260909T143004Z-1",
     artifact_sha256: "0fb83b02e6573ceadb058aa9900b1ab717f888d3f09a25d274c6e72991d712e4"
   }
   @heldout %{
     path: "test/fixtures/drift_spike/semantic_layer/approved/heldout-pairs.json",
-    fixture_set_id: "semantic-open-synthesis-heldout-approved-v1",
+    fixture_set_id: "semantic-pairs-heldout-control-20260910T042832Z-1-v1-approved",
     source_run_id: "control-20260910T042832Z-1",
     artifact_sha256: "6fdbfef04ee5a23c90223c295406982f39fbb4ccbc4cc912d6d2fc4ce4c7614b"
   }
