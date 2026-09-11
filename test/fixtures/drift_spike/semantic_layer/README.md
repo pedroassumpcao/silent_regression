@@ -1,8 +1,9 @@
-# Semantic fixture review
+# Semantic fixture artifacts
 
-These artifacts are candidate-only evidence for Follow-up Task B in
-`plans/semantic_layer_plan.md`. They are not production fixtures and cannot be
-used by the semantic benchmark until every judgment is explicitly approved.
+These artifacts are the reviewed evidence for Follow-up Task B in
+`plans/semantic_layer_plan.md`. The original candidates remain immutable, and
+the separately generated approved copies are the only versions eligible for
+the semantic benchmark.
 
 ## Allocation
 
@@ -10,6 +11,9 @@ used by the semantic benchmark until every judgment is explicitly approved.
   `control-20260909T143004Z-1`, with 60 proposed judgments.
 - `candidates/heldout-pairs.json`: 20 parents from
   `control-20260910T042832Z-1`, with 60 proposed judgments.
+- `approved/tuning-pairs.json`: the 60 explicitly approved tuning judgments.
+- `approved/heldout-pairs.json`: the 60 explicitly approved held-out
+  judgments, now frozen against evaluator or benchmark tuning.
 - Every parent has a meaning-preserving rewrite, a style-only restyle, and a
   subtle regression.
 - Derivatives never cross partitions. Every label batch contains 20 unique
@@ -83,3 +87,13 @@ mix drift_spike.promote_semantic_pairs \
 
 Remove `--dry-run` only after checking the preview. Promotion creates new files
 and refuses existing destinations; it never edits the reviewed candidates.
+
+The completed promotion used implementation revision
+`cf032248e6bb05ff2e25923f18017992ceaa8157` and reviewer `product_owner` at
+`2026-09-11T03:46:46Z`. The immutable approved artifact hashes are:
+
+- tuning: `0fb83b02e6573ceadb058aa9900b1ab717f888d3f09a25d274c6e72991d712e4`
+- held-out: `6fdbfef04ee5a23c90223c295406982f39fbb4ccbc4cc912d6d2fc4ce4c7614b`
+
+Promotion made zero provider calls. A repository test verifies both hashes and
+proves that every judgment field still matches its reviewed candidate.

@@ -114,13 +114,15 @@ Define versioned paired-fixture, representation, calibration, and result schemas
 
 ### Follow-up Task B — Unique paired fixture candidates
 
-**Status:** Human review complete; awaiting artifact promotion
+**Status:** Complete
 
 Draft diversity-matched open-synthesis derivatives from distinct held-out outputs. Stop for human review before promotion. Do not cycle fixtures to reach a target sample size.
 
 **Gate:** The user approves every semantic label and the final held-out partition is frozen.
 
-**Review progress:** 120/120 judgments approved. On 2026-09-10, the product owner completed the tuning and held-out reviews and explicitly approved all three proposed judgments for every parent, with no corrections. No benchmark was run and no evaluator, representation, threshold, weight, or seed was changed during held-out review. The candidate artifacts remain immutable and unapproved; the complete decisions are recorded in the semantic review log and are ready to be applied by creating new approved fixture artifacts.
+**Review progress:** 120/120 judgments approved. On 2026-09-10, the product owner completed the tuning and held-out reviews and explicitly approved all three proposed judgments for every parent, with no corrections. No benchmark was run and no evaluator, representation, threshold, weight, or seed was changed during held-out review. The candidate artifacts remain immutable and unapproved by design; the complete decisions are recorded in the semantic review log and were applied only to separately generated approved fixture artifacts.
+
+**Promotion result:** Promotion revision `cf032248e6bb05ff2e25923f18017992ceaa8157` verified the complete review log against both exact candidate hashes, required 20 distinct parents and 60 judgments in each split, and refused cross-split parent, fixture-ID, or output overlap. It created approved tuning artifact SHA-256 `0fb83b02e6573ceadb058aa9900b1ab717f888d3f09a25d274c6e72991d712e4` and approved held-out artifact SHA-256 `6fdbfef04ee5a23c90223c295406982f39fbb4ccbc4cc912d6d2fc4ce4c7614b`, with reviewer `product_owner` and timestamp `2026-09-11T03:46:46Z`. The candidate bytes did not change, zero provider calls were made, and a repository test freezes both approved hashes and checks content equivalence apart from approval metadata. The held-out partition is now sealed; Task B's gate is satisfied.
 
 **Candidate result:** The existing approved Task 10 examples remain authoring references. Control `control-20260909T143004Z-1` supplies 20 distinct tuning parents and control `control-20260910T042832Z-1` supplies 20 distinct held-out parents. Each parent has one meaning-preserving rewrite, one presentation-only restyle, and one controlled subtle regression, producing 60 candidates per split and 120 judgments in total. The regressions cover small changes to crossing time, target year, fleet size, habitat-window start, and speed cap, plus pile-driving reversal and wrong source attribution; Task 10 retains the broader omission, unsupported-claim, and abstention authoring examples. Every label batch has 20 unique parents and 20 unique outputs, the two splits have zero candidate-output overlap, and all 80 proposed valid candidates pass the frozen v4 deterministic checks. The artifacts remain `candidate`; no approval identity or timestamp has been recorded.
 

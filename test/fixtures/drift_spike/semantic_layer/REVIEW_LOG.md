@@ -109,3 +109,20 @@ set will be created as a new artifact; the two candidate files remain intact.
 ## Remaining batches
 
 - None. All candidate judgments have explicit product-owner approval.
+
+## Promotion
+
+- Promotion implementation revision:
+  `cf032248e6bb05ff2e25923f18017992ceaa8157`.
+- Reviewer recorded on every fixture: `product_owner`.
+- Reviewed at: `2026-09-11T03:46:46Z`.
+- Approved tuning fixture set:
+  `semantic-pairs-tuning-control-20260909T143004Z-1-v1-approved`.
+- Approved tuning SHA-256:
+  `0fb83b02e6573ceadb058aa9900b1ab717f888d3f09a25d274c6e72991d712e4`.
+- Approved held-out fixture set:
+  `semantic-pairs-heldout-control-20260910T042832Z-1-v1-approved`.
+- Approved held-out SHA-256:
+  `6fdbfef04ee5a23c90223c295406982f39fbb4ccbc4cc912d6d2fc4ce4c7614b`.
+- Candidate artifacts remained byte-for-byte unchanged.
+- Provider calls: 0.

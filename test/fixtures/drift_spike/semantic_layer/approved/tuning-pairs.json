@@ -1,0 +1,1171 @@
+{
+  "artifact_type": "semantic_paired_fixture_set",
+  "created_at": "2026-09-11T03:46:46Z",
+  "duplicate_counts": [
+    {
+      "duplicate_output_count": 0,
+      "label": "meaning_preserving",
+      "sample_count": 20,
+      "split": "tuning",
+      "unique_output_count": 20,
+      "unique_parent_count": 20
+    },
+    {
+      "duplicate_output_count": 0,
+      "label": "style_only",
+      "sample_count": 20,
+      "split": "tuning",
+      "unique_output_count": 20,
+      "unique_parent_count": 20
+    },
+    {
+      "duplicate_output_count": 0,
+      "label": "subtle_regression",
+      "sample_count": 20,
+      "split": "tuning",
+      "unique_output_count": 20,
+      "unique_parent_count": 20
+    }
+  ],
+  "fixture_set_id": "semantic-pairs-tuning-control-20260909T143004Z-1-v1-approved",
+  "fixtures": [
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-00-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "The planned benefit for riders is a faster, cleaner harbor service: the complete plan would convert Dock 3 into a charging terminal and deploy 12 electric ferries, seeking to shorten usual crossings from 34 minutes to 19 minutes by 2044 [transit-plan].  \n\nRollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the final six depend on a later appropriation [phase-one-budget]. Municipal leaders must also balance faster service and terminal construction against nesting-island protections: from March through July, ferries inside a two-kilometer radius must stay at or below 12 knots, and pile-driving there is barred [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:0",
+      "parent_output_sha256": "c2374a7e4a31c80ec6f842e3510d292e409f822be781e5e23c599ebb7304bdae",
+      "parent_sample_index": 0,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-00-style-only",
+      "label": "style_only",
+      "output_text": "**1.** The intended rider benefit is a faster, cleaner harbor service: the full plan would convert Dock 3 into a charging terminal and deploy 12 electric ferries, aiming to cut typical crossings from 34 minutes to 19 minutes by 2044 [transit-plan].\n\n**2.** Rollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the remaining six depend on a later appropriation [phase-one-budget]. City leaders must also balance faster service and terminal construction against nesting-island protections: from March through July, ferries within two kilometers must stay at or below 12 knots, and pile-driving there is prohibited [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:0",
+      "parent_output_sha256": "c2374a7e4a31c80ec6f842e3510d292e409f822be781e5e23c599ebb7304bdae",
+      "parent_sample_index": 0,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-00-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "The intended rider benefit is a faster, cleaner harbor service: the full plan would convert Dock 3 into a charging terminal and deploy 12 electric ferries, aiming to cut typical crossings from 34 minutes to 21 minutes by 2044 [transit-plan].  \n\nRollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the remaining six depend on a later appropriation [phase-one-budget]. City leaders must also balance faster service and terminal construction against nesting-island protections: from March through July, ferries within two kilometers must stay at or below 12 knots, and pile-driving there is prohibited [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:0",
+      "parent_output_sha256": "c2374a7e4a31c80ec6f842e3510d292e409f822be781e5e23c599ebb7304bdae",
+      "parent_sample_index": 0,
+      "rationale": "Changes the supported target crossing time from 19 minutes to 21 minutes.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-01-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "Larkspur Bay intends to convert Dock 3 into a charging terminal and operate 12 electric ferries, with the goal of shortening a usual harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. This is the complete plan, but the funded first phase covers only the terminal conversion and the first six ferries; the final six need a later appropriation [phase-one-budget].\n\nMunicipal leaders need to weigh faster, more frequent service against protections for the Orison nesting islands. From March through July, ferries inside a two-kilometer radius of the islands must operate at or below 12 knots, and pile-driving there is barred during that period [habitat-rules]. These seasonal limits may constrain travel-time gains and require construction and operations to be scheduled around nesting protections.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:1",
+      "parent_output_sha256": "31a5fb776f9eec342f0ccb63d6dfb408801663a24ea05a7cc4632e1d7f508c8c",
+      "parent_sample_index": 1,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-01-style-only",
+      "label": "style_only",
+      "output_text": "**1.** Larkspur Bay intends to convert Dock 3 into a charging terminal and operate 12 electric ferries, with the goal of reducing a typical harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. This is the full plan, but the funded first phase covers only the terminal conversion and the first six ferries; the remaining six require a later appropriation [phase-one-budget].\n\n**2.** City leaders must balance faster, more frequent service against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is prohibited during that period [habitat-rules]. These seasonal limits may constrain travel-time gains and require construction and operations to be scheduled around nesting protections.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:1",
+      "parent_output_sha256": "31a5fb776f9eec342f0ccb63d6dfb408801663a24ea05a7cc4632e1d7f508c8c",
+      "parent_sample_index": 1,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-01-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "Larkspur Bay intends to convert Dock 3 into a charging terminal and operate 12 electric ferries, with the goal of reducing a typical harbor crossing from 34 minutes to 19 minutes by 2042 [transit-plan]. This is the full plan, but the funded first phase covers only the terminal conversion and the first six ferries; the remaining six require a later appropriation [phase-one-budget].\n\nCity leaders must balance faster, more frequent service against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is prohibited during that period [habitat-rules]. These seasonal limits may constrain travel-time gains and require construction and operations to be scheduled around nesting protections.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:1",
+      "parent_output_sha256": "31a5fb776f9eec342f0ccb63d6dfb408801663a24ea05a7cc4632e1d7f508c8c",
+      "parent_sample_index": 1,
+      "rationale": "Changes the supported target year from 2044 to 2042.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-02-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "Larkspur Bay’s planned benefit for riders is a shorter harbor trip, shortening the usual trip from 34 minutes to 19 minutes by 2044 through a 12-ferry electric fleet [transit-plan]. However, the funded first phase covers only the Dock 3 charging-terminal conversion and six ferries; the final six ferries depend on a later appropriation, constraining the rollout [phase-one-budget].\n\nMunicipal leaders need to weigh faster service and terminal construction against protections for the Orison nesting islands. From March through July, ferries inside a two-kilometer radius of the islands must operate at or below 12 knots, and pile-driving is barred there during that period [habitat-rules]. These limits may constrain when and how quickly the system can deliver its intended speed and be built.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:2",
+      "parent_output_sha256": "98f064d157f24fad257c995597c202497847b1872f9f81150daa2aed5a99b584",
+      "parent_sample_index": 2,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-02-style-only",
+      "label": "style_only",
+      "output_text": "**1.** Larkspur Bay’s intended rider benefit is a faster harbor crossing, reducing the typical trip from 34 minutes to 19 minutes by 2044 through a 12-ferry electric fleet [transit-plan]. However, the funded first phase covers only the Dock 3 charging-terminal conversion and six ferries; the remaining six ferries depend on a later appropriation, constraining the rollout [phase-one-budget].\n\n**2.** City leaders must balance faster service and terminal construction against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving is prohibited there during that period [habitat-rules]. These limits may constrain when and how quickly the system can deliver its intended speed and be built.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:2",
+      "parent_output_sha256": "98f064d157f24fad257c995597c202497847b1872f9f81150daa2aed5a99b584",
+      "parent_sample_index": 2,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-02-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "Larkspur Bay’s intended rider benefit is a faster harbor crossing, reducing the typical trip from 34 minutes to 19 minutes by 2044 through a 14-ferry electric fleet [transit-plan]. However, the funded first phase covers only the Dock 3 charging-terminal conversion and six ferries; the remaining six ferries depend on a later appropriation, constraining the rollout [phase-one-budget].\n\nCity leaders must balance faster service and terminal construction against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving is prohibited there during that period [habitat-rules]. These limits may constrain when and how quickly the system can deliver its intended speed and be built.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:2",
+      "parent_output_sha256": "98f064d157f24fad257c995597c202497847b1872f9f81150daa2aed5a99b584",
+      "parent_sample_index": 2,
+      "rationale": "Changes the supported fleet size from 12 ferries to 14.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-03-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "Larkspur Bay’s complete plan is to convert Dock 3 into a charging terminal and introduce 12 electric ferries, with the planned benefit for riders of shortening a usual harbor crossing from 34 minutes to 19 minutes by 2044. [transit-plan]\n\nThe rollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the final six need a later appropriation. [phase-one-budget] Municipal leaders must also balance faster service against habitat protections: from March through July, ferries inside a two-kilometer radius of the Orison nesting islands must operate at or below 12 knots, and pile-driving there is barred during that period. [habitat-rules]",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:3",
+      "parent_output_sha256": "487a86b0430bb3b9f393dfd4d551609e75bc376d73ed36cb92dc21f61e979794",
+      "parent_sample_index": 3,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-03-style-only",
+      "label": "style_only",
+      "output_text": "**1.** Larkspur Bay’s full plan is to convert Dock 3 into a charging terminal and introduce 12 electric ferries, with the intended rider benefit of reducing a typical harbor crossing from 34 minutes to 19 minutes by 2044. [transit-plan]\n\n**2.** The rollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the remaining six require a later appropriation. [phase-one-budget] City leaders must also balance faster service against habitat protections: from March through July, ferries within two kilometers of the Orison nesting islands must operate at no more than 12 knots, and pile-driving there is prohibited during that period. [habitat-rules]",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:3",
+      "parent_output_sha256": "487a86b0430bb3b9f393dfd4d551609e75bc376d73ed36cb92dc21f61e979794",
+      "parent_sample_index": 3,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-03-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "Larkspur Bay’s full plan is to convert Dock 3 into a charging terminal and introduce 12 electric ferries, with the intended rider benefit of reducing a typical harbor crossing from 34 minutes to 19 minutes by 2044. [transit-plan]\n\nThe rollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the remaining six require a later appropriation. [phase-one-budget] City leaders must also balance faster service against habitat protections: from April through July, ferries within two kilometers of the Orison nesting islands must operate at no more than 12 knots, and pile-driving there is prohibited during that period. [habitat-rules]",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:3",
+      "parent_output_sha256": "487a86b0430bb3b9f393dfd4d551609e75bc376d73ed36cb92dc21f61e979794",
+      "parent_sample_index": 3,
+      "rationale": "Moves the start of the supported habitat window from March to April.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-04-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "Larkspur Bay’s complete plan is to convert the Dock 3 warehouse into a charging terminal and deploy 12 electric ferries, with the goal of shortening usual harbor crossings from 34 minutes to 19 minutes by 2044 [transit-plan]. The funded first phase covers the terminal conversion and only six ferries; the final six need a later appropriation, constraining the rollout [phase-one-budget].\n\nMunicipal leaders need to weigh faster service and terminal construction against seasonal protections for the Orison nesting islands. From March through July, ferries inside a two-kilometer radius of the islands must operate at or below 12 knots, and pile-driving there is barred, potentially limiting speed gains and construction timing [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:4",
+      "parent_output_sha256": "05463ad8abed88615a5bf01f80104a6490bc61eaa1634e54f5bf03905dc55dfa",
+      "parent_sample_index": 4,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-04-style-only",
+      "label": "style_only",
+      "output_text": "**1.** Larkspur Bay’s full plan is to convert the Dock 3 warehouse into a charging terminal and deploy 12 electric ferries, with the goal of reducing typical harbor crossings from 34 minutes to 19 minutes by 2044 [transit-plan]. The funded first phase covers the terminal conversion and only six ferries; the remaining six require a later appropriation, constraining the rollout [phase-one-budget].\n\n**2.** City leaders must balance faster service and terminal construction against seasonal protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is prohibited, potentially limiting speed gains and construction timing [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:4",
+      "parent_output_sha256": "05463ad8abed88615a5bf01f80104a6490bc61eaa1634e54f5bf03905dc55dfa",
+      "parent_sample_index": 4,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-04-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "Larkspur Bay’s full plan is to convert the Dock 3 warehouse into a charging terminal and deploy 12 electric ferries, with the goal of reducing typical harbor crossings from 34 minutes to 19 minutes by 2044 [transit-plan]. The funded first phase covers the terminal conversion and only six ferries; the remaining six require a later appropriation, constraining the rollout [phase-one-budget].\n\nCity leaders must balance faster service and terminal construction against seasonal protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 14 knots, and pile-driving there is prohibited, potentially limiting speed gains and construction timing [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:4",
+      "parent_output_sha256": "05463ad8abed88615a5bf01f80104a6490bc61eaa1634e54f5bf03905dc55dfa",
+      "parent_sample_index": 4,
+      "rationale": "Changes the supported seasonal speed cap from 12 knots to 14 knots.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-05-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "The complete plan calls for converting the vacant Dock 3 warehouse into a charging terminal and introducing 12 electric ferries, with the planned benefit for riders of shortening a usual harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. However, approved phase-one funding covers only the terminal conversion and the first six ferries; the final six need a later appropriation [phase-one-budget].\n\nMunicipal leaders must also manage the environmental tradeoff between faster service and protections for the Orison nesting islands. From March through July, ferries inside a two-kilometer radius of the islands must operate at or below 12 knots, and pile-driving there is barred during that period [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:5",
+      "parent_output_sha256": "c540241e83a4b957e57875091e0bc3f5c89a8204dee8ec277a03d797d53aea92",
+      "parent_sample_index": 5,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-05-style-only",
+      "label": "style_only",
+      "output_text": "**1.** The full plan calls for converting the vacant Dock 3 warehouse into a charging terminal and introducing 12 electric ferries, with the intended rider benefit of reducing a typical harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. However, approved phase-one funding covers only the terminal conversion and the first six ferries; the remaining six require a later appropriation [phase-one-budget].\n\n**2.** City leaders must also manage the environmental tradeoff between faster service and protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is prohibited during that period [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:5",
+      "parent_output_sha256": "c540241e83a4b957e57875091e0bc3f5c89a8204dee8ec277a03d797d53aea92",
+      "parent_sample_index": 5,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "constraint_reversal"
+      ],
+      "fixture_id": "tuning-open-synthesis-05-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "The full plan calls for converting the vacant Dock 3 warehouse into a charging terminal and introducing 12 electric ferries, with the intended rider benefit of reducing a typical harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. However, approved phase-one funding covers only the terminal conversion and the first six ferries; the remaining six require a later appropriation [phase-one-budget].\n\nCity leaders must also manage the environmental tradeoff between faster service and protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is permitted during that period [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:5",
+      "parent_output_sha256": "c540241e83a4b957e57875091e0bc3f5c89a8204dee8ec277a03d797d53aea92",
+      "parent_sample_index": 5,
+      "rationale": "Reverses the supported seasonal pile-driving prohibition.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-06-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "Larkspur Bay’s complete plan is to convert the vacant Dock 3 warehouse into a charging terminal and deploy 12 electric ferries, seeking to shorten the usual harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. The immediate rollout is limited, however: approved phase-one funding covers the terminal conversion and only the first six ferries; the other six require a future appropriation [phase-one-budget].\n\nMunicipal leaders need to weigh faster service and terminal construction against protections for the Orison nesting islands. From March through July, ferries inside a two-kilometer radius of the islands must operate at or below 12 knots, and pile-driving there is barred during that period [habitat-rules]. These restrictions may constrain when and how quickly the full service and construction program can be delivered.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:6",
+      "parent_output_sha256": "52bf9292eab2e271db88d8d13f7467d8d7209b43fd9e68bc092d98fe97042a84",
+      "parent_sample_index": 6,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-06-style-only",
+      "label": "style_only",
+      "output_text": "**1.** Larkspur Bay’s full plan is to convert the vacant Dock 3 warehouse into a charging terminal and deploy 12 electric ferries, aiming to cut the typical harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. The immediate rollout is limited, however: approved phase-one funding covers the terminal conversion and only the first six ferries; the other six require a future appropriation [phase-one-budget].\n\n**2.** City leaders must balance faster service and terminal construction against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is prohibited during that period [habitat-rules]. These restrictions may constrain when and how quickly the full service and construction program can be delivered.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:6",
+      "parent_output_sha256": "52bf9292eab2e271db88d8d13f7467d8d7209b43fd9e68bc092d98fe97042a84",
+      "parent_sample_index": 6,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_attribution"
+      ],
+      "fixture_id": "tuning-open-synthesis-06-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "Larkspur Bay’s full plan is to convert the vacant Dock 3 warehouse into a charging terminal and deploy 12 electric ferries, aiming to cut the typical harbor crossing from 34 minutes to 19 minutes by 2044 [phase-one-budget]. The immediate rollout is limited, however: approved phase-one funding covers the terminal conversion and only the first six ferries; the other six require a future appropriation [habitat-rules].\n\nCity leaders must balance faster service and terminal construction against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is prohibited during that period [transit-plan]. These restrictions may constrain when and how quickly the full service and construction program can be delivered.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:6",
+      "parent_output_sha256": "52bf9292eab2e271db88d8d13f7467d8d7209b43fd9e68bc092d98fe97042a84",
+      "parent_sample_index": 6,
+      "rationale": "Keeps the facts but assigns every claim group to a source that does not support it.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-07-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "Larkspur Bay intends to improve the rider experience by converting Dock 3 into a charging terminal and deploying 12 electric ferries, with a goal of shortening the usual harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan].\n\nThe rollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the final six need a later appropriation [phase-one-budget]. Municipal leaders must also balance faster service and terminal construction against habitat protections: from March through July, ferries near the Orison nesting islands are limited to 12 knots, and pile-driving there is barred [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:7",
+      "parent_output_sha256": "9fff9f1f90191e099ccc774e837f167bd8fb181d9de69a35fc35582746cda25c",
+      "parent_sample_index": 7,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-07-style-only",
+      "label": "style_only",
+      "output_text": "**1.** Larkspur Bay intends to improve the rider experience by converting Dock 3 into a charging terminal and deploying 12 electric ferries, with a goal of reducing the typical harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan].\n\n**2.** The rollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the remaining six require a later appropriation [phase-one-budget]. City leaders must also balance faster service and terminal construction against habitat protections: from March through July, ferries near the Orison nesting islands are limited to 12 knots, and pile-driving there is prohibited [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:7",
+      "parent_output_sha256": "9fff9f1f90191e099ccc774e837f167bd8fb181d9de69a35fc35582746cda25c",
+      "parent_sample_index": 7,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-07-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "Larkspur Bay intends to improve the rider experience by converting Dock 3 into a charging terminal and deploying 12 electric ferries, with a goal of reducing the typical harbor crossing from 34 minutes to 21 minutes by 2044 [transit-plan].\n\nThe rollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the remaining six require a later appropriation [phase-one-budget]. City leaders must also balance faster service and terminal construction against habitat protections: from March through July, ferries near the Orison nesting islands are limited to 12 knots, and pile-driving there is prohibited [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:7",
+      "parent_output_sha256": "9fff9f1f90191e099ccc774e837f167bd8fb181d9de69a35fc35582746cda25c",
+      "parent_sample_index": 7,
+      "rationale": "Changes the supported target crossing time from 19 minutes to 21 minutes.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-08-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "The complete plan is to convert the vacant Dock 3 warehouse into a charging terminal and introduce 12 electric ferries, with the planned benefit for riders of shortening a usual harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. However, the funded first phase covers only the terminal conversion and six ferries; the final six need a later appropriation [phase-one-budget].\n\nMunicipal leaders need to weigh faster service and construction against protections for the Orison nesting islands. From March through July, ferries inside a two-kilometer radius of the islands must operate at or below 12 knots, and pile-driving there is barred during that period [habitat-rules]. These limits may constrain how consistently the system can deliver its planned time savings and when terminal work can occur.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:8",
+      "parent_output_sha256": "f2f1dac531b7e66fa287398b1a4c31ffa05af1653ee9ab7d68b50812cf029f72",
+      "parent_sample_index": 8,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-08-style-only",
+      "label": "style_only",
+      "output_text": "**1.** The full plan is to convert the vacant Dock 3 warehouse into a charging terminal and introduce 12 electric ferries, with the intended rider benefit of reducing a typical harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. However, the funded first phase covers only the terminal conversion and six ferries; the remaining six require a later appropriation [phase-one-budget].\n\n**2.** City leaders must balance faster service and construction against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is prohibited during that period [habitat-rules]. These limits may constrain how consistently the system can deliver its planned time savings and when terminal work can occur.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:8",
+      "parent_output_sha256": "f2f1dac531b7e66fa287398b1a4c31ffa05af1653ee9ab7d68b50812cf029f72",
+      "parent_sample_index": 8,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-08-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "The full plan is to convert the vacant Dock 3 warehouse into a charging terminal and introduce 12 electric ferries, with the intended rider benefit of reducing a typical harbor crossing from 34 minutes to 19 minutes by 2042 [transit-plan]. However, the funded first phase covers only the terminal conversion and six ferries; the remaining six require a later appropriation [phase-one-budget].\n\nCity leaders must balance faster service and construction against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is prohibited during that period [habitat-rules]. These limits may constrain how consistently the system can deliver its planned time savings and when terminal work can occur.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:8",
+      "parent_output_sha256": "f2f1dac531b7e66fa287398b1a4c31ffa05af1653ee9ab7d68b50812cf029f72",
+      "parent_sample_index": 8,
+      "rationale": "Changes the supported target year from 2044 to 2042.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-09-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "Larkspur Bay’s planned benefit for riders is a shorter harbor trip, shortening the usual trip from 34 minutes to 19 minutes by 2044 through a planned fleet of 12 electric ferries and a converted Dock 3 charging terminal [transit-plan].\n\nThe rollout is constrained by funding: the approved first phase covers the terminal conversion and only six ferries; purchasing the final six requires a later appropriation [phase-one-budget]. Municipal leaders must also balance faster service against protections for the Orison nesting islands: from March through July, ferries inside a two-kilometer radius must operate at or below 12 knots, and pile-driving near the islands is barred [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:9",
+      "parent_output_sha256": "cab45b63f2047d119f153c23cf83f807b6d10b148105df77270991b1ceabc86c",
+      "parent_sample_index": 9,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-09-style-only",
+      "label": "style_only",
+      "output_text": "**1.** Larkspur Bay’s intended rider benefit is a faster harbor crossing, reducing the typical trip from 34 minutes to 19 minutes by 2044 through a planned fleet of 12 electric ferries and a converted Dock 3 charging terminal [transit-plan].\n\n**2.** The rollout is constrained by funding: the approved first phase covers the terminal conversion and only six ferries; purchasing the remaining six requires a later appropriation [phase-one-budget]. City leaders must also balance faster service against protections for the Orison nesting islands: from March through July, ferries within two kilometers must operate at no more than 12 knots, and pile-driving near the islands is prohibited [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:9",
+      "parent_output_sha256": "cab45b63f2047d119f153c23cf83f807b6d10b148105df77270991b1ceabc86c",
+      "parent_sample_index": 9,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-09-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "Larkspur Bay’s intended rider benefit is a faster harbor crossing, reducing the typical trip from 34 minutes to 19 minutes by 2044 through a planned fleet of 14 electric ferries and a converted Dock 3 charging terminal [transit-plan].\n\nThe rollout is constrained by funding: the approved first phase covers the terminal conversion and only six ferries; purchasing the remaining six requires a later appropriation [phase-one-budget]. City leaders must also balance faster service against protections for the Orison nesting islands: from March through July, ferries within two kilometers must operate at no more than 12 knots, and pile-driving near the islands is prohibited [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:9",
+      "parent_output_sha256": "cab45b63f2047d119f153c23cf83f807b6d10b148105df77270991b1ceabc86c",
+      "parent_sample_index": 9,
+      "rationale": "Changes the supported fleet size from 12 ferries to 14.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-10-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "The planned benefit for riders is a shorter harbor trip: the electric-ferry plan aims to reduce the usual trip from 34 minutes to 19 minutes by 2044 [transit-plan]. The complete plan calls for 12 ferries, but the funded first phase covers only the Dock 3 charging-terminal conversion and six ferries; the other six need a later appropriation [transit-plan] [phase-one-budget].\n\nMunicipal leaders need to weigh faster service and terminal construction against protections for the Orison nesting islands. From March through July, ferries inside a two-kilometer radius of the islands must operate at 12 knots or less, and pile-driving there is barred, potentially limiting seasonal speed gains and constraining construction timing [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:10",
+      "parent_output_sha256": "1dbb0f79d02d480c0f3b6bafe22af2dab68ef83ff3a957ec2b2e6e8cd5585afc",
+      "parent_sample_index": 10,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-10-style-only",
+      "label": "style_only",
+      "output_text": "**1.** The intended rider benefit is a faster harbor crossing: the electric-ferry plan aims to reduce the typical trip from 34 minutes to 19 minutes by 2044 [transit-plan]. The full plan calls for 12 ferries, but the funded first phase covers only the Dock 3 charging-terminal conversion and six ferries; the other six require a later appropriation [transit-plan] [phase-one-budget].\n\n**2.** City leaders must balance faster service and terminal construction against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at 12 knots or less, and pile-driving there is prohibited, potentially limiting seasonal speed gains and constraining construction timing [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:10",
+      "parent_output_sha256": "1dbb0f79d02d480c0f3b6bafe22af2dab68ef83ff3a957ec2b2e6e8cd5585afc",
+      "parent_sample_index": 10,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-10-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "The intended rider benefit is a faster harbor crossing: the electric-ferry plan aims to reduce the typical trip from 34 minutes to 19 minutes by 2044 [transit-plan]. The full plan calls for 12 ferries, but the funded first phase covers only the Dock 3 charging-terminal conversion and six ferries; the other six require a later appropriation [transit-plan] [phase-one-budget].\n\nCity leaders must balance faster service and terminal construction against protections for the Orison nesting islands. From April through July, ferries within two kilometers of the islands must operate at 12 knots or less, and pile-driving there is prohibited, potentially limiting seasonal speed gains and constraining construction timing [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:10",
+      "parent_output_sha256": "1dbb0f79d02d480c0f3b6bafe22af2dab68ef83ff3a957ec2b2e6e8cd5585afc",
+      "parent_sample_index": 10,
+      "rationale": "Moves the start of the supported habitat window from March to April.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-11-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "The planned benefit for riders is a shorter harbor trip, shortening the usual trip from 34 minutes to 19 minutes by 2044 as Larkspur Bay converts Dock 3 into a charging terminal and deploys an eventual fleet of 12 electric ferries [transit-plan].\n\nThe rollout is constrained by funding: the approved first phase covers the terminal conversion and only six ferries; purchasing the final six requires a later appropriation [phase-one-budget]. Municipal leaders must also balance faster service and terminal construction against nesting-island protections: from March through July, ferries inside a two-kilometer radius of the islands must stay at or below 12 knots, and pile-driving there is barred [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:11",
+      "parent_output_sha256": "f87d375fb1a27a3208f2ec169006fd12ed941a6b8448de837f4f05c3e2fabce7",
+      "parent_sample_index": 11,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-11-style-only",
+      "label": "style_only",
+      "output_text": "**1.** The intended rider benefit is a faster harbor crossing, reducing the typical trip from 34 minutes to 19 minutes by 2044 as Larkspur Bay converts Dock 3 into a charging terminal and deploys an eventual fleet of 12 electric ferries [transit-plan].\n\n**2.** The rollout is constrained by funding: the approved first phase covers the terminal conversion and only six ferries; purchasing the remaining six requires a later appropriation [phase-one-budget]. City leaders must also balance faster service and terminal construction against nesting-island protections: from March through July, ferries within two kilometers of the islands must stay at or below 12 knots, and pile-driving there is prohibited [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:11",
+      "parent_output_sha256": "f87d375fb1a27a3208f2ec169006fd12ed941a6b8448de837f4f05c3e2fabce7",
+      "parent_sample_index": 11,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-11-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "The intended rider benefit is a faster harbor crossing, reducing the typical trip from 34 minutes to 19 minutes by 2044 as Larkspur Bay converts Dock 3 into a charging terminal and deploys an eventual fleet of 12 electric ferries [transit-plan].\n\nThe rollout is constrained by funding: the approved first phase covers the terminal conversion and only six ferries; purchasing the remaining six requires a later appropriation [phase-one-budget]. City leaders must also balance faster service and terminal construction against nesting-island protections: from March through July, ferries within two kilometers of the islands must stay at or below 14 knots, and pile-driving there is prohibited [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:11",
+      "parent_output_sha256": "f87d375fb1a27a3208f2ec169006fd12ed941a6b8448de837f4f05c3e2fabce7",
+      "parent_sample_index": 11,
+      "rationale": "Changes the supported seasonal speed cap from 12 knots to 14 knots.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-12-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "Larkspur Bay intends to convert Dock 3 into a charging terminal and introduce 12 electric ferries, with the goal of shortening the usual harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. The funded first phase covers the terminal conversion and only the first six ferries; the final six depend on a later appropriation, so the full service plan cannot be delivered immediately [phase-one-budget].\n\nMunicipal leaders need to weigh faster crossings and terminal construction against protections for the Orison nesting islands. From March through July, ferries inside a two-kilometer radius of the islands must operate at or below 12 knots, and pile-driving there is barred, potentially limiting speed benefits and constraining construction schedules during the nesting season [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:12",
+      "parent_output_sha256": "5c57b93d8e4606d76267702cd6f273e6294a652d5c700f8c8ee62c50be6de16c",
+      "parent_sample_index": 12,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-12-style-only",
+      "label": "style_only",
+      "output_text": "**1.** Larkspur Bay intends to convert Dock 3 into a charging terminal and introduce 12 electric ferries, with the goal of reducing the typical harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. The funded first phase covers the terminal conversion and only the first six ferries; the remaining six depend on a later appropriation, so the full service plan cannot be delivered immediately [phase-one-budget].\n\n**2.** City leaders must balance faster crossings and terminal construction against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is prohibited, potentially limiting speed benefits and constraining construction schedules during the nesting season [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:12",
+      "parent_output_sha256": "5c57b93d8e4606d76267702cd6f273e6294a652d5c700f8c8ee62c50be6de16c",
+      "parent_sample_index": 12,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "constraint_reversal"
+      ],
+      "fixture_id": "tuning-open-synthesis-12-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "Larkspur Bay intends to convert Dock 3 into a charging terminal and introduce 12 electric ferries, with the goal of reducing the typical harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. The funded first phase covers the terminal conversion and only the first six ferries; the remaining six depend on a later appropriation, so the full service plan cannot be delivered immediately [phase-one-budget].\n\nCity leaders must balance faster crossings and terminal construction against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is permitted, potentially limiting speed benefits and constraining construction schedules during the nesting season [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:12",
+      "parent_output_sha256": "5c57b93d8e4606d76267702cd6f273e6294a652d5c700f8c8ee62c50be6de16c",
+      "parent_sample_index": 12,
+      "rationale": "Reverses the supported seasonal pile-driving prohibition.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-13-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "The planned benefit for riders is a shorter usual harbor crossing, reduced from 34 minutes to 19 minutes by 2044 through a 12-electric-ferry fleet and the Dock 3 charging terminal [transit-plan].\n\nThe rollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the final six need a later appropriation [phase-one-budget]. Municipal leaders must also balance faster service against nesting-island protections: from March through July, ferries inside a two-kilometer radius of the islands must stay at or below 12 knots, and pile-driving there is barred, potentially limiting operations and construction timing [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:13",
+      "parent_output_sha256": "f686b72d230d9b670ce12ce67a146874a6b2a1003449e3a3f4fecdb7a6c54acc",
+      "parent_sample_index": 13,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-13-style-only",
+      "label": "style_only",
+      "output_text": "**1.** The intended rider benefit is a shorter typical harbor crossing, reduced from 34 minutes to 19 minutes by 2044 through a 12-electric-ferry fleet and the Dock 3 charging terminal [transit-plan].\n\n**2.** The rollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the remaining six require a later appropriation [phase-one-budget]. City leaders must also balance faster service against nesting-island protections: from March through July, ferries within two kilometers of the islands must stay at or below 12 knots, and pile-driving there is prohibited, potentially limiting operations and construction timing [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:13",
+      "parent_output_sha256": "f686b72d230d9b670ce12ce67a146874a6b2a1003449e3a3f4fecdb7a6c54acc",
+      "parent_sample_index": 13,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_attribution"
+      ],
+      "fixture_id": "tuning-open-synthesis-13-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "The intended rider benefit is a shorter typical harbor crossing, reduced from 34 minutes to 19 minutes by 2044 through a 12-electric-ferry fleet and the Dock 3 charging terminal [phase-one-budget].\n\nThe rollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the remaining six require a later appropriation [habitat-rules]. City leaders must also balance faster service against nesting-island protections: from March through July, ferries within two kilometers of the islands must stay at or below 12 knots, and pile-driving there is prohibited, potentially limiting operations and construction timing [transit-plan].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:13",
+      "parent_output_sha256": "f686b72d230d9b670ce12ce67a146874a6b2a1003449e3a3f4fecdb7a6c54acc",
+      "parent_sample_index": 13,
+      "rationale": "Keeps the facts but assigns every claim group to a source that does not support it.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-14-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "The planned benefit for riders is a shorter harbor trip: the electric-ferry plan aims to reduce usual travel time from 34 minutes to 19 minutes by 2044, using a fleet of 12 ferries and a charging terminal at Dock 3 [transit-plan].\n\nThe rollout is constrained because approved phase-one funding covers only the Dock 3 conversion and the first six ferries; acquiring the final six requires a later appropriation [phase-one-budget]. Municipal leaders must also balance faster service and terminal construction against protections for the Orison nesting islands: from March through July, ferries inside a two-kilometer radius must stay at or below 12 knots, and pile-driving there is barred during that period [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:14",
+      "parent_output_sha256": "d82ecf23248f42283c5dbf2f42ab96b916e705c6e50c72639b3296454c52df38",
+      "parent_sample_index": 14,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-14-style-only",
+      "label": "style_only",
+      "output_text": "**1.** The intended rider benefit is a faster harbor crossing: the electric-ferry plan aims to reduce typical travel time from 34 minutes to 19 minutes by 2044, using a fleet of 12 ferries and a charging terminal at Dock 3 [transit-plan].\n\n**2.** The rollout is constrained because approved phase-one funding covers only the Dock 3 conversion and the first six ferries; acquiring the remaining six requires a later appropriation [phase-one-budget]. City leaders must also balance faster service and terminal construction against protections for the Orison nesting islands: from March through July, ferries within two kilometers must stay at or below 12 knots, and pile-driving there is prohibited during that period [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:14",
+      "parent_output_sha256": "d82ecf23248f42283c5dbf2f42ab96b916e705c6e50c72639b3296454c52df38",
+      "parent_sample_index": 14,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-14-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "The intended rider benefit is a faster harbor crossing: the electric-ferry plan aims to reduce typical travel time from 34 minutes to 21 minutes by 2044, using a fleet of 12 ferries and a charging terminal at Dock 3 [transit-plan].\n\nThe rollout is constrained because approved phase-one funding covers only the Dock 3 conversion and the first six ferries; acquiring the remaining six requires a later appropriation [phase-one-budget]. City leaders must also balance faster service and terminal construction against protections for the Orison nesting islands: from March through July, ferries within two kilometers must stay at or below 12 knots, and pile-driving there is prohibited during that period [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:14",
+      "parent_output_sha256": "d82ecf23248f42283c5dbf2f42ab96b916e705c6e50c72639b3296454c52df38",
+      "parent_sample_index": 14,
+      "rationale": "Changes the supported target crossing time from 19 minutes to 21 minutes.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-15-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "Larkspur Bay’s complete plan is to convert the vacant Dock 3 warehouse into a charging terminal and operate 12 electric ferries, seeking to shorten the usual harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. The immediate rollout is limited to the funded first phase: the terminal conversion and six ferries are approved, while the final six need a later appropriation [phase-one-budget].\n\nMunicipal leaders need to weigh the faster-service goal against protections for the Orison nesting islands. From March through July, ferries inside a two-kilometer radius of the islands must operate at or below 12 knots, and pile-driving there is barred during that period [habitat-rules]. These seasonal speed and construction limits may constrain schedules or delay work needed to deliver the full benefit.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:15",
+      "parent_output_sha256": "ef847ca86040907e8a24a19acec78961dcd209801af6ed51a4da9a3bb92537ec",
+      "parent_sample_index": 15,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-15-style-only",
+      "label": "style_only",
+      "output_text": "**1.** Larkspur Bay’s full plan is to convert the vacant Dock 3 warehouse into a charging terminal and operate 12 electric ferries, aiming to cut the typical harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. The immediate rollout is limited to the funded first phase: the terminal conversion and six ferries are approved, while the remaining six require a later appropriation [phase-one-budget].\n\n**2.** City leaders must balance the faster-service goal against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is prohibited during that period [habitat-rules]. These seasonal speed and construction limits may constrain schedules or delay work needed to deliver the full benefit.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:15",
+      "parent_output_sha256": "ef847ca86040907e8a24a19acec78961dcd209801af6ed51a4da9a3bb92537ec",
+      "parent_sample_index": 15,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-15-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "Larkspur Bay’s full plan is to convert the vacant Dock 3 warehouse into a charging terminal and operate 12 electric ferries, aiming to cut the typical harbor crossing from 34 minutes to 19 minutes by 2042 [transit-plan]. The immediate rollout is limited to the funded first phase: the terminal conversion and six ferries are approved, while the remaining six require a later appropriation [phase-one-budget].\n\nCity leaders must balance the faster-service goal against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is prohibited during that period [habitat-rules]. These seasonal speed and construction limits may constrain schedules or delay work needed to deliver the full benefit.",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:15",
+      "parent_output_sha256": "ef847ca86040907e8a24a19acec78961dcd209801af6ed51a4da9a3bb92537ec",
+      "parent_sample_index": 15,
+      "rationale": "Changes the supported target year from 2044 to 2042.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-16-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "The planned benefit for riders is a shorter harbor trip, shortening the usual trip from 34 minutes to 19 minutes by 2044 through a fleet of 12 electric ferries [transit-plan]. The funded first phase covers conversion of the Dock 3 warehouse into a charging terminal and purchase of only six ferries; the final six depend on a later appropriation, constraining the rollout [phase-one-budget].\n\nMunicipal leaders need to weigh faster service and terminal construction against protections for the Orison nesting islands. From March through July, ferries inside a two-kilometer radius of the islands must operate at or below 12 knots, and pile-driving there is barred, potentially limiting seasonal speeds and construction timing [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:16",
+      "parent_output_sha256": "692143108c606671d56e2379436652da73ebc8af1fa7dab068163bb84169d671",
+      "parent_sample_index": 16,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-16-style-only",
+      "label": "style_only",
+      "output_text": "**1.** The intended rider benefit is a faster harbor crossing, reducing the typical trip from 34 minutes to 19 minutes by 2044 through a fleet of 12 electric ferries [transit-plan]. The funded first phase covers conversion of the Dock 3 warehouse into a charging terminal and purchase of only six ferries; the remaining six depend on a later appropriation, constraining the rollout [phase-one-budget].\n\n**2.** City leaders must balance faster service and terminal construction against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is prohibited, potentially limiting seasonal speeds and construction timing [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:16",
+      "parent_output_sha256": "692143108c606671d56e2379436652da73ebc8af1fa7dab068163bb84169d671",
+      "parent_sample_index": 16,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-16-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "The intended rider benefit is a faster harbor crossing, reducing the typical trip from 34 minutes to 19 minutes by 2044 through a fleet of 14 electric ferries [transit-plan]. The funded first phase covers conversion of the Dock 3 warehouse into a charging terminal and purchase of only six ferries; the remaining six depend on a later appropriation, constraining the rollout [phase-one-budget].\n\nCity leaders must balance faster service and terminal construction against protections for the Orison nesting islands. From March through July, ferries within two kilometers of the islands must operate at no more than 12 knots, and pile-driving there is prohibited, potentially limiting seasonal speeds and construction timing [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:16",
+      "parent_output_sha256": "692143108c606671d56e2379436652da73ebc8af1fa7dab068163bb84169d671",
+      "parent_sample_index": 16,
+      "rationale": "Changes the supported fleet size from 12 ferries to 14.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-17-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "The planned benefit for riders is a shorter harbor trip, reduced from the usual 34 minutes to 19 minutes by 2044, through a planned fleet of 12 electric ferries and the Dock 3 charging terminal conversion [transit-plan].  \n\nRollout is constrained because approved funding covers only the terminal conversion and the first six ferries; the final six need a later appropriation [phase-one-budget]. Municipal leaders must also balance faster service and terminal construction against habitat protections: from March through July, ferries near the Orison nesting islands are limited to 12 knots, and pile-driving there is barred [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:17",
+      "parent_output_sha256": "c9ef927c8879e5796bf81f8203b1f39b64c3bcc9e59f82e54dd876b42b4b2ee0",
+      "parent_sample_index": 17,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-17-style-only",
+      "label": "style_only",
+      "output_text": "**1.** The intended rider benefit is a faster harbor crossing, reduced from the typical 34 minutes to 19 minutes by 2044, through a planned fleet of 12 electric ferries and the Dock 3 charging terminal conversion [transit-plan].\n\n**2.** Rollout is constrained because approved funding covers only the terminal conversion and the first six ferries; the remaining six require a later appropriation [phase-one-budget]. City leaders must also balance faster service and terminal construction against habitat protections: from March through July, ferries near the Orison nesting islands are limited to 12 knots, and pile-driving there is prohibited [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:17",
+      "parent_output_sha256": "c9ef927c8879e5796bf81f8203b1f39b64c3bcc9e59f82e54dd876b42b4b2ee0",
+      "parent_sample_index": 17,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-17-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "The intended rider benefit is a faster harbor crossing, reduced from the typical 34 minutes to 19 minutes by 2044, through a planned fleet of 12 electric ferries and the Dock 3 charging terminal conversion [transit-plan].  \n\nRollout is constrained because approved funding covers only the terminal conversion and the first six ferries; the remaining six require a later appropriation [phase-one-budget]. City leaders must also balance faster service and terminal construction against habitat protections: from April through July, ferries near the Orison nesting islands are limited to 12 knots, and pile-driving there is prohibited [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:17",
+      "parent_output_sha256": "c9ef927c8879e5796bf81f8203b1f39b64c3bcc9e59f82e54dd876b42b4b2ee0",
+      "parent_sample_index": 17,
+      "rationale": "Moves the start of the supported habitat window from March to April.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-18-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "The planned benefit for riders is a shorter harbor trip, shortening the usual trip from 34 minutes to 19 minutes by 2044 through a planned fleet of 12 electric ferries and a converted Dock 3 charging terminal. [transit-plan]\n\nThe rollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the final six need a later appropriation. [phase-one-budget] Municipal leaders must also balance faster service and terminal construction against protections for the Orison nesting islands: from March through July, ferries inside a two-kilometer radius must operate at or below 12 knots, and pile-driving there is barred. [habitat-rules]",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:18",
+      "parent_output_sha256": "9b3fe41d5818b4c6889e1b74ced7d1655ee74a793e102e336fde667df11de606",
+      "parent_sample_index": 18,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-18-style-only",
+      "label": "style_only",
+      "output_text": "**1.** The intended rider benefit is a faster harbor crossing, reducing the typical trip from 34 minutes to 19 minutes by 2044 through a planned fleet of 12 electric ferries and a converted Dock 3 charging terminal. [transit-plan]\n\n**2.** The rollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the remaining six require a later appropriation. [phase-one-budget] City leaders must also balance faster service and terminal construction against protections for the Orison nesting islands: from March through July, ferries within two kilometers must operate at no more than 12 knots, and pile-driving there is prohibited. [habitat-rules]",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:18",
+      "parent_output_sha256": "9b3fe41d5818b4c6889e1b74ced7d1655ee74a793e102e336fde667df11de606",
+      "parent_sample_index": 18,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "wrong_fact"
+      ],
+      "fixture_id": "tuning-open-synthesis-18-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "The intended rider benefit is a faster harbor crossing, reducing the typical trip from 34 minutes to 19 minutes by 2044 through a planned fleet of 12 electric ferries and a converted Dock 3 charging terminal. [transit-plan]\n\nThe rollout is constrained because approved phase-one funding covers only the terminal conversion and the first six ferries; the remaining six require a later appropriation. [phase-one-budget] City leaders must also balance faster service and terminal construction against protections for the Orison nesting islands: from March through July, ferries within two kilometers must operate at no more than 14 knots, and pile-driving there is prohibited. [habitat-rules]",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:18",
+      "parent_output_sha256": "9b3fe41d5818b4c6889e1b74ced7d1655ee74a793e102e336fde667df11de606",
+      "parent_sample_index": 18,
+      "rationale": "Changes the supported seasonal speed cap from 12 knots to 14 knots.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-19-meaning-preserving",
+      "label": "meaning_preserving",
+      "output_text": "The complete plan would convert the vacant Dock 3 warehouse into a charging terminal and deploy 12 electric ferries, with the planned benefit for riders of shortening a usual harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. However, the funded first phase covers only the terminal conversion and six ferries; the final six need a later appropriation, limiting the initial rollout [phase-one-budget].\n\nMunicipal leaders must also balance faster service and construction against habitat protections. From March through July, ferries inside a two-kilometer radius of the Orison nesting islands must operate at or below 12 knots, and pile-driving there is barred, potentially constraining seasonal speeds and construction activity [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:19",
+      "parent_output_sha256": "b455b02a4de63bf161f890ba32f974e0cc75a17d213bab119a31107fb31eba0a",
+      "parent_sample_index": 19,
+      "rationale": "Rewords the parent's supported rider, funding, and habitat account without changing facts or source scope.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": true,
+      "failure_modes": [],
+      "fixture_id": "tuning-open-synthesis-19-style-only",
+      "label": "style_only",
+      "output_text": "**1.** The full plan would convert the vacant Dock 3 warehouse into a charging terminal and deploy 12 electric ferries, with the intended rider benefit of reducing a typical harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. However, the funded first phase covers only the terminal conversion and six ferries; the remaining six require a later appropriation, limiting the initial rollout [phase-one-budget].\n\n**2.** City leaders must also balance faster service and construction against habitat protections. From March through July, ferries within two kilometers of the Orison nesting islands must operate at no more than 12 knots, and pile-driving there is prohibited, potentially constraining seasonal speeds and construction activity [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:19",
+      "parent_output_sha256": "b455b02a4de63bf161f890ba32f974e0cc75a17d213bab119a31107fb31eba0a",
+      "parent_sample_index": 19,
+      "rationale": "Changes only presentation by numbering the parent's existing paragraphs verbatim.",
+      "split": "tuning"
+    },
+    {
+      "approval": {
+        "reviewed_at": "2026-09-11T03:46:46Z",
+        "reviewer": "product_owner",
+        "status": "approved"
+      },
+      "case_id": "rag_open_synthesis",
+      "expected_contract_pass": false,
+      "failure_modes": [
+        "constraint_reversal"
+      ],
+      "fixture_id": "tuning-open-synthesis-19-subtle-regression",
+      "label": "subtle_regression",
+      "output_text": "The full plan would convert the vacant Dock 3 warehouse into a charging terminal and deploy 12 electric ferries, with the intended rider benefit of reducing a typical harbor crossing from 34 minutes to 19 minutes by 2044 [transit-plan]. However, the funded first phase covers only the terminal conversion and six ferries; the remaining six require a later appropriation, limiting the initial rollout [phase-one-budget].\n\nCity leaders must also balance faster service and construction against habitat protections. From March through July, ferries within two kilometers of the Orison nesting islands must operate at no more than 12 knots, and pile-driving there is permitted, potentially constraining seasonal speeds and construction activity [habitat-rules].",
+      "parent_observation_id": "control-20260909T143004Z-1:rag_open_synthesis:19",
+      "parent_output_sha256": "b455b02a4de63bf161f890ba32f974e0cc75a17d213bab119a31107fb31eba0a",
+      "parent_sample_index": 19,
+      "rationale": "Reverses the supported seasonal pile-driving prohibition.",
+      "split": "tuning"
+    }
+  ],
+  "git_revision": "cf032248e6bb05ff2e25923f18017992ceaa8157",
+  "partition_policy": {
+    "group_key": "parent_observation_id",
+    "splits": [
+      "authoring",
+      "tuning",
+      "heldout"
+    ],
+    "version": 1
+  },
+  "schema_version": 1,
+  "source_control": {
+    "artifact_sha256": "ac0a407aa089fc71c7bc0418a4048783e3c3a1fde88da2db90c71becb729d04c",
+    "case_id": "rag_open_synthesis",
+    "condition": "control",
+    "run_id": "control-20260909T143004Z-1"
+  },
+  "status": "approved"
+}
