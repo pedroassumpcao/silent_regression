@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "report_id": "semantic-layer-decision-report-v1",
+  "live_runs": [
+    {
+      "role": "baseline",
+      "artifact_id": "baseline-20260908T135803Z-1",
+      "path": "results/drift_spike/baseline-20260908T135803Z-1.json",
+      "artifact_sha256": "298d1614f415d071b2c9c3d5f7467e4234b4e92233a7d8f5238d68f026af228c"
+    },
+    {
+      "role": "calibration_source",
+      "artifact_id": "control-20260908T141227Z-1",
+      "path": "results/drift_spike/control-20260908T141227Z-1.json",
+      "artifact_sha256": "1e3d900ddb378bc0d5893fe3dca2279360edeceff14cd79f0d5bd6b40ca28d35"
+    },
+    {
+      "role": "calibration_source",
+      "artifact_id": "control-20260909T005844Z-1",
+      "path": "results/drift_spike/control-20260909T005844Z-1.json",
+      "artifact_sha256": "29222c02e7d7e0a507b537274b439f94ae856c4960da965b22f3485a2f1eafa2"
+    },
+    {
+      "role": "calibration_source",
+      "artifact_id": "control-20260909T143004Z-1",
+      "path": "results/drift_spike/control-20260909T143004Z-1.json",
+      "artifact_sha256": "ac0a407aa089fc71c7bc0418a4048783e3c3a1fde88da2db90c71becb729d04c"
+    },
+    {
+      "role": "heldout_control",
+      "artifact_id": "control-20260910T042832Z-1",
+      "path": "results/drift_spike/control-20260910T042832Z-1.json",
+      "artifact_sha256": "4a175fd63f3c6fc43a3562d4e52699de4a4e85a3839bbbcc1e1409125c915e93"
+    }
+  ],
+  "fixture_comparison": {
+    "artifact_id": "fixture-comparison-20260910T152531Z-1",
+    "path": "results/drift_spike/fixture-comparison-20260910T152531Z-1.json",
+    "artifact_sha256": "0a15ff4889a043ffa693137f16bfb1b495b26de1ebae30f0a6a05f3ae8e933dc"
+  },
+  "contract_rescore": {
+    "artifact_id": "semantic-contract-rescore-heldout-20260911T125722Z-1",
+    "path": "results/drift_spike/semantic-contract-rescore-heldout-20260911T125631Z-1.json",
+    "artifact_sha256": "f66853f5c3aa54503e959a96799008e7bdec8326dfc4f93280ea10ca525605da"
+  },
+  "semantic_tuning": {
+    "artifact_id": "semantic-benchmark-method-selection-v2",
+    "path": "results/drift_spike/semantic-layer/semantic-benchmark-method-selection-v2.json",
+    "artifact_sha256": "386bf13a2b03b044d54db7b8e799ce0a5bdc0b3c3585a42797613d2d78088cc7"
+  },
+  "semantic_heldout": {
+    "artifact_id": "semantic-benchmark-final-evaluation-v1",
+    "path": "results/drift_spike/semantic-layer/semantic-benchmark-final-evaluation-v1.json",
+    "artifact_sha256": "6c40506e6ad7532059012a27756373941d2798eb65db467c637b3f6b28ca5d5d"
+  }
+}
