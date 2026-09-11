@@ -17,9 +17,9 @@ set will be created as a new artifact; the two candidate files remain intact.
 
 ## Progress
 
-- Approved: 105/120 judgments
+- Approved: 120/120 judgments — complete
 - Tuning: 60/60 approved — complete
-- Held-out: 45/60 approved
+- Held-out: 60/60 approved — complete
 - Corrections requested: 0
 
 ## Decisions
@@ -94,6 +94,18 @@ set will be created as a new artifact; the two candidate files remain intact.
   threshold, weight, or seed was changed during review.
 - Explicit approval: `Approve held-out parents 11–15`.
 
+### 2026-09-10 — held-out parents 16–20
+
+- Scope: source sample indexes 15–19, inclusive.
+- Fixtures: 15 total; meaning-preserving, style-only, and subtle-regression for
+  each parent.
+- Decision: all 15 proposed labels, expected contract outcomes, failure modes,
+  and rationales approved without correction. This completes the held-out
+  partition and all 120 fixture judgments.
+- Held-out boundary: no benchmark was run and no evaluator, representation,
+  threshold, weight, or seed was changed during review.
+- Explicit approval: `Approve held-out parents 16–20`.
+
 ## Remaining batches
 
-- [ ] Held-out parents 16–20
+- None. All candidate judgments have explicit product-owner approval.
