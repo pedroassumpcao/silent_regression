@@ -373,8 +373,11 @@ defmodule SilentRegression.Spike.CaseSet do
     end
   end
 
-  defp validate_checks(case_definition) do
-    case_definition.checks
+  @doc "Validates a configured deterministic check list for a case ID."
+  @spec validate_checks(String.t(), [map()]) :: :ok | {:error, map()}
+  def validate_checks(case_id, checks)
+      when is_binary(case_id) and case_id != "" and is_list(checks) do
+    checks
     |> Enum.with_index()
     |> Enum.reduce_while(:ok, fn {check, index}, :ok ->
       case validate_check(check) do
@@ -386,12 +389,26 @@ defmodule SilentRegression.Spike.CaseSet do
            {:error,
             %{
               type: :invalid_check_spec,
-              case_id: case_definition.id,
+              case_id: case_id,
               check_index: index,
               reason: reason
             }}}
       end
     end)
+  end
+
+  def validate_checks(case_id, _checks) do
+    {:error,
+     %{
+       type: :invalid_check_spec,
+       case_id: case_id,
+       check_index: nil,
+       reason: :checks_must_be_a_list
+     }}
+  end
+
+  defp validate_checks(case_definition) do
+    validate_checks(case_definition.id, case_definition.checks)
   end
 
   defp validate_check(%{
