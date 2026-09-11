@@ -9,10 +9,17 @@ defmodule SilentRegression.Spike.SemanticLayer.Storage do
 
   alias SilentRegression.Spike.SemanticLayer.BenchmarkResult
   alias SilentRegression.Spike.SemanticLayer.Calibration
+  alias SilentRegression.Spike.SemanticLayer.ContractRescoreResult
   alias SilentRegression.Spike.SemanticLayer.PairedFixtureSet
   alias SilentRegression.Spike.SemanticLayer.RepresentationSpec
 
-  @modules [PairedFixtureSet, RepresentationSpec, Calibration, BenchmarkResult]
+  @modules [
+    PairedFixtureSet,
+    RepresentationSpec,
+    Calibration,
+    BenchmarkResult,
+    ContractRescoreResult
+  ]
   @modules_by_type Map.new(@modules, &{&1.artifact_type(), &1})
 
   @spec write(Path.t(), struct()) :: :ok | {:error, map()}
