@@ -17,8 +17,8 @@ set will be created as a new artifact; the two candidate files remain intact.
 
 ## Progress
 
-- Approved: 30/120 judgments
-- Tuning: 30/60 approved
+- Approved: 45/120 judgments
+- Tuning: 45/60 approved
 - Held-out: 0/60 approved
 - Corrections requested: 0
 
@@ -42,9 +42,17 @@ set will be created as a new artifact; the two candidate files remain intact.
   and rationales approved without correction.
 - Explicit approval: `Approve tuning parents 6–10`.
 
+### 2026-09-10 — tuning parents 11–15
+
+- Scope: source sample indexes 10–14, inclusive.
+- Fixtures: 15 total; meaning-preserving, style-only, and subtle-regression for
+  each parent.
+- Decision: all 15 proposed labels, expected contract outcomes, failure modes,
+  and rationales approved without correction.
+- Explicit approval: `Approve tuning parents 11–15`.
+
 ## Remaining batches
 
-- [ ] Tuning parents 11–15
 - [ ] Tuning parents 16–20
 - [ ] Held-out parents 1–5
 - [ ] Held-out parents 6–10
