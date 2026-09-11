@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "artifact_type": "semantic_benchmark_freeze",
+  "freeze_id": "cheap-semantic-layer-v1",
+  "frozen_at": "2026-09-11T13:50:00Z",
+  "method_git_revision": "e1ba4220c0c08613e420c24d527ce3d33a4ed5b4",
+  "case_id": "rag_open_synthesis",
+  "tuning_result": {
+    "result_id": "semantic-benchmark-method-selection-v2",
+    "path": "results/drift_spike/semantic-layer/semantic-benchmark-method-selection-v2.json",
+    "artifact_sha256": "386bf13a2b03b044d54db7b8e799ce0a5bdc0b3c3585a42797613d2d78088cc7"
+  },
+  "selected_representation": {
+    "representation_id": "semantic-representation-field-aware-v2",
+    "path": "results/drift_spike/semantic-layer/semantic-representation-field-aware-v2.json",
+    "artifact_sha256": "008008ee5063d1fa4013c7ee267ea7bb3eaa2ae65bf9ba58aaaf8cc858179951",
+    "method_name": "field_aware",
+    "method_version": 2,
+    "parameters_sha256": "5b8404f5453d84a6c2db40ee3a5af93c6fb2f4d6a839c6d85b18e85e73bfcb64"
+  },
+  "calibration": {
+    "calibration_id": "semantic-calibration-field-aware-v2",
+    "path": "results/drift_spike/semantic-layer/semantic-calibration-field-aware-v2.json",
+    "artifact_sha256": "5ecb5787e07cb28a59ac3cfc93953dd1f5ccc8dc68de4c7791bb62e3d2f8a794",
+    "threshold": 0.028746273348138673,
+    "seed": 20260907,
+    "iterations": 2000,
+    "quantile": 0.95
+  },
+  "heldout_fixture_set": {
+    "fixture_set_id": "semantic-pairs-heldout-control-20260910T042832Z-1-v1-approved",
+    "path": "test/fixtures/drift_spike/semantic_layer/approved/heldout-pairs.json",
+    "artifact_sha256": "6fdbfef04ee5a23c90223c295406982f39fbb4ccbc4cc912d6d2fc4ce4c7614b"
+  },
+  "settings": {
+    "seeds": [20260907, 20260917, 20260927],
+    "permutations": 999,
+    "adjusted_p_alpha": 0.05,
+    "multiple_comparison_family": "all_representation_batch_comparisons_per_seed",
+    "harmless_review_rate_maximum": 0.1,
+    "subtle_review_rate_minimum": 1.0,
+    "provider_calls": 0
+  },
+  "selection_policy": {
+    "version": 1,
+    "winner_rule": "largest_separation_margin_then_predeclared_order",
+    "selected_on_split": "tuning",
+    "selected_representation_ids": ["semantic-representation-field-aware-v2"],
+    "heldout_labels_used": false
+  }
+}

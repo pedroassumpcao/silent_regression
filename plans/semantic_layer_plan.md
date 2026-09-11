@@ -1,8 +1,8 @@
 # Silent Regression Next-Layer Experiment Plan
 
-> **Status:** Authorized; Follow-up Task A complete and Task B awaiting human review
+> **Status:** Follow-up Tasks A-C complete; Task D method selection frozen and held-out evaluation pending
 >
-> **Last revised:** 2026-09-10
+> **Last revised:** 2026-09-11
 >
 > **Purpose:** Define the separate experiment required before making label-free semantic-drift claims or expanding the provider/model matrix
 
@@ -148,9 +148,19 @@ These counts establish conformance on the reviewed fixture suites, not general s
 
 ### Follow-up Task D — Cheap representation benchmark
 
+**Status:** In progress; field-aware v2 selected on tuning and frozen before held-out evaluation
+
 Implement the approved local representations behind a common behavior. Calibrate each one only from the existing compatible baseline/control pools, freeze new thresholds, and evaluate the diversity-matched held-out batches.
 
 **Gate:** At most 10% of harmless held-out batch comparisons request drift review; at least one subtle open-synthesis batch requests review; and the result is stable across predeclared seeds. If no representation passes, do not combine or retune them on held-out labels.
+
+**Implementation and null calibration:** The three local methods use one behavior and the unchanged energy-distance/permutation engine with method-specific sparse cosine distances. Word unigrams/bigrams retain local order; character 3-5-grams operate inside normalized word boundaries; and field-aware features extract generic JSON paths/values, citations, quantities, normalized polarity, and segment-local citation relationships. Sublinear term frequency and smoothed inverse-document frequency are fitted from 70 unlabeled null observations only: 30 baseline observations plus the 20-sample controls `control-20260908T141227Z-1` and `control-20260909T005844Z-1`. The tuning-parent control and held-out-parent control are explicit excluded fit sources. Calibration uses seed `20260907`, 2,000 resamples, the 0.95 quantile, baseline/control group sizes 30/20, and adjusted-p alpha 0.05. Evaluation uses 999 permutations at predeclared seeds `20260907`, `20260917`, and `20260927`; each seed corrects one family containing every representation/batch comparison.
+
+**Tuning iteration v1:** Immutable result `results/drift_spike/semantic-layer/semantic-benchmark-method-selection-v1.json` has SHA-256 `ace8a0230140658596b9197c4ba9578f457a750624c9ababd24810997772e1bf`. Word n-grams requested review for 6/6 harmless comparisons and 0/3 subtle comparisons; character n-grams did the same. Field-aware v1 requested review for 3/6 harmless and 3/3 subtle comparisons. Inspection showed a generic extractor defect: Markdown ordered-list counters such as `1.` and `2.` were treated as semantic quantities. No held-out fixture was read.
+
+**Tuning iteration v2 and freeze:** Field-aware v2 ignores ordered-list counters while retaining real quantities, with a regression test covering the generic rule. Immutable tuning result `results/drift_spike/semantic-layer/semantic-benchmark-method-selection-v2.json` has SHA-256 `386bf13a2b03b044d54db7b8e799ce0a5bdc0b3c3585a42797613d2d78088cc7`. Field-aware v2 requested 0/6 harmless reviews and 3/3 subtle reviews, with identical decisions across all three seeds and a positive separation margin of `0.22056770806112264`; it was the only passing method. Word and character n-grams remained rejected. The exact selected representation SHA-256 is `008008ee5063d1fa4013c7ee267ea7bb3eaa2ae65bf9ba58aaaf8cc858179951`, its calibration SHA-256 is `5ecb5787e07cb28a59ac3cfc93953dd1f5ccc8dc68de4c7791bb62e3d2f8a794`, and its frozen threshold is `0.028746273348138673`.
+
+The machine-validated pre-held-out manifest at `priv/drift_spike/semantic_layer/cheap-benchmark-freeze-v1.json` pins the selected method, method revision `e1ba4220c0c08613e420c24d527ce3d33a4ed5b4`, parameters, threshold, tuning result, seeds, correction family, and held-out fixture hash. The final task refuses a dirty worktree or any hash/settings mismatch and opens the held-out fixture only after all freeze checks pass. No held-out benchmark result exists at this point, and all Task D work has made zero provider calls.
 
 ### Follow-up Task E — Next decision
 
@@ -175,3 +185,4 @@ The [productization plan](productization_plan.md) remains the broader hosted-pro
 - **2026-09-10:** Follow-up Task A adopted strict internal Elixir contracts rather than a new schema dependency, matching the completed spike's serialization approach. Parent-level partition isolation and baseline/control-only fit sources make leakage violations invalid artifacts rather than reporting conventions. The frozen Task 11 baseline, calibration, fixture comparison, and approved fixture manifest hashes remained unchanged.
 - **2026-09-10:** Follow-up Task B allocated the September 9 control to tuning and the September 10 independent control to held-out evaluation. All derivatives of a parent remain in the same split. Candidate generation is local and call-free, and review is provenance-checked and read-only. The held-out benchmark may run only after evaluator and representation settings are frozen, preventing final-label performance from becoming a tuning input.
 - **2026-09-11:** Follow-up Task C froze generic contract operations and versioned monitor data after authoring/tuning conformance reached 88/88, then evaluated the sealed held-out split without changing the method. The held-out rescore matched all 40 valid and 20 regression paired judgments, while the included Task 10 authoring set retained 28/28 agreement. This supports a contract-first deterministic layer within configured scope; it does not turn explicit forbidden-fact lists or trailing citation rules into general semantic understanding.
+- **2026-09-11:** Follow-up Task D fitted three cheap representations from baseline and two calibration-only controls, excluding both fixture-parent controls. Tuning v1 revealed that ordered-list counters polluted field-aware quantity features; a generic, versioned v2 correction was made using tuning only. Field-aware v2 then passed the predeclared tuning gate and was frozen as the sole held-out candidate. The tracked freeze manifest was committed before any Task D held-out evaluation; neither n-gram method may be combined with it, and no setting may change after viewing held-out outcomes.
