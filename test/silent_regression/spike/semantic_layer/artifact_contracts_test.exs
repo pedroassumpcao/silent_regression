@@ -105,6 +105,11 @@ defmodule SilentRegression.Spike.SemanticLayer.ArtifactContractsTest do
     assert {:error, %{field: :fixtures, reason: :approved_set_requires_approved_fixtures}} =
              PairedFixtureSet.from_map(unapproved)
 
+    partially_approved_candidate = Map.put(fixture_set_map, "status", "candidate")
+
+    assert {:error, %{field: :fixtures, reason: :candidate_set_requires_candidate_fixtures}} =
+             PairedFixtureSet.from_map(partially_approved_candidate)
+
     false_counts =
       put_in(
         fixture_set_map,

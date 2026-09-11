@@ -225,6 +225,10 @@ defmodule SilentRegression.Spike.SemanticLayer.PairedFixtureSet do
         not parents_have_required_labels?(fixtures) ->
           validation_error(:fixtures, :each_parent_must_have_required_labels)
 
+        status == "candidate" and
+            not Enum.all?(fixtures, &(get_in(&1, ["approval", "status"]) == "candidate")) ->
+          validation_error(:fixtures, :candidate_set_requires_candidate_fixtures)
+
         status == "approved" and
             not Enum.all?(fixtures, &(get_in(&1, ["approval", "status"]) == "approved")) ->
           validation_error(:fixtures, :approved_set_requires_approved_fixtures)

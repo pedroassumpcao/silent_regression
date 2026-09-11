@@ -2,7 +2,7 @@
 
 > **Status:** Draft for use only after the feasibility spike decision gate
 >
-> **Last revised:** 2026-09-08
+> **Last revised:** 2026-09-10
 >
 > **Purpose:** Record the gaps, architectural changes, validation work, and product decisions required to turn the spike into a trustworthy hosted product
 
@@ -72,6 +72,13 @@ Alerts should show the concrete failed expectations, representative output diffe
 ### 3.5 Treat user review as governed data
 
 Review decisions must be explicit, attributable, reversible through a new decision, and tied to the exact comparison and contract version. Reviews must not silently modify contracts or thresholds. Any later supervised learning must use a documented train/calibration/held-out split.
+
+The spike can use a committed review log plus exact artifact hashes as promotion
+evidence. The product must replace that convention with structured,
+authorization-checked approval events that record the reviewer identity, role,
+decision, rationale, evidence version, and timestamp. A fixture-suite version
+should become immutable only after the service verifies that every required
+judgment is present and still references the exact candidate bytes reviewed.
 
 ## 4. Generic evaluation contracts
 
@@ -166,6 +173,7 @@ Deleting customer data must follow an explicit retention and deletion policy acr
 | In-memory concurrent work | Durable scheduling, idempotency, retries, cancellation, and recovery | Hosted runs must survive deploys and worker failures without duplicate spend |
 | One lexical statistic | Evidence-backed semantic strategy or a documented limitation | Lexical distance can miss factual substitutions and overreact to paraphrases |
 | Manual artifact inspection | Explainable comparisons, alert lifecycle, and review UI | Human judgment is part of the product contract |
+| Markdown review log and CLI promotion | Structured approval records, role checks, and transactional fixture-suite sealing | Production ground truth must not depend on parsing prose or trusting a local operator |
 | One synthetic workload | Cross-domain, held-out, customer-labeled validation | Controlled RAG evidence cannot support general product claims |
 | Basic call caps | Workspace budgets, quotas, cost estimates, provider rate limits, and billing attribution | Managed replay creates direct and potentially surprising spend |
 | Raw provider bodies retained locally | Data minimization, field allowlists, encryption, retention, and deletion | Provider payloads may include sensitive data and unstable fields |

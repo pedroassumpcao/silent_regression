@@ -65,3 +65,21 @@ sealed. Once sealed, do not change semantic evaluator behavior,
 representations, weights, thresholds, or predeclared seeds in response to its
 benchmark results. If the gate fails, report the failure rather than retuning
 on this partition.
+
+## Promotion workflow
+
+After all 120 judgments are recorded as complete, validate the exact candidate
+hashes and preview the immutable approved copies:
+
+```console
+mix drift_spike.promote_semantic_pairs \
+  --tuning test/fixtures/drift_spike/semantic_layer/candidates/tuning-pairs.json \
+  --heldout test/fixtures/drift_spike/semantic_layer/candidates/heldout-pairs.json \
+  --review-log test/fixtures/drift_spike/semantic_layer/REVIEW_LOG.md \
+  --reviewer product_owner \
+  --output test/fixtures/drift_spike/semantic_layer/approved \
+  --dry-run
+```
+
+Remove `--dry-run` only after checking the preview. Promotion creates new files
+and refuses existing destinations; it never edits the reviewed candidates.
