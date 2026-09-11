@@ -47,6 +47,18 @@ defmodule SilentRegression.Spike.SemanticLayer.RepresentationTest do
     assert permitted["quantity:14"] > 0.0
   end
 
+  test "field-aware features ignore ordered-list presentation counters" do
+    plain = "Speed is 12 knots [rules]. Funding covers 6 ferries [budget]."
+    listed = "**1.** Speed is 12 knots [rules].\n\n**2.** Funding covers 6 ferries [budget]."
+    {:ok, model} = Representation.fit(FieldAware, [plain, listed])
+    {:ok, plain_vector} = Representation.encode(model, plain)
+    {:ok, listed_vector} = Representation.encode(model, listed)
+
+    assert_in_delta Representation.distance(plain_vector, listed_vector), 0.0, 1.0e-12
+    refute Map.has_key?(listed_vector, "quantity:1")
+    refute Map.has_key?(listed_vector, "quantity:2")
+  end
+
   test "field-aware JSON features preserve paths and scalar values" do
     document = ~s({"route":{"minutes":19,"funded":true}})
     {:ok, model} = Representation.fit(FieldAware, [document])

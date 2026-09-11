@@ -18,6 +18,7 @@ defmodule SilentRegression.Spike.SemanticLayer.Representation.FieldAware do
       "citation_quantity",
       "citation_polarity"
     ],
+    "ignored_numeric_contexts" => ["ordered_list_markers"],
     "term_frequency" => "sublinear",
     "inverse_document_frequency" => "smooth",
     "distance" => "cosine"
@@ -30,7 +31,7 @@ defmodule SilentRegression.Spike.SemanticLayer.Representation.FieldAware do
   def method_name, do: "field_aware"
 
   @impl true
-  def method_version, do: 1
+  def method_version, do: 2
 
   @impl true
   def parameters, do: @parameters
@@ -46,9 +47,10 @@ defmodule SilentRegression.Spike.SemanticLayer.Representation.FieldAware do
   def features(_text), do: {:error, %{type: :invalid_text, reason: :must_be_a_string}}
 
   defp prose_features(text) do
-    citations = citations(text)
-    quantities = quantities(text)
-    polarities = polarities(text)
+    semantic_text = remove_ordered_list_markers(text)
+    citations = citations(semantic_text)
+    quantities = quantities(semantic_text)
+    polarities = polarities(semantic_text)
 
     global =
       Enum.map(citations, &"citation:#{&1}") ++
@@ -56,7 +58,7 @@ defmodule SilentRegression.Spike.SemanticLayer.Representation.FieldAware do
         Enum.map(polarities, &"polarity:#{&1}")
 
     attributed =
-      text
+      semantic_text
       |> segments()
       |> Enum.flat_map(fn segment ->
         for citation <- citations(segment), quantity <- quantities(segment) do
@@ -97,6 +99,14 @@ defmodule SilentRegression.Spike.SemanticLayer.Representation.FieldAware do
 
   defp segments(text) do
     Regex.split(~r/(?:[.!?]+\s+)|(?:\n+)/u, text, trim: true)
+  end
+
+  defp remove_ordered_list_markers(text) do
+    Regex.replace(
+      ~r/(^|\n)\s*(?:\*{1,2}|_{1,2})?\d+[.)](?:\*{1,2}|_{1,2})?\s*/mu,
+      text,
+      "\\1"
+    )
   end
 
   defp json_features(text) do

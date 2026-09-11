@@ -9,7 +9,9 @@ defmodule Mix.Tasks.DriftSpike.CalibrateSemanticRepresentations do
       mix drift_spike.calibrate_semantic_representations
 
   This task is local and makes zero provider calls. Use `--dry-run` to validate
-  and hash all six artifacts without writing them.
+  and hash artifacts without writing them. During a tuning iteration,
+  `--method field_aware` calibrates only the newly versioned method while
+  preserving earlier immutable artifacts.
   """
 
   use Mix.Task
@@ -19,7 +21,7 @@ defmodule Mix.Tasks.DriftSpike.CalibrateSemanticRepresentations do
   alias SilentRegression.Spike.SemanticLayer.Storage, as: SemanticStorage
   alias SilentRegression.Spike.Storage
 
-  @switches [dry_run: :boolean, help: :boolean]
+  @switches [method: :string, dry_run: :boolean, help: :boolean]
 
   @impl Mix.Task
   def run(arguments) do
@@ -29,21 +31,27 @@ defmodule Mix.Tasks.DriftSpike.CalibrateSemanticRepresentations do
       {options, [], []} ->
         if Keyword.get(options, :help, false),
           do: Mix.shell().info(@moduledoc),
-          else: calibrate(Keyword.get(options, :dry_run, false))
+          else:
+            calibrate(
+              Keyword.get(options, :dry_run, false),
+              Keyword.get(options, :method)
+            )
 
       {_options, remaining, invalid} ->
         Mix.raise("Invalid semantic calibration arguments: #{inspect(remaining ++ invalid)}")
     end
   end
 
-  defp calibrate(dry_run?) do
+  defp calibrate(dry_run?, method_name) do
     git_revision = git_revision!()
     baseline = read_frozen_source!(CheapBenchmarkConfig.baseline())
     controls = Enum.map(CheapBenchmarkConfig.fit_controls(), &read_frozen_source!/1)
     settings = CheapBenchmarkConfig.settings()
 
+    modules = selected_modules!(method_name)
+
     bundles =
-      Enum.map(CheapBenchmarkConfig.representation_modules(), fn module ->
+      Enum.map(modules, fn module ->
         case RepresentationCalibrator.build(module, baseline, controls,
                case_id: CheapBenchmarkConfig.case_id(),
                excluded_run_ids: CheapBenchmarkConfig.excluded_fit_run_ids(),
@@ -63,7 +71,21 @@ defmodule Mix.Tasks.DriftSpike.CalibrateSemanticRepresentations do
 
     if dry_run?,
       do: Mix.shell().info("No artifacts were written."),
-      else: Mix.shell().info("Six immutable Task D artifacts were written.")
+      else: Mix.shell().info("#{length(bundles) * 2} immutable Task D artifacts were written.")
+  end
+
+  defp selected_modules!(nil), do: CheapBenchmarkConfig.representation_modules()
+
+  defp selected_modules!(method_name) do
+    modules =
+      Enum.filter(
+        CheapBenchmarkConfig.representation_modules(),
+        &(&1.method_name() == method_name)
+      )
+
+    if modules == [],
+      do: Mix.raise("Unknown --method #{inspect(method_name)}"),
+      else: modules
   end
 
   defp read_frozen_source!(config) do

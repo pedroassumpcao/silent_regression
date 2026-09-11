@@ -37,6 +37,7 @@ defmodule SilentRegression.Spike.SemanticLayer.CheapBenchmarkConfigTest do
 
   test "predeclares three distinct evaluation seeds and the complete correction family" do
     settings = CheapBenchmarkConfig.settings()
+    assert settings.tuning_iteration == 2
     assert length(settings.evaluation_seeds) == 3
     assert Enum.uniq(settings.evaluation_seeds) == settings.evaluation_seeds
 

@@ -24,8 +24,6 @@ defmodule Mix.Tasks.DriftSpike.BenchmarkSemanticTuning do
   alias SilentRegression.Spike.Storage
 
   @switches [dry_run: :boolean, help: :boolean]
-  @output_path "results/drift_spike/semantic-layer/semantic-benchmark-method-selection-v1.json"
-
   @impl Mix.Task
   def run(arguments) do
     Mix.Task.run("compile")
@@ -50,6 +48,7 @@ defmodule Mix.Tasks.DriftSpike.BenchmarkSemanticTuning do
     fixtures = read_frozen_fixtures!(fixture_config)
     bundles = load_bundles!(baseline_source, control_sources, git_revision)
     settings = CheapBenchmarkConfig.settings()
+    output_path = output_path(settings.tuning_iteration)
 
     result =
       case RepresentationBenchmark.run(
@@ -64,15 +63,15 @@ defmodule Mix.Tasks.DriftSpike.BenchmarkSemanticTuning do
              harmless_review_rate_maximum: settings.harmless_review_rate_maximum,
              subtle_review_rate_minimum: settings.subtle_review_rate_minimum,
              multiple_comparison_family: settings.multiple_comparison_family,
-             result_id: "semantic-benchmark-method-selection-v1",
+             result_id: "semantic-benchmark-method-selection-v#{settings.tuning_iteration}",
              git_revision: git_revision
            ) do
         {:ok, result} -> result
         {:error, error} -> Mix.raise(format_error(error, "Semantic tuning benchmark failed"))
       end
 
-    unless dry_run?, do: write!(@output_path, result)
-    print_result(result, dry_run?)
+    unless dry_run?, do: write!(output_path, result)
+    print_result(result, output_path, dry_run?)
   end
 
   defp load_bundles!(baseline_source, control_sources, git_revision) do
@@ -159,14 +158,14 @@ defmodule Mix.Tasks.DriftSpike.BenchmarkSemanticTuning do
     end
   end
 
-  defp print_result(result, dry_run?) do
+  defp print_result(result, output_path, dry_run?) do
     heading =
       if dry_run?,
         do: "Semantic tuning benchmark (dry run)",
         else: "Semantic tuning benchmark captured"
 
     Mix.shell().info(heading)
-    Mix.shell().info("Artifact: #{@output_path}")
+    Mix.shell().info("Artifact: #{output_path}")
     Mix.shell().info("Evaluation: #{result.result_id}")
     Mix.shell().info("Seeds: #{Enum.join(result.settings["seeds"], ", ")}")
 
@@ -215,6 +214,13 @@ defmodule Mix.Tasks.DriftSpike.BenchmarkSemanticTuning do
       {output, 0} -> Mix.raise("Commit Task D code before benchmarking:\n#{output}")
       {output, status} -> Mix.raise("Could not inspect git status (#{status}): #{output}")
     end
+  end
+
+  defp output_path(iteration) do
+    Path.join(
+      CheapBenchmarkConfig.output_directory(),
+      "semantic-benchmark-method-selection-v#{iteration}.json"
+    )
   end
 
   defp git_revision! do

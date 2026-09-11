@@ -43,6 +43,7 @@ defmodule SilentRegression.Spike.SemanticLayer.CheapBenchmarkConfig do
     artifact_sha256: "6fdbfef04ee5a23c90223c295406982f39fbb4ccbc4cc912d6d2fc4ce4c7614b"
   }
   @settings %{
+    tuning_iteration: 2,
     calibration_seed: 20_260_907,
     calibration_iterations: 2_000,
     quantile: 0.95,
