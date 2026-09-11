@@ -97,3 +97,23 @@ The completed promotion used implementation revision
 
 Promotion made zero provider calls. A repository test verifies both hashes and
 proves that every judgment field still matches its reviewed candidate.
+
+## Contract rescore
+
+Task C evaluates the approved Task 10 authoring suite together with exactly one
+approved paired split:
+
+```console
+mix drift_spike.rescore_semantic_contracts \
+  --paired test/fixtures/drift_spike/semantic_layer/approved/heldout-pairs.json \
+  --output results/drift_spike/semantic-contract-rescore-heldout.json \
+  --dry-run
+```
+
+The contract must be frozen before replacing tuning with held-out in this
+command. Remove `--dry-run` to create a new immutable result; existing results
+are never overwritten. The captured Task C held-out result is
+`results/drift_spike/semantic-contract-rescore-heldout-20260911T125631Z-1.json`
+with SHA-256
+`f66853f5c3aa54503e959a96799008e7bdec8326dfc4f93280ea10ca525605da`.
+It made zero provider calls and did not modify either fixture split.

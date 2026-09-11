@@ -107,6 +107,16 @@ Every primitive needs:
 
 Drafted contracts are proposals, not truth. Before activation, the customer should review the expectations and approve a small fixture set containing both valid paraphrases and invalid counterexamples. A change to behavior-affecting contract data or evaluator semantics must produce a new version and fingerprint.
 
+The spike's first generic primitives remain intentionally bounded. JSON-field
+checks compare configured paths and values; fact checks recognize declared
+alternatives and relationships; forbidden-fact checks detect only configured
+claims; and source attribution assumes exact bracketed IDs trailing the claim
+they support. Product work must decide whether each monitor can require a
+structured citation format or instead needs a richer claim/attribution parser.
+It must also add unit-aware numeric relationships and contradiction detection
+before presenting these primitives as coverage for arbitrary quantities or
+unsupported statements.
+
 ## 5. Evaluation layers and alert semantics
 
 ### 5.1 Deterministic contract evaluation

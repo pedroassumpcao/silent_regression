@@ -132,9 +132,19 @@ Review uses `mix drift_spike.review_semantic_pairs` in five-parent pages. The ta
 
 ### Follow-up Task C — Generic contract primitives
 
+**Status:** Complete
+
 Implement and test field/fact/source-attribution relationships as reusable configured evaluators. Rescore all approved examples without changing the stored observations.
 
 **Gate:** Held-out valid paraphrases do not fail, and approved attribution, unsupported-claim, omission, and abstention regressions produce explainable failures where the contract provides enough information.
+
+**Result:** Added reusable JSON-field equality, normalized required/forbidden fact, fact-to-source attribution, allowed-source, grouped-fact, and abstention operations. Monitor-specific values live in versioned contract data tied to the frozen source-case fingerprints; the original cases and observations were not edited. Contract set `rag-semantic-contracts-v1` has fingerprint `ed622e2939fff8a3d8090f741242cc44fba8caab793833d56c26b4416b69b2cd`. The source citation primitive treats an exact bracketed source ID as trailing support for the immediately preceding citation segment and returns the matched fact, observed source IDs, and reason for every failure.
+
+The evaluator was tuned only against the 28 Task 10 authoring fixtures and 60 approved tuning fixtures. That pre-held-out pass matched 88/88 judgments: 52/52 expected-valid outputs passed and 36/36 expected regressions failed. The method was then frozen in revisions `2579285`, `12047d9`, and `d455be7` before opening the held-out artifact.
+
+The immutable held-out rescore `semantic-contract-rescore-heldout-20260911T125722Z-1` at `results/drift_spike/semantic-contract-rescore-heldout-20260911T125631Z-1.json` has SHA-256 `f66853f5c3aa54503e959a96799008e7bdec8326dfc4f93280ea10ca525605da`. It again matched 88/88 combined authoring and held-out judgments: all 52 expected-valid outputs passed, including 40/40 held-out paraphrase/style fixtures, and all 36 expected regressions failed, including 20/20 held-out regressions. Across the non-mutually-exclusive failure-mode labels, it detected constraint reversal 3/3, failed abstention 3/3, omission 2/2, unsupported claim 5/5, wrong attribution 9/9, and wrong fact 19/19. Every fixture result retains its contract fingerprint and explainable per-check evidence. The task made zero provider calls, and all previously frozen artifact hashes remained unchanged. Task C's gate is satisfied.
+
+These counts establish conformance on the reviewed fixture suites, not general semantic recall. In particular, unsupported-claim detection remains limited to configured forbidden facts, and citation attribution remains limited to the declared trailing-bracket convention. Unconfigured meanings still require review or a separately approved semantic layer.
 
 ### Follow-up Task D — Cheap representation benchmark
 
@@ -164,3 +174,4 @@ The [productization plan](productization_plan.md) remains the broader hosted-pro
 - **2026-09-10:** The user selected the semantic-layer experiment before the optional ReqLLM evaluation. The experiment will retain the working Req transports so representation quality remains the isolated variable.
 - **2026-09-10:** Follow-up Task A adopted strict internal Elixir contracts rather than a new schema dependency, matching the completed spike's serialization approach. Parent-level partition isolation and baseline/control-only fit sources make leakage violations invalid artifacts rather than reporting conventions. The frozen Task 11 baseline, calibration, fixture comparison, and approved fixture manifest hashes remained unchanged.
 - **2026-09-10:** Follow-up Task B allocated the September 9 control to tuning and the September 10 independent control to held-out evaluation. All derivatives of a parent remain in the same split. Candidate generation is local and call-free, and review is provenance-checked and read-only. The held-out benchmark may run only after evaluator and representation settings are frozen, preventing final-label performance from becoming a tuning input.
+- **2026-09-11:** Follow-up Task C froze generic contract operations and versioned monitor data after authoring/tuning conformance reached 88/88, then evaluated the sealed held-out split without changing the method. The held-out rescore matched all 40 valid and 20 regression paired judgments, while the included Task 10 authoring set retained 28/28 agreement. This supports a contract-first deterministic layer within configured scope; it does not turn explicit forbidden-fact lists or trailing citation rules into general semantic understanding.
