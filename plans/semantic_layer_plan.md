@@ -1,6 +1,6 @@
 # Silent Regression Next-Layer Experiment Plan
 
-> **Status:** Follow-up Tasks A-D complete; Task D gate failed and Task E is next
+> **Status:** Follow-up Tasks A-D complete; Task E report generated and human decision pending
 >
 > **Last revised:** 2026-09-11
 >
@@ -168,6 +168,8 @@ The held-out failure exposes a general compositional limitation rather than a ca
 
 ### Follow-up Task E — Next decision
 
+**Status:** Evidence report complete; explicit human decision pending
+
 Produce a comparison report with per-case denominators, false reviews, sensitivity by seeded failure rate, latency, and operational cost.
 
 Choose one:
@@ -176,6 +178,14 @@ Choose one:
 - `DETERMINISTIC_ONLY_WEDGE` — stop label-free drift work and validate a contract-first product with design partners;
 - `EVALUATE_MODEL_BASED_SEMANTICS` — approve a new research/implementation plan for embeddings, entailment, or an LLM judge; or
 - `STOP_TECHNICAL_VALIDATION` — the expected value does not justify another layer.
+
+**Draft result:** Commit `cb53f08` adds a zero-provider-call reporter plus a tracked manifest that pins the five live runs, Task 11 lexical comparison, Task C contract rescore, Task D tuning result, and Task D held-out result by ID, path, and SHA-256. The immutable local draft is `results/drift_spike/semantic-layer/semantic-layer-decision-report-draft-v1.md`, SHA-256 `54dcd849b3437da0008102c57236a64b9cb5fd1655b61bea0a7870a72aab9dac`.
+
+The report keeps incompatible units separate instead of producing a misleading aggregate score. Deterministic contracts matched 88/88 approved expectations, with 52/52 valid fixtures accepted and 36/36 configured regressions detected. The original lexical layer falsely reviewed 7/8 harmless case comparisons; at seeded failure rates of 10%, 25%, and 50%, it requested drift review for 0/4, 2/4, and 4/4 case comparisons respectively. Field-aware v2 falsely reviewed 3/6 harmless held-out seed comparisons and reviewed 3/3 subtle comparisons at the only tested semantic-layer failure rate of 100%; those seeds repeat the same 20 parents and establish decision stability rather than independent content generalization.
+
+The five live runs used 445 provider requests, 70,070 input tokens, 45,762 output tokens, and 918,898 ms of cumulative successful-sample provider latency. Every local fixture/evaluation step, including the Task E report, made zero provider calls. Historical monetary cost is not reconstructed because the run artifacts did not freeze price snapshots or billable-token categories, and local evaluation wall-clock time was not instrumented.
+
+The evidence-based recommendation is `DETERMINISTIC_ONLY_WEDGE`: the deterministic layer earned a narrowly scoped product-validation step, while both label-free representations failed their false-review gates. `CHEAP_LAYER_PROMISING` is rejected by the frozen held-out result. `EVALUATE_MODEL_BASED_SEMANTICS` remains a valid strategic choice only through a separately approved plan with new untouched domains and explicit accuracy, latency, cost, privacy, and reproducibility gates. The report intentionally records `PENDING_HUMAN_DECISION` until the user selects one of the four outcomes.
 
 ## 6. Product interpretation
 
@@ -191,3 +201,4 @@ The [productization plan](productization_plan.md) remains the broader hosted-pro
 - **2026-09-11:** Follow-up Task C froze generic contract operations and versioned monitor data after authoring/tuning conformance reached 88/88, then evaluated the sealed held-out split without changing the method. The held-out rescore matched all 40 valid and 20 regression paired judgments, while the included Task 10 authoring set retained 28/28 agreement. This supports a contract-first deterministic layer within configured scope; it does not turn explicit forbidden-fact lists or trailing citation rules into general semantic understanding.
 - **2026-09-11:** Follow-up Task D fitted three cheap representations from baseline and two calibration-only controls, excluding both fixture-parent controls. Tuning v1 revealed that ordered-list counters polluted field-aware quantity features; a generic, versioned v2 correction was made using tuning only. Field-aware v2 then passed the predeclared tuning gate and was frozen as the sole held-out candidate. The tracked freeze manifest was committed before any Task D held-out evaluation; neither n-gram method may be combined with it, and no setting may change after viewing held-out outcomes.
 - **2026-09-11:** The single frozen Task D held-out evaluation detected the subtle batch consistently but falsely reviewed the meaning-preserving batch consistently, yielding a 50% harmless-review rate against the 10% gate. The post-result audit traced this to missing compositional negation handling for valid phrases such as “not permitted.” No post-held-out fix, combination, or rerun was performed. Task E must choose between the already-supported deterministic-only wedge, a separately approved model-based semantic evaluation, or stopping technical validation.
+- **2026-09-11:** Task E generated a source-pinned, zero-call comparison report with explicit per-case and per-method denominators, seeded-rate sensitivity, live latency/tokens/calls, and visible cost-instrumentation gaps. It recommends `DETERMINISTIC_ONLY_WEDGE`, rejects `CHEAP_LAYER_PROMISING` on the frozen held-out gate, and leaves the final decision pending explicit user approval rather than converting the recommendation into authorization.
