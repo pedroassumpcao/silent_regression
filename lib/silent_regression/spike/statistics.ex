@@ -90,14 +90,16 @@ defmodule SilentRegression.Spike.Statistics do
       observed_energy = observed["energy_distance"]
       reference_size = length(reference_sets)
       combined = reference_sets ++ candidate_sets
+      distance_matrix = distance_matrix(combined, distance)
       random_state = random_state(seed)
 
       {permuted_energies, _random_state} =
         Enum.map_reduce(1..permutations, random_state, fn _iteration, state ->
-          {shuffled, state} = shuffle(combined, state)
+          {shuffled, state} = shuffle(Enum.to_list(0..(length(combined) - 1)), state)
           {permuted_reference, permuted_candidate} = Enum.split(shuffled, reference_size)
 
-          {energy_value(permuted_reference, permuted_candidate, distance), state}
+          {energy_value_from_matrix(permuted_reference, permuted_candidate, distance_matrix),
+           state}
         end)
 
       extreme_count = Enum.count(permuted_energies, &(&1 >= observed_energy))
@@ -138,14 +140,16 @@ defmodule SilentRegression.Spike.Statistics do
          {:ok, reference_size, candidate_size} <-
            resample_sizes(options, length(null_data.pool)) do
       random_state = random_state(seed)
+      indexes = Enum.to_list(0..(length(null_data.pool) - 1))
+      distance_matrix = distance_matrix(null_data.pool, distance)
 
       {energies, _random_state} =
         Enum.map_reduce(1..iterations, random_state, fn _iteration, state ->
-          {shuffled, state} = shuffle(null_data.pool, state)
+          {shuffled, state} = shuffle(indexes, state)
           {reference, remaining} = Enum.split(shuffled, reference_size)
           {candidate, _unused} = Enum.split(remaining, candidate_size)
 
-          {energy_value(reference, candidate, distance), state}
+          {energy_value_from_matrix(reference, candidate, distance_matrix), state}
         end)
 
       {:ok,
@@ -404,9 +408,55 @@ defmodule SilentRegression.Spike.Statistics do
     }
   end
 
-  defp energy_value(reference_sets, candidate_sets, distance) do
-    energy_components(reference_sets, candidate_sets, distance)["energy_distance"]
+  defp energy_value_from_matrix(reference_indexes, candidate_indexes, distance_matrix) do
+    within_reference_mean =
+      reference_indexes
+      |> within_index_distances(distance_matrix)
+      |> mean_value()
+
+    within_candidate_mean =
+      candidate_indexes
+      |> within_index_distances(distance_matrix)
+      |> mean_value()
+
+    cross_mean =
+      reference_indexes
+      |> cross_index_distances(candidate_indexes, distance_matrix)
+      |> mean_value()
+
+    2.0 * cross_mean - within_reference_mean - within_candidate_mean
   end
+
+  defp distance_matrix(samples, distance) do
+    samples
+    |> Enum.with_index()
+    |> Enum.map(fn {left, left_index} ->
+      samples
+      |> Enum.with_index()
+      |> Enum.map(fn
+        {_right, right_index} when left_index == right_index -> 0.0
+        {right, _right_index} -> distance.(left, right)
+      end)
+      |> List.to_tuple()
+    end)
+    |> List.to_tuple()
+  end
+
+  defp within_index_distances([], _distance_matrix), do: []
+
+  defp within_index_distances([head | tail], distance_matrix) do
+    Enum.map(tail, &matrix_distance(distance_matrix, head, &1)) ++
+      within_index_distances(tail, distance_matrix)
+  end
+
+  defp cross_index_distances(reference_indexes, candidate_indexes, distance_matrix) do
+    for reference <- reference_indexes,
+        candidate <- candidate_indexes,
+        do: matrix_distance(distance_matrix, reference, candidate)
+  end
+
+  defp matrix_distance(distance_matrix, left, right),
+    do: distance_matrix |> elem(left) |> elem(right)
 
   defp within_set_distances([], _distance), do: []
 

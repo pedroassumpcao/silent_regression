@@ -38,6 +38,27 @@ defmodule SilentRegression.Spike.SemanticLayer.Storage do
     {:error, %{type: :invalid_write, path: path, reason: :expected_semantic_layer_artifact}}
   end
 
+  @doc "Encodes a validated semantic artifact exactly as it would be persisted."
+  @spec encode(struct()) :: {:ok, binary()} | {:error, map()}
+  def encode(artifact) when is_struct(artifact) do
+    with {:ok, module} <- module_for_struct(artifact),
+         :ok <- validate(module, artifact, nil),
+         {:ok, encoded} <- encode(module, artifact, nil) do
+      {:ok, encoded <> "\n"}
+    end
+  end
+
+  def encode(_artifact),
+    do: {:error, %{type: :invalid_write, reason: :expected_semantic_layer_artifact}}
+
+  @doc "Returns the SHA-256 of the exact bytes produced by `encode/1`."
+  @spec sha256(struct()) :: {:ok, String.t()} | {:error, map()}
+  def sha256(artifact) do
+    with {:ok, encoded} <- encode(artifact) do
+      {:ok, :crypto.hash(:sha256, encoded) |> Base.encode16(case: :lower)}
+    end
+  end
+
   @spec read(Path.t()) :: {:ok, struct()} | {:error, map()}
   def read(path) when is_binary(path) and path != "" do
     with {:ok, contents} <- read_file(path),
