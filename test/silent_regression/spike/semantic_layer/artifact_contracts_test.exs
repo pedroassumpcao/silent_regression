@@ -358,7 +358,13 @@ defmodule SilentRegression.Spike.SemanticLayer.ArtifactContractsTest do
             "representation_id" => "word-bigram-v1"
           }
         ],
-        settings: %{"seeds" => [20_260_910, 20_260_911], "provider_calls" => 0},
+        settings: %{
+          "seeds" => [20_260_910, 20_260_911],
+          "permutations" => 999,
+          "adjusted_p_alpha" => 0.05,
+          "multiple_comparison_family" => "all_representation_batch_comparisons_per_seed",
+          "provider_calls" => 0
+        },
         batches: [
           %{
             "batch_id" => "heldout-subtle",

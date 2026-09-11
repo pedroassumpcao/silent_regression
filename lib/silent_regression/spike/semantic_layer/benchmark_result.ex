@@ -232,7 +232,8 @@ defmodule SilentRegression.Spike.SemanticLayer.BenchmarkResult do
   end
 
   defp validate_settings(settings) do
-    keys = ~w(seeds provider_calls)
+    keys =
+      ~w(seeds permutations adjusted_p_alpha multiple_comparison_family provider_calls)
 
     with :ok <- ArtifactValidation.exact_json_keys(settings, keys, :settings, __MODULE__) do
       seeds = settings["seeds"]
@@ -244,6 +245,16 @@ defmodule SilentRegression.Spike.SemanticLayer.BenchmarkResult do
 
         Enum.uniq(seeds) != seeds ->
           validation_error(:settings, :seeds_must_be_unique)
+
+        not (is_integer(settings["permutations"]) and settings["permutations"] > 0) ->
+          validation_error(:settings, :permutations_must_be_positive)
+
+        not valid_probability?(settings["adjusted_p_alpha"]) ->
+          validation_error(:settings, :adjusted_p_alpha_must_be_a_probability)
+
+        settings["multiple_comparison_family"] !=
+            "all_representation_batch_comparisons_per_seed" ->
+          validation_error(:settings, :multiple_comparison_family_is_unsupported)
 
         settings["provider_calls"] != 0 ->
           validation_error(:settings, :provider_calls_must_be_zero)
