@@ -24,10 +24,11 @@ defmodule SilentRegression.Spike.Statistics do
   Returns all distinct unordered within-sample Jaccard distances.
   """
   @spec within_distances(term()) :: {:ok, [float()]} | {:error, error()}
-  def within_distances(samples) do
+  def within_distances(samples, options \\ []) do
     with :ok <- require_sample_count(samples, 2, :within_distances),
-         {:ok, sets} <- normalize_samples(samples, :within_distances) do
-      {:ok, within_set_distances(sets)}
+         {:ok, normalizer, distance} <- metric(options, :within_distances),
+         {:ok, sets} <- normalize_samples(samples, :within_distances, normalizer) do
+      {:ok, within_set_distances(sets, distance)}
     end
   end
 
@@ -35,12 +36,15 @@ defmodule SilentRegression.Spike.Statistics do
   Returns every reference-to-candidate Jaccard distance in stable order.
   """
   @spec cross_distances(term(), term()) :: {:ok, [float()]} | {:error, error()}
-  def cross_distances(reference_samples, candidate_samples) do
+  def cross_distances(reference_samples, candidate_samples, options \\ []) do
     with :ok <- require_sample_count(reference_samples, 1, :cross_distances, :reference),
          :ok <- require_sample_count(candidate_samples, 1, :cross_distances, :candidate),
-         {:ok, reference_sets} <- normalize_samples(reference_samples, :cross_distances),
-         {:ok, candidate_sets} <- normalize_samples(candidate_samples, :cross_distances) do
-      {:ok, cross_set_distances(reference_sets, candidate_sets)}
+         {:ok, normalizer, distance} <- metric(options, :cross_distances),
+         {:ok, reference_sets} <-
+           normalize_samples(reference_samples, :cross_distances, normalizer),
+         {:ok, candidate_sets} <-
+           normalize_samples(candidate_samples, :cross_distances, normalizer) do
+      {:ok, cross_set_distances(reference_sets, candidate_sets, distance)}
     end
   end
 
@@ -51,11 +55,14 @@ defmodule SilentRegression.Spike.Statistics do
   distinct pairs.
   """
   @spec energy_distance(term(), term()) :: {:ok, result()} | {:error, error()}
-  def energy_distance(reference_samples, candidate_samples) do
+  def energy_distance(reference_samples, candidate_samples, options \\ []) do
     with :ok <- require_energy_samples(reference_samples, candidate_samples, :energy_distance),
-         {:ok, reference_sets} <- normalize_samples(reference_samples, :energy_distance),
-         {:ok, candidate_sets} <- normalize_samples(candidate_samples, :energy_distance) do
-      {:ok, energy_components(reference_sets, candidate_sets)}
+         {:ok, normalizer, distance} <- metric(options, :energy_distance),
+         {:ok, reference_sets} <-
+           normalize_samples(reference_samples, :energy_distance, normalizer),
+         {:ok, candidate_sets} <-
+           normalize_samples(candidate_samples, :energy_distance, normalizer) do
+      {:ok, energy_components(reference_sets, candidate_sets, distance)}
     end
   end
 
@@ -74,9 +81,12 @@ defmodule SilentRegression.Spike.Statistics do
          {:ok, permutations} <- positive_option(options, :permutations, 999, :permutation_test),
          :ok <-
            require_energy_samples(reference_samples, candidate_samples, :permutation_test),
-         {:ok, reference_sets} <- normalize_samples(reference_samples, :permutation_test),
-         {:ok, candidate_sets} <- normalize_samples(candidate_samples, :permutation_test) do
-      observed = energy_components(reference_sets, candidate_sets)
+         {:ok, normalizer, distance} <- metric(options, :permutation_test),
+         {:ok, reference_sets} <-
+           normalize_samples(reference_samples, :permutation_test, normalizer),
+         {:ok, candidate_sets} <-
+           normalize_samples(candidate_samples, :permutation_test, normalizer) do
+      observed = energy_components(reference_sets, candidate_sets, distance)
       observed_energy = observed["energy_distance"]
       reference_size = length(reference_sets)
       combined = reference_sets ++ candidate_sets
@@ -87,7 +97,7 @@ defmodule SilentRegression.Spike.Statistics do
           {shuffled, state} = shuffle(combined, state)
           {permuted_reference, permuted_candidate} = Enum.split(shuffled, reference_size)
 
-          {energy_value(permuted_reference, permuted_candidate), state}
+          {energy_value(permuted_reference, permuted_candidate, distance), state}
         end)
 
       extreme_count = Enum.count(permuted_energies, &(&1 >= observed_energy))
@@ -123,7 +133,8 @@ defmodule SilentRegression.Spike.Statistics do
     with :ok <- validate_keyword_options(options, :null_distribution),
          {:ok, seed} <- required_seed(options, :null_distribution),
          {:ok, iterations} <- positive_option(options, :iterations, 200, :null_distribution),
-         {:ok, null_data} <- normalize_null_batches(null_batches),
+         {:ok, normalizer, distance} <- metric(options, :null_distribution),
+         {:ok, null_data} <- normalize_null_batches(null_batches, normalizer),
          {:ok, reference_size, candidate_size} <-
            resample_sizes(options, length(null_data.pool)) do
       random_state = random_state(seed)
@@ -134,7 +145,7 @@ defmodule SilentRegression.Spike.Statistics do
           {reference, remaining} = Enum.split(shuffled, reference_size)
           {candidate, _unused} = Enum.split(remaining, candidate_size)
 
-          {energy_value(reference, candidate), state}
+          {energy_value(reference, candidate, distance), state}
         end)
 
       {:ok,
@@ -350,11 +361,11 @@ defmodule SilentRegression.Spike.Statistics do
     end
   end
 
-  defp normalize_samples(samples, operation) do
+  defp normalize_samples(samples, operation, normalizer) do
     samples
     |> Enum.with_index()
     |> Enum.reduce_while({:ok, []}, fn {sample, index}, {:ok, normalized} ->
-      case Lexical.normalize(sample) do
+      case normalizer.(sample) do
         {:ok, word_set} ->
           {:cont, {:ok, [word_set | normalized]}}
 
@@ -375,10 +386,10 @@ defmodule SilentRegression.Spike.Statistics do
     end)
   end
 
-  defp energy_components(reference_sets, candidate_sets) do
-    within_reference_mean = reference_sets |> within_set_distances() |> mean_value()
-    within_candidate_mean = candidate_sets |> within_set_distances() |> mean_value()
-    cross_mean = reference_sets |> cross_set_distances(candidate_sets) |> mean_value()
+  defp energy_components(reference_sets, candidate_sets, distance) do
+    within_reference_mean = reference_sets |> within_set_distances(distance) |> mean_value()
+    within_candidate_mean = candidate_sets |> within_set_distances(distance) |> mean_value()
+    cross_mean = reference_sets |> cross_set_distances(candidate_sets, distance) |> mean_value()
 
     %{
       "within_reference_mean" => within_reference_mean,
@@ -393,30 +404,31 @@ defmodule SilentRegression.Spike.Statistics do
     }
   end
 
-  defp energy_value(reference_sets, candidate_sets) do
-    energy_components(reference_sets, candidate_sets)["energy_distance"]
+  defp energy_value(reference_sets, candidate_sets, distance) do
+    energy_components(reference_sets, candidate_sets, distance)["energy_distance"]
   end
 
-  defp within_set_distances([]), do: []
+  defp within_set_distances([], _distance), do: []
 
-  defp within_set_distances([head | tail]) do
-    Enum.map(tail, &Lexical.set_distance(head, &1)) ++ within_set_distances(tail)
+  defp within_set_distances([head | tail], distance) do
+    Enum.map(tail, &distance.(head, &1)) ++ within_set_distances(tail, distance)
   end
 
-  defp cross_set_distances(reference_sets, candidate_sets) do
+  defp cross_set_distances(reference_sets, candidate_sets, distance) do
     for reference <- reference_sets,
         candidate <- candidate_sets,
-        do: Lexical.set_distance(reference, candidate)
+        do: distance.(reference, candidate)
   end
 
   defp pair_count(sample_count), do: div(sample_count * (sample_count - 1), 2)
 
-  defp normalize_null_batches(null_batches) when is_list(null_batches) and null_batches != [] do
+  defp normalize_null_batches(null_batches, normalizer)
+       when is_list(null_batches) and null_batches != [] do
     null_batches
     |> Enum.with_index()
     |> Enum.reduce_while(
       {:ok, %{pool: [], conditions: MapSet.new(), counts: %{}}},
-      &normalize_null_batch/2
+      &normalize_null_batch(&1, &2, normalizer)
     )
     |> then(fn
       {:ok, data} ->
@@ -432,7 +444,7 @@ defmodule SilentRegression.Spike.Statistics do
     end)
   end
 
-  defp normalize_null_batches([]) do
+  defp normalize_null_batches([], _normalizer) do
     {:error,
      %{
        type: :insufficient_data,
@@ -442,7 +454,7 @@ defmodule SilentRegression.Spike.Statistics do
      }}
   end
 
-  defp normalize_null_batches(_null_batches) do
+  defp normalize_null_batches(_null_batches, _normalizer) do
     {:error,
      %{
        type: :invalid_calibration_input,
@@ -451,7 +463,7 @@ defmodule SilentRegression.Spike.Statistics do
      }}
   end
 
-  defp normalize_null_batch({batch, batch_index}, {:ok, data}) when is_map(batch) do
+  defp normalize_null_batch({batch, batch_index}, {:ok, data}, normalizer) when is_map(batch) do
     condition = Map.get(batch, "condition", Map.get(batch, :condition))
     samples = Map.get(batch, "samples", Map.get(batch, :samples))
 
@@ -478,7 +490,7 @@ defmodule SilentRegression.Spike.Statistics do
           }}}
 
       true ->
-        case normalize_samples(samples, :null_distribution) do
+        case normalize_samples(samples, :null_distribution, normalizer) do
           {:ok, normalized_samples} ->
             updated = %{
               pool: Enum.reverse(normalized_samples, data.pool),
@@ -494,7 +506,7 @@ defmodule SilentRegression.Spike.Statistics do
     end
   end
 
-  defp normalize_null_batch({_batch, batch_index}, {:ok, _data}) do
+  defp normalize_null_batch({_batch, batch_index}, {:ok, _data}, _normalizer) do
     {:halt,
      {:error,
       %{
@@ -550,6 +562,22 @@ defmodule SilentRegression.Spike.Statistics do
       :ok
     else
       {:error, %{type: :invalid_options, operation: operation, reason: :must_be_a_keyword_list}}
+    end
+  end
+
+  defp metric(options, operation) do
+    normalizer = Keyword.get(options, :normalizer, &Lexical.normalize/1)
+    distance = Keyword.get(options, :distance, &Lexical.set_distance/2)
+
+    if is_function(normalizer, 1) and is_function(distance, 2) do
+      {:ok, normalizer, distance}
+    else
+      {:error,
+       %{
+         type: :invalid_options,
+         operation: operation,
+         reason: :metric_functions_have_invalid_arity
+       }}
     end
   end
 
