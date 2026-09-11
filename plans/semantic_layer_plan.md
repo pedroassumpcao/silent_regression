@@ -1,6 +1,6 @@
 # Silent Regression Next-Layer Experiment Plan
 
-> **Status:** Follow-up Tasks A-C complete; Task D method selection frozen and held-out evaluation pending
+> **Status:** Follow-up Tasks A-D complete; Task D gate failed and Task E is next
 >
 > **Last revised:** 2026-09-11
 >
@@ -148,7 +148,7 @@ These counts establish conformance on the reviewed fixture suites, not general s
 
 ### Follow-up Task D — Cheap representation benchmark
 
-**Status:** In progress; field-aware v2 selected on tuning and frozen before held-out evaluation
+**Status:** Complete; held-out gate failed
 
 Implement the approved local representations behind a common behavior. Calibrate each one only from the existing compatible baseline/control pools, freeze new thresholds, and evaluate the diversity-matched held-out batches.
 
@@ -161,6 +161,10 @@ Implement the approved local representations behind a common behavior. Calibrate
 **Tuning iteration v2 and freeze:** Field-aware v2 ignores ordered-list counters while retaining real quantities, with a regression test covering the generic rule. Immutable tuning result `results/drift_spike/semantic-layer/semantic-benchmark-method-selection-v2.json` has SHA-256 `386bf13a2b03b044d54db7b8e799ce0a5bdc0b3c3585a42797613d2d78088cc7`. Field-aware v2 requested 0/6 harmless reviews and 3/3 subtle reviews, with identical decisions across all three seeds and a positive separation margin of `0.22056770806112264`; it was the only passing method. Word and character n-grams remained rejected. The exact selected representation SHA-256 is `008008ee5063d1fa4013c7ee267ea7bb3eaa2ae65bf9ba58aaaf8cc858179951`, its calibration SHA-256 is `5ecb5787e07cb28a59ac3cfc93953dd1f5ccc8dc68de4c7791bb62e3d2f8a794`, and its frozen threshold is `0.028746273348138673`.
 
 The machine-validated pre-held-out manifest at `priv/drift_spike/semantic_layer/cheap-benchmark-freeze-v1.json` pins the selected method, method revision `e1ba4220c0c08613e420c24d527ce3d33a4ed5b4`, parameters, threshold, tuning result, seeds, correction family, and held-out fixture hash. The final task refuses a dirty worktree or any hash/settings mismatch and opens the held-out fixture only after all freeze checks pass. No held-out benchmark result exists at this point, and all Task D work has made zero provider calls.
+
+**Held-out result:** After commit `386a0b4` froze every decision above, the final task evaluated field-aware v2 once against the approved held-out fixture set. Immutable result `results/drift_spike/semantic-layer/semantic-benchmark-final-evaluation-v1.json` has SHA-256 `6c40506e6ad7532059012a27756373941d2798eb65db467c637b3f6b28ca5d5d`. The method requested review for 3/6 harmless comparisons (50%), comprising the meaning-preserving batch on all three seeds; it did not request review for the style-only batch. It requested review for the subtle-regression batch on all three seeds. All three batch decisions were stable across seeds, but the harmless rate exceeded the 10% maximum, so Task D's gate failed.
+
+The held-out failure exposes a general compositional limitation rather than a case-specific phrase mismatch. The valid held-out rewrites use constructions such as “not permitted.” Field-aware v2 emits a normalized negative feature for “not” and, independently, a positive feature for “permitted”; it cannot represent that the negation scopes over the permission. The unseen valid construction therefore looks like a distributional semantic change. Fixing negation scope after viewing this result would be held-out tuning, so the method, threshold, and result remain unchanged and no second held-out run is allowed. Cheap handcrafted features have not earned a user-facing label-free drift claim.
 
 ### Follow-up Task E — Next decision
 
@@ -186,3 +190,4 @@ The [productization plan](productization_plan.md) remains the broader hosted-pro
 - **2026-09-10:** Follow-up Task B allocated the September 9 control to tuning and the September 10 independent control to held-out evaluation. All derivatives of a parent remain in the same split. Candidate generation is local and call-free, and review is provenance-checked and read-only. The held-out benchmark may run only after evaluator and representation settings are frozen, preventing final-label performance from becoming a tuning input.
 - **2026-09-11:** Follow-up Task C froze generic contract operations and versioned monitor data after authoring/tuning conformance reached 88/88, then evaluated the sealed held-out split without changing the method. The held-out rescore matched all 40 valid and 20 regression paired judgments, while the included Task 10 authoring set retained 28/28 agreement. This supports a contract-first deterministic layer within configured scope; it does not turn explicit forbidden-fact lists or trailing citation rules into general semantic understanding.
 - **2026-09-11:** Follow-up Task D fitted three cheap representations from baseline and two calibration-only controls, excluding both fixture-parent controls. Tuning v1 revealed that ordered-list counters polluted field-aware quantity features; a generic, versioned v2 correction was made using tuning only. Field-aware v2 then passed the predeclared tuning gate and was frozen as the sole held-out candidate. The tracked freeze manifest was committed before any Task D held-out evaluation; neither n-gram method may be combined with it, and no setting may change after viewing held-out outcomes.
+- **2026-09-11:** The single frozen Task D held-out evaluation detected the subtle batch consistently but falsely reviewed the meaning-preserving batch consistently, yielding a 50% harmless-review rate against the 10% gate. The post-result audit traced this to missing compositional negation handling for valid phrases such as “not permitted.” No post-held-out fix, combination, or rerun was performed. Task E must choose between the already-supported deterministic-only wedge, a separately approved model-based semantic evaluation, or stopping technical validation.

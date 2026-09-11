@@ -2,7 +2,7 @@
 
 > **Status:** Draft for use only after the feasibility spike decision gate
 >
-> **Last revised:** 2026-09-10
+> **Last revised:** 2026-09-11
 >
 > **Purpose:** Record the gaps, architectural changes, validation work, and product decisions required to turn the spike into a trustworthy hosted product
 
@@ -131,6 +131,10 @@ Use baseline/control distributions to identify unusual behavior in open-ended ou
 
 Potential later layers include embeddings, claim extraction, structured semantic comparisons, or an LLM judge. Each option requires its own cost, reproducibility, provider-dependence, privacy, calibration, and adversarial-reliability analysis. No semantic judge should be described as objective ground truth.
 
+The follow-up cheap-representation experiment also failed its held-out false-review gate. Word and character n-grams overreacted to harmless rewrites during tuning. A locally extracted field/citation/quantity representation passed tuning after a generic formatting correction, but then requested review for 50% of harmless held-out comparisons because it treated “not” and “permitted” as independent polarity features rather than a composed negated permission. This is evidence that progressively adding handcrafted semantic rules can move errors around without establishing generalization. Do not ship that representation, repair it on the observed held-out set, or describe its 100% subtle-batch sensitivity as useful detection.
+
+Product work must therefore choose explicitly between a contract-first deterministic wedge and a separately researched model-based semantic layer. A model-based experiment needs new untouched domains and paraphrase constructions; the exhausted spike fixtures may be regression tests but cannot remain final performance evidence.
+
 ### 5.3 Operational signals
 
 Provider errors, incomplete responses, returned-model mismatches, latency changes, token changes, and rate-limit behavior are operational evidence. They should be visible and alertable, but kept distinct from content-quality conclusions.
@@ -181,7 +185,7 @@ Deleting customer data must follow an explicit retention and deletion policy acr
 | Local files imply trust | Tenant isolation, authorization, audit logs, and secure secrets | Prompts, outputs, and credentials are sensitive customer data |
 | CLI-only execution | Guided web onboarding, dry-run review, progress, cancellation, and result inspection | Users need a safe workflow, not internal Mix tasks |
 | In-memory concurrent work | Durable scheduling, idempotency, retries, cancellation, and recovery | Hosted runs must survive deploys and worker failures without duplicate spend |
-| One lexical statistic | Evidence-backed semantic strategy or a documented limitation | Lexical distance can miss factual substitutions and overreact to paraphrases |
+| Lexical and cheap handcrafted semantic statistics failed held-out separation | Evidence-backed model semantic strategy or a documented deterministic-only limitation | Cheap distances missed factual substitutions or overreacted to valid paraphrases, including unseen negation composition |
 | Manual artifact inspection | Explainable comparisons, alert lifecycle, and review UI | Human judgment is part of the product contract |
 | Markdown review log and CLI promotion | Structured approval records, role checks, and transactional fixture-suite sealing | Production ground truth must not depend on parsing prose or trusting a local operator |
 | One synthetic workload | Cross-domain, held-out, customer-labeled validation | Controlled RAG evidence cannot support general product claims |
@@ -253,6 +257,8 @@ For every deterministic primitive, maintain held-out valid paraphrases, invalid 
 ### 10.2 Cross-case generalization
 
 Build labeled suites across multiple domains and response shapes. At minimum, include structured extraction, grounded support answers, abstention, summarization, classification, and open synthesis before making broad claims. Use leave-case-out or leave-domain-out evaluation where practical.
+
+Representation tests must also separate formatting invariance from semantic composition. Include unseen combinations of negation, modality, permission/prohibition, numeric units, ranges, citation placement, and equivalent structural renderings. A method may be tuned on an authoring/tuning partition, but every repair motivated by final evaluation requires a new untouched held-out domain before performance is reported again.
 
 ### 10.3 Design-partner validation
 
