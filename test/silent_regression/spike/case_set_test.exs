@@ -154,6 +154,39 @@ defmodule SilentRegression.Spike.CaseSetTest do
             }} = CaseSet.validate([invalid])
   end
 
+  test "rejects malformed field and attribution relationships" do
+    [first | _rest] = CaseSet.all()
+
+    invalid_checks = [
+      %{
+        "type" => "json_field_equals",
+        "id" => "budget",
+        "path" => [],
+        "expected" => 480_000,
+        "numeric_comparison" => "mathematical"
+      },
+      %{
+        "type" => "fact_source_attribution",
+        "id" => "budget_source",
+        "fact" => %{"any_of" => []},
+        "allowed_source_ids" => ["finance"]
+      },
+      %{
+        "type" => "allowed_source_ids",
+        "source_ids" => ["finance"],
+        "require_at_least_one" => "yes"
+      }
+    ]
+
+    for check <- invalid_checks do
+      invalid = %{first | checks: [check]}
+      invalid = %{invalid | fingerprint: CaseSet.fingerprint(invalid)}
+
+      assert {:error, %{type: :invalid_check_spec, check_index: 0}} =
+               CaseSet.validate([invalid])
+    end
+  end
+
   test "open synthesis intentionally has no exact expected answer" do
     {:ok, synthesis} = CaseSet.fetch("rag_open_synthesis")
 

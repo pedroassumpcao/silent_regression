@@ -415,6 +415,21 @@ defmodule SilentRegression.Spike.CaseSet do
     end
   end
 
+  defp validate_check(%{
+         "type" => "json_field_equals",
+         "id" => id,
+         "path" => path,
+         "expected" => expected,
+         "numeric_comparison" => numeric_comparison
+       }) do
+    with :ok <- validate_non_empty_string(id, :invalid_field_id),
+         :ok <- validate_json_path(path),
+         :ok <- validate_json_value(expected, :invalid_json_expected_value),
+         :ok <- validate_numeric_comparison(numeric_comparison) do
+      :ok
+    end
+  end
+
   defp validate_check(%{"type" => "required_fact", "id" => id, "any_of" => alternatives}) do
     with :ok <- validate_non_empty_string(id, :invalid_fact_id),
          :ok <- validate_non_empty_string_list(alternatives, :invalid_fact_alternatives) do
@@ -448,6 +463,30 @@ defmodule SilentRegression.Spike.CaseSet do
 
   defp validate_check(%{"type" => "required_source_ids", "source_ids" => source_ids}) do
     validate_non_empty_string_list(source_ids, :invalid_source_ids)
+  end
+
+  defp validate_check(%{
+         "type" => "allowed_source_ids",
+         "source_ids" => source_ids,
+         "require_at_least_one" => require_at_least_one
+       }) do
+    with :ok <- validate_non_empty_string_list(source_ids, :invalid_source_ids),
+         :ok <- validate_boolean(require_at_least_one, :invalid_require_at_least_one) do
+      :ok
+    end
+  end
+
+  defp validate_check(%{
+         "type" => "fact_source_attribution",
+         "id" => id,
+         "fact" => fact,
+         "allowed_source_ids" => source_ids
+       }) do
+    with :ok <- validate_non_empty_string(id, :invalid_fact_id),
+         :ok <- validate_fact_matcher(fact),
+         :ok <- validate_non_empty_string_list(source_ids, :invalid_source_ids) do
+      :ok
+    end
   end
 
   defp validate_check(%{
@@ -493,6 +532,49 @@ defmodule SilentRegression.Spike.CaseSet do
   defp validate_positive_integer(value, error) do
     if is_integer(value) and value > 0, do: :ok, else: {:error, error}
   end
+
+  defp validate_json_path(path) do
+    valid? =
+      is_list(path) and path != [] and
+        Enum.all?(path, fn
+          key when is_binary(key) -> String.trim(key) != ""
+          index when is_integer(index) -> index >= 0
+          _segment -> false
+        end)
+
+    if valid?, do: :ok, else: {:error, :invalid_json_path}
+  end
+
+  defp validate_json_value(value, error) do
+    if Validation.json_value?(value), do: :ok, else: {:error, error}
+  end
+
+  defp validate_numeric_comparison(value) when value in ["strict", "mathematical"], do: :ok
+  defp validate_numeric_comparison(_value), do: {:error, :invalid_numeric_comparison}
+
+  defp validate_boolean(value, _error) when is_boolean(value), do: :ok
+  defp validate_boolean(_value, error), do: {:error, error}
+
+  defp validate_fact_matcher(%{"any_of" => alternatives} = matcher) do
+    if map_size(matcher) == 1,
+      do: validate_non_empty_string_list(alternatives, :invalid_fact_alternatives),
+      else: {:error, :invalid_fact_matcher}
+  end
+
+  defp validate_fact_matcher(
+         %{"groups" => groups, "max_span_tokens" => max_span_tokens} = matcher
+       ) do
+    if map_size(matcher) == 2 do
+      with :ok <- validate_non_empty_string_groups(groups, :invalid_fact_groups),
+           :ok <- validate_positive_integer(max_span_tokens, :invalid_max_span_tokens) do
+        :ok
+      end
+    else
+      {:error, :invalid_fact_matcher}
+    end
+  end
+
+  defp validate_fact_matcher(_matcher), do: {:error, :invalid_fact_matcher}
 
   defp validate_regexes(patterns) do
     Enum.reduce_while(patterns, :ok, fn pattern, :ok ->

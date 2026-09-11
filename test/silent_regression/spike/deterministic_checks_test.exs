@@ -243,6 +243,32 @@ defmodule SilentRegression.Spike.DeterministicChecksTest do
       assert evaluate!(case_definition, ~s({"sources":["one","two"]}))["all_passed"]
       refute evaluate!(case_definition, ~s({"sources":["two","one"]}))["all_passed"]
     end
+
+    test "compares configured JSON fields with nested paths and numeric policy" do
+      case_definition =
+        case_with_checks([
+          %{
+            "type" => "json_field_equals",
+            "id" => "budget",
+            "path" => ["project", "budgets", 0],
+            "expected" => 480_000,
+            "numeric_comparison" => "mathematical"
+          }
+        ])
+
+      assert evaluate!(case_definition, ~s({"project":{"budgets":[480000.0]}}))[
+               "all_passed"
+             ]
+
+      mismatch = evaluate!(case_definition, ~s({"project":{"budgets":[48000]}}))
+      refute mismatch["all_passed"]
+      assert hd(mismatch["checks"])["reason"] == "json_field_mismatch"
+      assert hd(mismatch["checks"])["details"]["path"] == "$.project.budgets[0]"
+
+      missing = evaluate!(case_definition, ~s({"project":{"budgets":[]}}))
+      refute missing["all_passed"]
+      assert hd(missing["checks"])["reason"] == "json_field_missing"
+    end
   end
 
   describe "normalized facts and labels" do
@@ -340,6 +366,72 @@ defmodule SilentRegression.Spike.DeterministicChecksTest do
         refute result["all_passed"]
         assert hd(result["checks"])["reason"] == "source_ids_missing"
       end
+    end
+
+    test "associates a configured fact with its trailing source citation" do
+      case_definition =
+        case_with_checks([
+          %{
+            "type" => "fact_source_attribution",
+            "id" => "tour_duration_source",
+            "fact" => %{"any_of" => ["75 minutes", "seventy-five minutes"]},
+            "allowed_source_ids" => ["tour-schedule"]
+          }
+        ])
+
+      valid = "Tours last 75 minutes [tour-schedule]. Book ahead [booking-policy]."
+      assert evaluate!(case_definition, valid)["all_passed"]
+
+      swapped = "Tours last 75 minutes [booking-policy]. Book ahead [tour-schedule]."
+      result = evaluate!(case_definition, swapped)
+      refute result["all_passed"]
+      [check] = result["checks"]
+      assert check["reason"] == "fact_attributed_to_disallowed_source"
+      assert check["details"]["matched_source_ids"] == ["booking-policy"]
+
+      assert hd(check["details"]["matching_scopes"])["fact_match"]["matched_alternatives"] == [
+               "75 minutes"
+             ]
+    end
+
+    test "supports grouped facts and adjacent trailing citations" do
+      case_definition =
+        case_with_checks([
+          %{
+            "type" => "fact_source_attribution",
+            "id" => "crossing_target_source",
+            "fact" => %{
+              "groups" => [["19 minutes", "19-minute"], ["2044"]],
+              "max_span_tokens" => 12
+            },
+            "allowed_source_ids" => ["transit-plan"]
+          }
+        ])
+
+      output = "The target is a 19-minute crossing by 2044 [overview][transit-plan]."
+      assert evaluate!(case_definition, output)["all_passed"]
+    end
+
+    test "rejects source IDs outside the configured allowlist" do
+      case_definition =
+        case_with_checks([
+          %{
+            "type" => "allowed_source_ids",
+            "source_ids" => ["benefits-guide"],
+            "require_at_least_one" => true
+          }
+        ])
+
+      assert evaluate!(case_definition, "Not specified [benefits-guide].")["all_passed"]
+
+      unexpected = evaluate!(case_definition, "Not specified [leave-policy].")
+      refute unexpected["all_passed"]
+      assert hd(unexpected["checks"])["reason"] == "disallowed_source_id_present"
+      assert hd(unexpected["checks"])["details"]["disallowed_source_ids"] == ["leave-policy"]
+
+      missing = evaluate!(case_definition, "Not specified.")
+      refute missing["all_passed"]
+      assert hd(missing["checks"])["reason"] == "source_id_missing"
     end
 
     test "accepts abstention language when no unsupported answer is present" do
@@ -459,6 +551,24 @@ defmodule SilentRegression.Spike.DeterministicChecksTest do
             "id" => "funded_fleet",
             "groups" => [["phase one"], ["six ferries"]],
             "max_span_tokens" => 12
+          },
+          %{
+            "type" => "json_field_equals",
+            "id" => "budget",
+            "path" => ["budget_usd"],
+            "expected" => 480_000,
+            "numeric_comparison" => "mathematical"
+          },
+          %{
+            "type" => "fact_source_attribution",
+            "id" => "duration_source",
+            "fact" => %{"any_of" => ["75 minutes"]},
+            "allowed_source_ids" => ["schedule"]
+          },
+          %{
+            "type" => "allowed_source_ids",
+            "source_ids" => ["schedule"],
+            "require_at_least_one" => true
           }
         ])
 

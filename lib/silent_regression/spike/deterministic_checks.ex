@@ -23,13 +23,17 @@ defmodule SilentRegression.Spike.DeterministicChecks do
   @json_fence ~r/\A```(?:json)?[ \t]*\r?\n(?<body>.*?)\r?\n```[ \t]*\z/is
   @supported_check_types [
     "json_equals",
+    "json_field_equals",
     "normalized_equals",
     "required_fact",
     "required_fact_groups",
     "forbidden_fact",
     "required_source_ids",
+    "allowed_source_ids",
+    "fact_source_attribution",
     "abstains"
   ]
+  @source_citation ~r/\[(?<source_id>[\p{L}\p{N}][\p{L}\p{N}._:-]*)\](?!\()/u
 
   @type json_value :: nil | boolean() | number() | String.t() | [json_value()] | map()
   @type check_result :: %{required(String.t()) => json_value()}
@@ -66,6 +70,42 @@ defmodule SilentRegression.Spike.DeterministicChecks do
 
   def evaluate(_case_definition, _output_text) do
     {:error, %{type: :invalid_case, reason: :must_be_a_case_struct}}
+  end
+
+  @doc """
+  Evaluates a validated configured check list without requiring a stored case.
+
+  This entry point lets separately versioned evaluation contracts rescore an
+  immutable observation while preserving the same check-result shape.
+  """
+  @spec evaluate_checks(String.t(), [map()], String.t()) ::
+          {:ok, evaluation()} | {:error, map()}
+  def evaluate_checks(case_id, checks, output_text)
+      when is_binary(case_id) and case_id != "" and is_list(checks) and
+             is_binary(output_text) do
+    if String.valid?(output_text) do
+      check_results =
+        checks
+        |> Enum.with_index()
+        |> Enum.map(fn {check, index} -> evaluate_check(check, output_text, index) end)
+
+      {:ok, aggregate(case_id, check_results)}
+    else
+      {:error, %{type: :invalid_output, reason: :must_be_valid_utf8}}
+    end
+  end
+
+  def evaluate_checks(case_id, _checks, _output_text)
+      when not is_binary(case_id) or case_id == "" do
+    {:error, %{type: :invalid_case, reason: :case_id_must_be_a_non_empty_string}}
+  end
+
+  def evaluate_checks(_case_id, checks, _output_text) when not is_list(checks) do
+    {:error, %{type: :invalid_case, reason: :checks_must_be_a_list}}
+  end
+
+  def evaluate_checks(_case_id, _checks, _output_text) do
+    {:error, %{type: :invalid_output, reason: :must_be_a_string}}
   end
 
   @doc """
@@ -135,6 +175,41 @@ defmodule SilentRegression.Spike.DeterministicChecks do
 
       {:error, reason} ->
         {false, Atom.to_string(reason), %{}}
+    end
+  end
+
+  defp do_evaluate_check(
+         %{
+           "type" => "json_field_equals",
+           "path" => path,
+           "expected" => expected,
+           "numeric_comparison" => numeric_comparison
+         } = check,
+         output_text
+       )
+       when is_list(path) and path != [] and numeric_comparison in ["strict", "mathematical"] do
+    case decode_json_object(output_text) do
+      {:ok, actual} ->
+        details = %{
+          "field_id" => Map.get(check, "id"),
+          "path" => format_path(path),
+          "expected" => expected
+        }
+
+        case fetch_json_path(actual, path) do
+          {:ok, actual_value} ->
+            details = Map.put(details, "actual", actual_value)
+
+            if json_value_equal?(actual_value, expected, numeric_comparison),
+              do: {true, "json_field_matched", details},
+              else: {false, "json_field_mismatch", details}
+
+          :error ->
+            {false, "json_field_missing", Map.put(details, "actual", nil)}
+        end
+
+      {:error, reason} ->
+        {false, Atom.to_string(reason), %{"field_id" => Map.get(check, "id")}}
     end
   end
 
@@ -215,6 +290,58 @@ defmodule SilentRegression.Spike.DeterministicChecks do
   end
 
   defp do_evaluate_check(
+         %{
+           "type" => "fact_source_attribution",
+           "fact" => fact,
+           "allowed_source_ids" => allowed_source_ids
+         } = check,
+         output_text
+       )
+       when is_map(fact) and is_list(allowed_source_ids) do
+    with true <- valid_fact_matcher?(fact),
+         true <- valid_phrases?(allowed_source_ids) do
+      matching_scopes =
+        output_text
+        |> citation_scopes()
+        |> Enum.flat_map(fn scope ->
+          case match_fact(scope["text"], fact) do
+            nil -> []
+            match -> [Map.put(scope, "fact_match", match)]
+          end
+        end)
+
+      attributed_scope =
+        Enum.find(matching_scopes, fn scope ->
+          Enum.any?(scope["source_ids"], &(&1 in allowed_source_ids))
+        end)
+
+      details = %{
+        "fact_id" => Map.get(check, "id"),
+        "allowed_source_ids" => allowed_source_ids,
+        "matched_source_ids" =>
+          matching_scopes |> Enum.flat_map(& &1["source_ids"]) |> Enum.uniq(),
+        "matching_scopes" => matching_scopes
+      }
+
+      cond do
+        attributed_scope ->
+          {true, "fact_attributed_to_allowed_source", details}
+
+        matching_scopes != [] ->
+          {false, "fact_attributed_to_disallowed_source", details}
+
+        match_fact(output_text, fact) ->
+          {false, "fact_missing_source_attribution", details}
+
+        true ->
+          {false, "attributed_fact_missing", details}
+      end
+    else
+      false -> {false, "malformed_check", %{}}
+    end
+  end
+
+  defp do_evaluate_check(
          %{"type" => "forbidden_fact", "any_of" => alternatives} = check,
          output_text
        )
@@ -253,6 +380,40 @@ defmodule SilentRegression.Spike.DeterministicChecks do
       if missing_source_ids == [],
         do: {true, "all_source_ids_present", details},
         else: {false, "source_ids_missing", details}
+    else
+      false -> {false, "malformed_check", %{}}
+    end
+  end
+
+  defp do_evaluate_check(
+         %{
+           "type" => "allowed_source_ids",
+           "source_ids" => allowed_source_ids,
+           "require_at_least_one" => require_at_least_one
+         },
+         output_text
+       )
+       when is_list(allowed_source_ids) and is_boolean(require_at_least_one) do
+    with true <- valid_phrases?(allowed_source_ids) do
+      found_source_ids = cited_source_ids(output_text)
+      disallowed_source_ids = Enum.reject(found_source_ids, &(&1 in allowed_source_ids))
+
+      details = %{
+        "allowed_source_ids" => allowed_source_ids,
+        "found_source_ids" => found_source_ids,
+        "disallowed_source_ids" => disallowed_source_ids
+      }
+
+      cond do
+        disallowed_source_ids != [] ->
+          {false, "disallowed_source_id_present", details}
+
+        require_at_least_one and found_source_ids == [] ->
+          {false, "source_id_missing", details}
+
+        true ->
+          {true, "all_source_ids_allowed", details}
+      end
     else
       false -> {false, "malformed_check", %{}}
     end
@@ -435,6 +596,31 @@ defmodule SilentRegression.Spike.DeterministicChecks do
     [mismatch(path, "value_mismatch", expected, actual)]
   end
 
+  defp json_value_equal?(actual, expected, "mathematical")
+       when is_number(actual) and is_number(expected),
+       do: actual == expected
+
+  defp json_value_equal?(actual, expected, _numeric_comparison), do: actual === expected
+
+  defp fetch_json_path(value, []), do: {:ok, value}
+
+  defp fetch_json_path(value, [key | path]) when is_map(value) and is_binary(key) do
+    case Map.fetch(value, key) do
+      {:ok, nested} -> fetch_json_path(nested, path)
+      :error -> :error
+    end
+  end
+
+  defp fetch_json_path(value, [index | path])
+       when is_list(value) and is_integer(index) and index >= 0 do
+    case Enum.fetch(value, index) do
+      {:ok, nested} -> fetch_json_path(nested, path)
+      :error -> :error
+    end
+  end
+
+  defp fetch_json_path(_value, _path), do: :error
+
   defp mismatch(path, reason, expected, actual) do
     %{
       "path" => format_path(path),
@@ -467,6 +653,74 @@ defmodule SilentRegression.Spike.DeterministicChecks do
 
   defp valid_fact_groups?(groups) do
     groups != [] and Enum.all?(groups, &valid_phrases?/1)
+  end
+
+  defp valid_fact_matcher?(%{"any_of" => alternatives} = matcher) do
+    map_size(matcher) == 1 and valid_phrases?(alternatives)
+  end
+
+  defp valid_fact_matcher?(%{"groups" => groups, "max_span_tokens" => max_span_tokens} = matcher) do
+    map_size(matcher) == 2 and valid_fact_groups?(groups) and is_integer(max_span_tokens) and
+      max_span_tokens > 0
+  end
+
+  defp valid_fact_matcher?(_matcher), do: false
+
+  defp match_fact(output_text, %{"any_of" => alternatives}) do
+    case Enum.find(alternatives, &contains_fact?(output_text, &1)) do
+      nil -> nil
+      matched -> %{"matched_alternatives" => [matched], "match_span_tokens" => nil}
+    end
+  end
+
+  defp match_fact(
+         output_text,
+         %{"groups" => groups, "max_span_tokens" => max_span_tokens}
+       ) do
+    output_tokens = output_text |> normalize_fact() |> String.split()
+    occurrences_by_group = Enum.map(groups, &group_occurrences(output_tokens, &1))
+
+    case find_group_match(occurrences_by_group, max_span_tokens) do
+      nil ->
+        nil
+
+      match ->
+        %{
+          "matched_alternatives" => matched_alternatives(match),
+          "match_span_tokens" => match_span_tokens(match)
+        }
+    end
+  end
+
+  defp citation_scopes(output_text) do
+    matches = Regex.scan(@source_citation, output_text, capture: :all, return: :index)
+
+    {scopes, _cursor} =
+      Enum.reduce(matches, {[], 0}, fn
+        [{citation_start, citation_length}, {source_start, source_length}], {scopes, cursor} ->
+          preceding_text = binary_part(output_text, cursor, citation_start - cursor)
+          source_id = binary_part(output_text, source_start, source_length)
+
+          updated_scopes =
+            if normalize_fact(preceding_text) == "" and scopes != [] do
+              [last_scope | earlier_scopes] = scopes
+              updated_scope = Map.update!(last_scope, "source_ids", &(&1 ++ [source_id]))
+              [updated_scope | earlier_scopes]
+            else
+              [%{"text" => String.trim(preceding_text), "source_ids" => [source_id]} | scopes]
+            end
+
+          {updated_scopes, citation_start + citation_length}
+      end)
+
+    Enum.reverse(scopes)
+  end
+
+  defp cited_source_ids(output_text) do
+    @source_citation
+    |> Regex.scan(output_text, capture: :all_names)
+    |> List.flatten()
+    |> Enum.uniq()
   end
 
   defp group_occurrences(output_tokens, alternatives) do
