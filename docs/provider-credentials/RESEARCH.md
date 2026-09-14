@@ -145,11 +145,11 @@ when applicable, returned model, safe request ID, HTTP category, attempt count, 
 - External KMS becomes justified if design partners require per-tenant keys, customer-managed keys,
   cryptographic deletion, hardware-backed roots, or isolation from deploy-capable operators.
 
-## Open Questions
+## Approved Decisions
 
-1. Approve the recommended Cloak.Ecto application-key approach or select a different option.
-2. Confirm the authorization default: owners manage credentials; members may view safe metadata and
-   use valid credentials in monitors but cannot create, rotate, or revoke them.
+On 2026-09-14, the user approved the recommended `Cloak.Ecto` application-key approach and the
+authorization default: owners manage credentials; members may view safe metadata and use valid
+credentials in server-side monitor execution but cannot create, validate, rotate, or revoke them.
 
 ## References
 

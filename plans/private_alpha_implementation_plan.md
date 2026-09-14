@@ -1,6 +1,6 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 4 in progress; encryption decision pending
+> **Status:** Task 4 in progress; encryption and authorization design approved
 >
 > **Progress:** 3 of 14 tasks complete
 >
@@ -115,7 +115,7 @@ Mirror the useful boundary in the local `high_school` reference repository:
 
 - Store provider keys only because scheduled replay requires server-side access.
 - Encrypt credential values at the application layer with AES-GCM using a runtime key that is never stored in the database.
-- The initial implementation may use `Cloak.Ecto`, subject to a dependency review during Task 4.
+- Use `Cloak.Ecto` with AES-256-GCM and a versioned application keyring whose production key material is supplied at runtime.
 - Never return a stored secret to React after creation.
 - Never place a secret in logs, exception metadata, analytics events, URLs, Oban arguments, or run artifacts.
 - Show only provider, user-defined label, status, last validation time, and a non-secret suffix or fingerprint.
@@ -402,13 +402,13 @@ that boundary and are covered by separate authorization and audit tests.
 
 **Status:** In progress
 
-**Decision gate:** Confirm the application-level encryption library and production key-rotation strategy before storing any external customer's secret.
+**Decision gate:** Resolved 2026-09-14. Use `Cloak.Ecto` with a versioned application keyring and the documented zero-downtime re-encryption sequence. Owners manage credentials; members may view safe metadata and use valid credentials through server-side workflows.
 
 **Objective:** Let a workspace safely store, validate, rotate, and revoke OpenAI and Anthropic credentials.
 
 **Checklist:**
 
-- [ ] Review `Cloak.Ecto` and record the selected encryption approach in the decision log.
+- [x] Review `Cloak.Ecto` and record the selected encryption approach in the decision log.
 - [ ] Add a runtime-managed encryption key with safe development and test configuration.
 - [ ] Add provider credential schema, context, lifecycle states, and audit events.
 - [ ] Encrypt the secret column and keep searchable/display metadata separate.
@@ -904,6 +904,7 @@ The product is ready for the first external design partner only when:
 | 2026-09-14 | Use latest compatible stable dependencies and defer Inertia v3 | The JavaScript v3 client changes the initial-page protocol, while the matching Phoenix adapter is still on `3.0.0-rc5`; use stable `inertia 2.6.2` with the latest v2 React client until both sides are stable | 1 onward |
 | 2026-09-14 | Make invitation acceptance the only account-creation boundary | The private alpha needs generated authentication security without exposing public registration; accepting a valid locked invitation atomically creates or confirms the identity and membership | 3 onward |
 | 2026-09-14 | Make `Workspace` the default Phoenix generator scope | Future tenant-owned contexts should generate `workspace_id` boundaries and `/app/:workspace_slug` routes by default; the user-only scope remains available for identity operations | 3 onward |
+| 2026-09-14 | Encrypt provider credentials with Cloak.Ecto and restrict lifecycle management to owners | AES-256-GCM with a runtime application keyring is the smallest appropriate private-alpha boundary and supports versioned rotation; members may use valid credentials without gaining create, rotate, revoke, or plaintext access | 4, 9, 14 |
 
 ## 16. Session log
 
@@ -982,6 +983,15 @@ The product is ready for the first external design partner only when:
 - Recorded the research and provisional recommendation in
   [`docs/provider-credentials/RESEARCH.md`](../docs/provider-credentials/RESEARCH.md). No encryption
   library or credential persistence has been added while the decision remains pending.
+
+### 2026-09-14 — Task 4 security design approved
+
+- Approved `Cloak.Ecto` with AES-256-GCM, a versioned application keyring, and runtime production key
+  material supplied through Fly secrets.
+- Approved owners-only create, validate, rotate, and revoke operations. Members may view safe
+  metadata and use valid credentials through future server-side monitor execution, but they cannot
+  retrieve plaintext or administer credential lifecycle.
+- Kept provider-credential rotation separate from application-master-key re-encryption.
 
 ## 17. References
 
