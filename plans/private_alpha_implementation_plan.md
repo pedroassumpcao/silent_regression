@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 4 implementation complete; manually authorized live smoke test pending
+> **Status:** Task 4 complete; Task 5 ready to begin
 >
-> **Progress:** 3 of 14 tasks complete
+> **Progress:** 4 of 14 tasks complete
 >
 > **Last revised:** 2026-09-14
 >
@@ -274,7 +274,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 1 | Phoenix/Inertia/React/shadcn foundation | — | Complete | `1897937`, `938bbbf` |
 | 2 | Minimal public site and design-partner application | 1 | Complete | `0c1811b` |
 | 3 | Invite-only accounts, workspaces, memberships, and scope | 1 | Complete | `314e713` |
-| 4 | Encrypted provider credentials and validation | 3 | In progress | `c1f0bbf`, `252bb7e`, `9f5b2f6`, `93353bb`, `43be6f6`, `ee8ceca`, `cfdf2cb` |
+| 4 | Encrypted provider credentials and validation | 3 | Complete | `c1f0bbf`, `252bb7e`, `9f5b2f6`, `93353bb`, `43be6f6`, `ee8ceca`, `cfdf2cb`, `dfbe096` |
 | 5 | Versioned monitor and case domain | 3 | Not started | — |
 | 6 | Persisted cold-start monitor setup | 4, 5 | Not started | — |
 | 7 | Generic deterministic contract engine | 5 | Not started | — |
@@ -400,7 +400,7 @@ that boundary and are covered by separate authorization and audit tests.
 
 ### Task 4 — Encrypted provider credentials and validation
 
-**Status:** In progress — implementation and automated/browser verification complete; manually authorized live smoke test pending
+**Status:** Complete
 
 **Decision gate:** Resolved 2026-09-14. Use `Cloak.Ecto` with a versioned application keyring and the documented zero-downtime re-encryption sequence. Owners manage credentials; members may view safe metadata and use valid credentials through server-side workflows.
 
@@ -432,7 +432,7 @@ that boundary and are covered by separate authorization and audit tests.
 - [x] Encryption-at-rest assertion using direct database reads
 - [x] Redaction and cross-tenant tests
 - [x] Mocked OpenAI and Anthropic adapter tests
-- [ ] Manually authorized live smoke test outside the automated suite
+- [x] Manually authorized live smoke test outside the automated suite
 - [x] `mix precommit`
 
 ### Task 5 — Versioned monitor and case domain
@@ -1016,6 +1016,17 @@ The product is ready for the first external design partner only when:
   owner validates an intentionally supplied OpenAI or Anthropic credential through the product UI.
 - Implementation commits: `c1f0bbf`, `252bb7e`, `9f5b2f6`, `93353bb`, `43be6f6`, `ee8ceca`, and
   `cfdf2cb`.
+
+### 2026-09-14 — Task 4 complete
+
+- Completed manually authorized validation through the product UI with both OpenAI and Anthropic.
+- Confirmed from safe persisted metadata that OpenAI validation succeeded in one request and retained
+  returned-model and provider-request provenance.
+- An initial Anthropic authentication failure was safely categorized without exposing the credential;
+  rotating the credential created a new identity, preserved the failed record as superseded, and the
+  replacement then validated successfully in one request with model and request provenance.
+- Marked Task 4 complete after the live gate passed. Task 5, the versioned monitor and case domain, is
+  now the next implementation task.
 
 ## 17. References
 
