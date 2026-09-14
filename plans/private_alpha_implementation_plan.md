@@ -1,6 +1,6 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 3 complete; Task 4 ready for its encryption decision gate
+> **Status:** Task 4 in progress; encryption decision pending
 >
 > **Progress:** 3 of 14 tasks complete
 >
@@ -274,7 +274,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 1 | Phoenix/Inertia/React/shadcn foundation | — | Complete | `1897937`, `938bbbf` |
 | 2 | Minimal public site and design-partner application | 1 | Complete | `0c1811b` |
 | 3 | Invite-only accounts, workspaces, memberships, and scope | 1 | Complete | `314e713` |
-| 4 | Encrypted provider credentials and validation | 3 | Not started | — |
+| 4 | Encrypted provider credentials and validation | 3 | In progress | — |
 | 5 | Versioned monitor and case domain | 3 | Not started | — |
 | 6 | Persisted cold-start monitor setup | 4, 5 | Not started | — |
 | 7 | Generic deterministic contract engine | 5 | Not started | — |
@@ -400,7 +400,7 @@ that boundary and are covered by separate authorization and audit tests.
 
 ### Task 4 — Encrypted provider credentials and validation
 
-**Status:** Not started
+**Status:** In progress
 
 **Decision gate:** Confirm the application-level encryption library and production key-rotation strategy before storing any external customer's secret.
 
@@ -971,6 +971,17 @@ The product is ready for the first external design partner only when:
 - A real browser pass exposed and fixed a foundation-level CSRF integration gap by configuring Axios to send Phoenix's `x-csrf-token` header for all Inertia mutations; a frontend regression test now protects that contract.
 - Verified clean development migrations, 367 Elixir tests through `mix precommit`, frontend type checking and two frontend tests, the production asset build, invitation acceptance and authenticated redirect, consumed-link rejection, enumeration-safe login behavior, mobile login layout, and clean consoles on successful pages. Temporary QA records and browser artifacts were removed.
 - Implementation commit: `314e713`.
+
+### 2026-09-14 — Task 4 started
+
+- Began the required encryption and key-rotation decision gate before adding a credential schema or
+  accepting any customer provider key.
+- Compared Cloak.Ecto application-level encryption, custom Erlang crypto, external KMS/Vault envelope
+  encryption, PostgreSQL `pgcrypto`, and per-credential Fly secrets against the private-alpha threat
+  model and eventual Fly.io deployment.
+- Recorded the research and provisional recommendation in
+  [`docs/provider-credentials/RESEARCH.md`](../docs/provider-credentials/RESEARCH.md). No encryption
+  library or credential persistence has been added while the decision remains pending.
 
 ## 17. References
 
