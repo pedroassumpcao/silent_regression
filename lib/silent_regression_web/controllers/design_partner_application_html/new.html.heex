@@ -1,0 +1,180 @@
+<Layouts.app flash={@flash}>
+  <section id="design-partner-application-page" class="relative overflow-hidden py-14 sm:py-20">
+    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[34rem] bg-gradient-to-b from-primary/8 to-transparent">
+    </div>
+
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="max-w-3xl">
+        <span class="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary">
+          <.icon name="hero-beaker" class="size-4" /> Selective private alpha
+        </span>
+        <h1 class="mt-6 text-balance text-4xl font-semibold tracking-[-0.04em] sm:text-6xl">
+          Bring one critical LLM workflow.
+        </h1>
+        <p class="mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
+          We are looking for teams with explicit output requirements and a real need to know when those requirements stop holding. This application does not create an account or start a subscription.
+        </p>
+      </div>
+
+      <div class="mt-12 grid gap-8 lg:grid-cols-[0.68fr_1.32fr] lg:items-start">
+        <aside class="space-y-5 lg:sticky lg:top-24">
+          <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <p class="text-sm font-semibold">Strong alpha fit</p>
+            <ul class="mt-4 space-y-3 text-sm leading-6 text-muted-foreground">
+              <li class="flex gap-3">
+                <.icon name="hero-check-circle" class="mt-1 size-4 shrink-0 text-success" />
+                A consequential structured, classification, grounded, or abstention workflow
+              </li>
+              <li class="flex gap-3">
+                <.icon name="hero-check-circle" class="mt-1 size-4 shrink-0 text-success" />
+                Representative cases your team can safely provide
+              </li>
+              <li class="flex gap-3">
+                <.icon name="hero-check-circle" class="mt-1 size-4 shrink-0 text-success" />
+                Requirements that can be stated as deterministic rules
+              </li>
+              <li class="flex gap-3">
+                <.icon name="hero-check-circle" class="mt-1 size-4 shrink-0 text-success" />
+                Willingness to review results and identify false or missed alerts
+              </li>
+            </ul>
+          </div>
+
+          <div class="rounded-2xl border border-warning/25 bg-warning/10 p-6">
+            <div class="flex gap-3">
+              <.icon
+                name="hero-lock-closed"
+                class="mt-0.5 size-5 shrink-0 text-warning-foreground"
+              />
+              <div>
+                <p class="text-sm font-semibold">Keep this application non-sensitive</p>
+                <p class="mt-2 text-sm leading-6 text-muted-foreground">
+                  Do not paste provider keys, production prompts, customer data, model outputs, or confidential documents. We only need enough context to evaluate fit.
+                </p>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <div class="rounded-2xl border border-border bg-card shadow-xl shadow-slate-950/5">
+          <div class="border-b border-border px-6 py-5 sm:px-8">
+            <h2 class="text-lg font-semibold">Design-partner application</h2>
+            <p class="mt-1 text-sm text-muted-foreground">
+              All fields are required. Most teams finish in about five minutes.
+            </p>
+          </div>
+
+          <div class="p-6 sm:p-8">
+            <div
+              :if={@has_errors}
+              id="application-error-summary"
+              role="alert"
+              class="mb-6 flex gap-3 rounded-xl border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive"
+            >
+              <.icon name="hero-exclamation-triangle" class="mt-0.5 size-5 shrink-0" />
+              <p>Please review the highlighted fields and submit the application again.</p>
+            </div>
+
+            <.form
+              for={@form}
+              id="design-partner-application-form"
+              action={~p"/design-partner/apply"}
+              method="post"
+            >
+              <div class="grid gap-x-5 sm:grid-cols-2">
+                <.input
+                  field={@form[:name]}
+                  type="text"
+                  label="Your name"
+                  autocomplete="name"
+                  maxlength="120"
+                  required
+                />
+                <.input
+                  field={@form[:work_email]}
+                  type="email"
+                  label="Work email"
+                  autocomplete="email"
+                  maxlength="320"
+                  placeholder="you@company.com"
+                  required
+                />
+                <.input
+                  field={@form[:company]}
+                  type="text"
+                  label="Company"
+                  autocomplete="organization"
+                  maxlength="160"
+                  required
+                />
+                <.input
+                  field={@form[:role]}
+                  type="text"
+                  label="Your role"
+                  autocomplete="organization-title"
+                  maxlength="160"
+                  placeholder="Head of AI, Product lead…"
+                  required
+                />
+                <.input
+                  field={@form[:provider]}
+                  type="select"
+                  label="Provider used by this workflow"
+                  prompt="Choose a provider"
+                  options={[{"OpenAI", :openai}, {"Anthropic", :anthropic}, {"Both", :both}]}
+                  required
+                />
+                <.input
+                  field={@form[:feedback_willingness]}
+                  type="select"
+                  label="Can you join recurring feedback conversations?"
+                  prompt="Choose an answer"
+                  options={[{"Yes", true}, {"Not right now", false}]}
+                  required
+                />
+              </div>
+
+              <.input
+                field={@form[:workflow_description]}
+                type="textarea"
+                label="Describe the LLM workflow"
+                rows="5"
+                minlength="20"
+                maxlength="2000"
+                placeholder="What goes in, what should come out, and who relies on it?"
+                required
+              />
+              <.input
+                field={@form[:current_problem]}
+                type="textarea"
+                label="What regression problem do you face today?"
+                rows="5"
+                minlength="20"
+                maxlength="2000"
+                placeholder="How do failures appear, how are they detected, and what happens when one is missed?"
+                required
+              />
+
+              <div class="mt-2 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <p class="max-w-md text-xs leading-5 text-muted-foreground">
+                  By submitting, you agree that we may use this information to evaluate fit and contact you about the private alpha. Review the <.link
+                    href={~p"/privacy"}
+                    class="underline underline-offset-2 hover:text-foreground"
+                  >privacy notice</.link>.
+                </p>
+                <.button
+                  id="submit-design-partner-application"
+                  type="submit"
+                  variant="primary"
+                  class="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  Submit application <.icon name="hero-arrow-right" class="size-4" />
+                </.button>
+              </div>
+            </.form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layouts.app>

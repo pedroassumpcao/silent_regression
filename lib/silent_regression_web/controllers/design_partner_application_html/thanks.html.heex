@@ -1,0 +1,38 @@
+<Layouts.app flash={@flash}>
+  <section id="application-thanks-page" class="relative overflow-hidden py-20 sm:py-28">
+    <div class="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-primary/10 to-transparent">
+    </div>
+    <div class="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+      <span class="mx-auto grid size-14 place-items-center rounded-2xl bg-success/10 text-success">
+        <.icon name="hero-check" class="size-7" />
+      </span>
+      <p class="mt-6 text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+        Application received
+      </p>
+      <h1 class="mt-4 text-balance text-4xl font-semibold tracking-[-0.04em] sm:text-6xl">
+        Thank you for sharing the workflow.
+      </h1>
+      <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
+        We will review whether the use case fits the deterministic private-alpha boundary. If it does, the next step is a focused conversation—not automatic account creation.
+      </p>
+      <div class="mx-auto mt-10 max-w-xl rounded-2xl border border-border bg-card p-6 text-left shadow-sm">
+        <p class="text-sm font-semibold">What happens next</p>
+        <ol class="mt-4 space-y-4 text-sm leading-6 text-muted-foreground">
+          <li class="flex gap-3">
+            <span class="font-mono text-primary">01</span>
+            We assess whether the workflow has stable, machine-checkable requirements.
+          </li>
+          <li class="flex gap-3">
+            <span class="font-mono text-primary">02</span>
+            Strong-fit teams are contacted for a short discovery conversation.
+          </li>
+          <li class="flex gap-3">
+            <span class="font-mono text-primary">03</span>
+            Invitations are issued selectively after the product security gates are met.
+          </li>
+        </ol>
+      </div>
+      <.button href={~p"/"} class="mt-8">Return to the homepage</.button>
+    </div>
+  </section>
+</Layouts.app>

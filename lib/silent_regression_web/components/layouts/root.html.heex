@@ -4,6 +4,47 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
+    <meta
+      name="description"
+      content={
+        assigns[:meta_description] || SilentRegressionWeb.PublicMetadata.default_description()
+      }
+    />
+    <meta
+      name="robots"
+      content={
+        assigns[:robots] || SilentRegressionWeb.PublicMetadata.robots_for_path(@conn.request_path)
+      }
+    />
+    <link
+      rel="canonical"
+      href={
+        SilentRegressionWeb.PublicMetadata.absolute_url(
+          assigns[:canonical_path] || @conn.request_path
+        )
+      }
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Silent Regression" />
+    <meta
+      property="og:title"
+      content={assigns[:page_title] || "Silent Regression private alpha"}
+    />
+    <meta
+      property="og:description"
+      content={
+        assigns[:meta_description] || SilentRegressionWeb.PublicMetadata.default_description()
+      }
+    />
+    <meta
+      property="og:url"
+      content={
+        SilentRegressionWeb.PublicMetadata.absolute_url(
+          assigns[:canonical_path] || @conn.request_path
+        )
+      }
+    />
+    <meta name="twitter:card" content="summary" />
     <%= if @conn.private[:inertia_page] do %>
       <.inertia_title suffix=" · Silent Regression">
         {assigns[:page_title] || "Private alpha"}

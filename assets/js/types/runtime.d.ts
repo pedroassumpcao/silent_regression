@@ -11,9 +11,7 @@ declare global {
   }
 
   interface WindowEventMap {
-    "phx:live_reload:attached": CustomEvent<{
-      reloader: NonNullable<Window["liveReloader"]>
-    }>
+    "phx:live_reload:attached": CustomEvent<NonNullable<Window["liveReloader"]>>
   }
 }
 

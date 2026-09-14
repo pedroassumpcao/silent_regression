@@ -6,7 +6,7 @@ defmodule SilentRegressionWeb.AppControllerTest do
   test "GET /app renders the React product foundation", %{conn: conn} do
     conn = get(conn, ~p"/app")
 
-    assert html_response(conn, 200)
+    html = html_response(conn, 200)
     assert inertia_component(conn) == "Dashboard"
 
     assert %{
@@ -14,5 +14,11 @@ defmodule SilentRegressionWeb.AppControllerTest do
              pageTitle: "Product foundation",
              releaseStage: "Private alpha"
            } = inertia_props(conn)
+
+    assert ["noindex,nofollow"] =
+             html
+             |> LazyHTML.from_document()
+             |> LazyHTML.query("meta[name='robots']")
+             |> LazyHTML.attribute("content")
   end
 end

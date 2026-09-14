@@ -1,49 +1,309 @@
 <Layouts.app flash={@flash}>
-  <section
-    id="foundation-home"
-    class="overflow-hidden rounded-3xl border border-border bg-card shadow-sm"
-  >
-    <div class="grid gap-10 px-6 py-10 sm:px-10 sm:py-14 lg:grid-cols-[1.25fr_0.75fr] lg:px-14 lg:py-16">
-      <div class="max-w-2xl">
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-          Foundation checkpoint
-        </p>
-        <h1 class="mt-4 text-balance text-4xl font-semibold tracking-[-0.035em] text-foreground sm:text-5xl">
-          Catch silent failures in critical LLM workflows.
-        </h1>
-        <p class="mt-5 max-w-xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg">
-          Silent Regression replays representative cases and reports the exact user-approved contract that changed.
-        </p>
-        <div class="mt-8 flex flex-wrap items-center gap-3">
-          <.button href={~p"/app"} variant="primary">Open product foundation</.button>
-          <span class="text-sm text-muted-foreground">Invite-only alpha · deterministic checks</span>
+  <section id="hero" class="relative overflow-hidden border-b border-border">
+    <div class="pointer-events-none absolute inset-0 -z-10">
+      <div class="absolute -right-32 -top-28 size-[32rem] rounded-full bg-primary/10 blur-3xl">
+      </div>
+      <div class="absolute -left-32 bottom-0 size-80 rounded-full bg-accent/60 blur-3xl"></div>
+      <div class="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:72px_72px] opacity-20 [mask-image:linear-gradient(to_bottom,black,transparent_88%)]">
+      </div>
+    </div>
+
+    <div class="mx-auto grid max-w-7xl gap-14 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:px-8 lg:py-32">
+      <div>
+        <div class="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary">
+          <span class="relative flex size-2">
+            <span class="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-50"></span>
+            <span class="relative inline-flex size-2 rounded-full bg-primary"></span>
+          </span>
+          Private alpha for deterministic LLM workflows
         </div>
+
+        <h1 class="mt-7 max-w-4xl text-balance text-5xl font-semibold tracking-[-0.05em] text-foreground sm:text-6xl lg:text-7xl">
+          Know when your LLM output contract quietly breaks.
+        </h1>
+        <p class="mt-6 max-w-2xl text-pretty text-lg leading-8 text-muted-foreground sm:text-xl">
+          Replay representative cases on a schedule and see the exact deterministic requirement that changed—before the failure reaches more users.
+        </p>
+
+        <div class="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <.button
+            href={~p"/design-partner/apply"}
+            variant="primary"
+            class="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            Apply for design-partner access <.icon name="hero-arrow-right" class="size-4" />
+          </.button>
+          <.button
+            href={~p"/" <> "#workflows"}
+            class="inline-flex h-12 items-center justify-center rounded-xl border border-border bg-card px-6 text-sm font-semibold text-card-foreground shadow-sm transition-all hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            See if your workflow fits
+          </.button>
+        </div>
+
+        <ul
+          class="mt-7 flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted-foreground"
+          aria-label="Private alpha characteristics"
+        >
+          <li class="flex items-center gap-2">
+            <.icon name="hero-check-circle" class="size-4 text-success" /> No production SDK
+          </li>
+          <li class="flex items-center gap-2">
+            <.icon name="hero-check-circle" class="size-4 text-success" /> OpenAI and Anthropic
+          </li>
+          <li class="flex items-center gap-2">
+            <.icon name="hero-check-circle" class="size-4 text-success" />
+            Human-approved contracts
+          </li>
+        </ul>
       </div>
 
-      <div class="rounded-2xl border border-border bg-muted/45 p-5 sm:p-6">
-        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          Monitoring loop
+      <div class="relative mx-auto w-full max-w-xl lg:mx-0 lg:ml-auto">
+        <div class="absolute -inset-3 -z-10 rounded-[2rem] bg-gradient-to-br from-primary/20 via-transparent to-accent blur-xl">
+        </div>
+        <div class="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-slate-950/10">
+          <div class="flex items-center justify-between border-b border-border bg-muted/45 px-5 py-4">
+            <div>
+              <p class="text-sm font-semibold">Grounded support answer</p>
+              <p class="mt-0.5 text-xs text-muted-foreground">Control run · Case 07 of 24</p>
+            </div>
+            <span class="rounded-full border border-destructive/20 bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive">
+              Contract failed
+            </span>
+          </div>
+
+          <div class="space-y-4 p-5 sm:p-6">
+            <div class="rounded-xl border border-border bg-background p-4">
+              <div class="flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                  <span class="grid size-8 place-items-center rounded-lg bg-destructive/10 text-destructive">
+                    <.icon name="hero-link-slash" class="size-4" />
+                  </span>
+                  <div>
+                    <p class="text-sm font-semibold">Required citation missing</p>
+                    <p class="text-xs text-muted-foreground">
+                      Rule: every factual claim cites source IDs
+                    </p>
+                  </div>
+                </div>
+                <span class="font-mono text-xs text-destructive">FAIL</span>
+              </div>
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div class="rounded-xl border border-border p-4">
+                <p class="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Expected
+                </p>
+                <p class="mt-2 font-mono text-xs leading-5 text-foreground">
+                  claims[*].source_ids<br />minimum: 1
+                </p>
+              </div>
+              <div class="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+                <p class="text-xs font-medium uppercase tracking-wider text-destructive">
+                  Observed
+                </p>
+                <p class="mt-2 font-mono text-xs leading-5 text-foreground">
+                  claims[1].source_ids<br />received: []
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between rounded-xl bg-muted/55 px-4 py-3 text-xs text-muted-foreground">
+              <span>Same provider · Same requested model · Same contract</span>
+              <span class="font-medium text-foreground">Exact evidence</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="border-b border-border bg-card/45">
+    <div class="mx-auto grid max-w-7xl gap-px bg-border px-4 sm:px-6 md:grid-cols-4 lg:px-8">
+      <div class="bg-card/95 px-5 py-6">
+        <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Input</p>
+        <p class="mt-2 text-sm font-medium">Your frozen representative cases</p>
+      </div>
+      <div class="bg-card/95 px-5 py-6">
+        <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Evaluation
         </p>
-        <ol class="mt-5 space-y-4">
-          <li class="flex gap-3">
-            <span class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-              1
-            </span>
-            <span class="pt-0.5 text-sm font-medium">Define a representative workflow</span>
+        <p class="mt-2 text-sm font-medium">Explicit machine-checkable rules</p>
+      </div>
+      <div class="bg-card/95 px-5 py-6">
+        <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Execution
+        </p>
+        <p class="mt-2 text-sm font-medium">Managed replay—no SDK required</p>
+      </div>
+      <div class="bg-card/95 px-5 py-6">
+        <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Outcome
+        </p>
+        <p class="mt-2 text-sm font-medium">Reviewable evidence, not a vague score</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="workflows" class="scroll-mt-20 py-20 sm:py-28">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="max-w-3xl">
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+          Where it fits
+        </p>
+        <h2 class="mt-4 text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
+          Best for outputs with a contract you can state before the run.
+        </h2>
+        <p class="mt-5 text-lg leading-8 text-muted-foreground">
+          If a requirement can be checked consistently without asking another model for an opinion, it belongs in the first alpha.
+        </p>
+      </div>
+
+      <div class="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <article class="group rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/25 hover:shadow-lg">
+          <span class="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
+            <.icon name="hero-code-bracket-square" class="size-5" />
+          </span>
+          <h3 class="mt-5 font-semibold">Structured extraction</h3>
+          <p class="mt-2 text-sm leading-6 text-muted-foreground">
+            Required fields, valid JSON, types, formats, allowed values, and numeric ranges.
+          </p>
+        </article>
+
+        <article class="group rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/25 hover:shadow-lg">
+          <span class="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
+            <.icon name="hero-arrows-right-left" class="size-5" />
+          </span>
+          <h3 class="mt-5 font-semibold">Classification and routing</h3>
+          <p class="mt-2 text-sm leading-6 text-muted-foreground">
+            Known labels, routing invariants, confidence bounds, and prohibited destinations.
+          </p>
+        </article>
+
+        <article class="group rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/25 hover:shadow-lg">
+          <span class="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
+            <.icon name="hero-document-magnifying-glass" class="size-5" />
+          </span>
+          <h3 class="mt-5 font-semibold">Grounded RAG answers</h3>
+          <p class="mt-2 text-sm leading-6 text-muted-foreground">
+            Citation presence, source identifiers, answer shape, and required grounding markers.
+          </p>
+        </article>
+
+        <article class="group rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/25 hover:shadow-lg">
+          <span class="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
+            <.icon name="hero-shield-check" class="size-5" />
+          </span>
+          <h3 class="mt-5 font-semibold">Abstention and policy</h3>
+          <p class="mt-2 text-sm leading-6 text-muted-foreground">
+            Required refusals, prohibited content, policy phrases, and evidence thresholds.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section
+    id="how-it-works"
+    class="scroll-mt-20 border-y border-border bg-sidebar py-20 text-sidebar-foreground sm:py-28"
+  >
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="grid gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-[0.18em] text-sidebar-primary">
+            How it works
+          </p>
+          <h2 class="mt-4 text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
+            A controlled loop your team can inspect.
+          </h2>
+          <p class="mt-5 text-base leading-7 text-sidebar-foreground/65">
+            Silent Regression does not watch production traffic. It replays the cases and rules your team explicitly approves.
+          </p>
+        </div>
+
+        <ol class="grid gap-5 sm:grid-cols-3">
+          <li class="rounded-2xl border border-sidebar-border bg-sidebar-accent/45 p-6">
+            <span class="font-mono text-sm text-sidebar-primary">01</span>
+            <h3 class="mt-8 font-semibold">Freeze the workflow</h3>
+            <p class="mt-3 text-sm leading-6 text-sidebar-foreground/65">
+              Provide a prompt, context, configuration, and representative cases using your provider credential.
+            </p>
           </li>
-          <li class="flex gap-3">
-            <span class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-              2
-            </span>
-            <span class="pt-0.5 text-sm font-medium">Approve deterministic expectations</span>
+          <li class="rounded-2xl border border-sidebar-border bg-sidebar-accent/45 p-6">
+            <span class="font-mono text-sm text-sidebar-primary">02</span>
+            <h3 class="mt-8 font-semibold">Approve the contract</h3>
+            <p class="mt-3 text-sm leading-6 text-sidebar-foreground/65">
+              Validate explicit rules against examples you consider valid and invalid before monitoring begins.
+            </p>
           </li>
-          <li class="flex gap-3">
-            <span class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-              3
-            </span>
-            <span class="pt-0.5 text-sm font-medium">Replay and inspect exact evidence</span>
+          <li class="rounded-2xl border border-sidebar-border bg-sidebar-accent/45 p-6">
+            <span class="font-mono text-sm text-sidebar-primary">03</span>
+            <h3 class="mt-8 font-semibold">Replay and review</h3>
+            <p class="mt-3 text-sm leading-6 text-sidebar-foreground/65">
+              Run manually or on a daily or weekly cadence, then inspect the exact evidence behind each result.
+            </p>
           </li>
         </ol>
+      </div>
+    </div>
+  </section>
+
+  <section id="limitations" class="py-20 sm:py-28">
+    <div class="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:px-8">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+          The honest boundary
+        </p>
+        <h2 class="mt-4 text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
+          Not every kind of quality belongs in a pass/fail rule.
+        </h2>
+      </div>
+      <div class="rounded-2xl border border-warning/25 bg-warning/10 p-6 sm:p-8">
+        <div class="flex items-start gap-4">
+          <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-warning/15 text-warning-foreground">
+            <.icon name="hero-scale" class="size-5" />
+          </span>
+          <div>
+            <h3 class="font-semibold">The first alpha does not claim semantic understanding.</h3>
+            <p class="mt-2 text-sm leading-6 text-muted-foreground">
+              It is not designed to judge creative writing, unconstrained chat, open-ended research, retrieval relevance, agent success, or whether one fluent answer is subtly better than another.
+            </p>
+          </div>
+        </div>
+        <div class="mt-6 border-t border-warning/20 pt-6">
+          <p class="text-sm leading-6 text-foreground">
+            Design partners should bring one consequential workflow with stable inputs and requirements their team can state explicitly. We will learn from false alerts and missed regressions together.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pb-20 sm:pb-28">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="relative overflow-hidden rounded-3xl bg-primary px-6 py-12 text-primary-foreground shadow-2xl shadow-primary/20 sm:px-10 sm:py-16 lg:px-16">
+        <div class="absolute -right-20 -top-24 size-80 rounded-full border border-primary-foreground/15">
+        </div>
+        <div class="absolute -bottom-40 -right-8 size-96 rounded-full border border-primary-foreground/10">
+        </div>
+        <div class="relative max-w-3xl">
+          <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary-foreground/70">
+            Build it with us
+          </p>
+          <h2 class="mt-4 text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
+            Bring one critical workflow. Help shape the monitoring loop around real evidence.
+          </h2>
+          <p class="mt-5 max-w-2xl text-base leading-7 text-primary-foreground/75">
+            Private-alpha access is selective and hands-on. Applying does not create an account or enroll you in a paid plan.
+          </p>
+          <.button
+            href={~p"/design-partner/apply"}
+            class="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-primary-foreground/15 bg-primary-foreground px-6 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground"
+          >
+            Apply for design-partner access <.icon name="hero-arrow-right" class="size-4" />
+          </.button>
+        </div>
       </div>
     </div>
   </section>

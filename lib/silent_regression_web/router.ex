@@ -19,6 +19,14 @@ defmodule SilentRegressionWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+    get "/security", PageController, :security
+    get "/privacy", PageController, :privacy
+    get "/terms", PageController, :terms
+    get "/design-partner/apply", DesignPartnerApplicationController, :new
+    post "/design-partner/apply", DesignPartnerApplicationController, :create
+    get "/design-partner/apply/thanks", DesignPartnerApplicationController, :thanks
+    get "/robots.txt", SEOController, :robots
+    get "/sitemap.xml", SEOController, :sitemap
     get "/app", AppController, :index
   end
 

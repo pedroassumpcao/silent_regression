@@ -36,7 +36,7 @@ router.on("finish", () => topbar.hide())
 
 if (process.env.NODE_ENV === "development") {
   window.addEventListener("phx:live_reload:attached", event => {
-    const reloader = event.detail.reloader
+    const reloader = event.detail
     reloader.enableServerLogs()
 
     let keyDown: string | null = null
