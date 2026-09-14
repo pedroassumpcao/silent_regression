@@ -1,0 +1,917 @@
+# Silent Regression Private Alpha — Implementation and Progress Plan
+
+> **Status:** Draft ready for review; implementation not started
+>
+> **Progress:** 0 of 14 tasks complete
+>
+> **Last revised:** 2026-09-13
+>
+> **Release target:** Invite-only design-partner alpha
+>
+> **Purpose:** Authoritative implementation sequence and progress tracker for turning the completed feasibility spike into the smallest useful hosted product
+
+This plan narrows the broader [productization plan](productization_plan.md) into a private alpha that can be used with design partners. It does not reopen the completed spike or authorize the deferred semantic-layer work in [semantic_layer_plan.md](semantic_layer_plan.md).
+
+The private alpha is a learning instrument. It must let a real customer complete the full monitoring loop securely, but it must not acquire conventional SaaS machinery merely to look complete.
+
+## 1. How to use this document
+
+Before beginning a task, Codex must read this document and the current progress notes for that task. Work on one numbered task at a time unless the user explicitly approves parallel work.
+
+For every task:
+
+1. Change its status from `Not started` to `In progress`.
+2. Confirm any decision gate listed for the task.
+3. Implement only the task's defined scope.
+4. Run its task-specific verification.
+5. Run `mix precommit` before marking the task complete.
+6. Update the task checklist, decision log, progress table, and session log.
+7. Create focused commits. Record the commit hashes in this document.
+
+Allowed status values are `Not started`, `In progress`, `Blocked`, `Complete`, and `Deferred`.
+
+An unchecked task is not complete merely because code exists. Its acceptance criteria and verification must pass.
+
+## 2. Product objective
+
+Build an invite-only application through which a design partner can:
+
+1. Accept an invitation and enter an isolated workspace.
+2. Store and validate an OpenAI or Anthropic credential securely.
+3. Define one monitored LLM workflow using a prompt, model configuration, frozen context, and representative inputs.
+4. Configure and approve deterministic output expectations.
+5. Validate the expectations against known valid and invalid examples.
+6. Preview and explicitly authorize an initial baseline capture.
+7. Inspect and approve the captured baseline.
+8. Run the monitor manually or schedule it daily or weekly.
+9. Inspect exact evidence for every passing and failing rule.
+10. Classify results, identify false alerts and missed regressions, and revise the contract through a new version.
+
+Customers do not install an SDK or production library. Silent Regression performs managed replay using customer-provided inputs and credentials.
+
+### 2.1 Initial product statement
+
+> Silent Regression continuously replays critical LLM workflows and alerts when user-approved output contracts fail.
+
+### 2.2 Initial customer fit
+
+The alpha is designed for workflows with explicit, machine-checkable requirements, especially:
+
+- structured extraction and JSON outputs;
+- classification and routing;
+- grounded RAG or support answers with required citations;
+- required abstention when evidence is missing;
+- allowed values, numeric ranges, and prohibited output conditions; and
+- policy or compliance language that can be stated deterministically.
+
+It is not positioned as general quality monitoring for unconstrained chat, creative writing, open research, dynamic retrieval quality, autonomous agents, or highly personalized generation.
+
+## 3. Decisions already made
+
+| Decision | Alpha choice |
+| --- | --- |
+| Access | Private and invite-only |
+| Accounts | Authenticated users in isolated workspaces |
+| Billing | No Stripe, checkout, plan selection, or subscription state |
+| Entitlement | Internally assigned `Design Partner Access` |
+| Backend | Elixir, Phoenix 1.8, Ecto, PostgreSQL |
+| Product frontend | React, TypeScript, Inertia.js, Tailwind CSS 4, shadcn/ui |
+| Providers | OpenAI and Anthropic |
+| Provider HTTP boundary | Existing `Req`-based adapters behind a normalized provider behaviour |
+| Evaluation | Deterministic contracts only |
+| Comparison | Same workflow version, provider, requested model, effective configuration, and approved baseline |
+| Input source | Customer-supplied prompt, frozen context, representative cases, and provider credentials |
+| Execution | Managed replay; no customer SDK |
+| Cadence | Manual, daily, or weekly |
+| Feedback | Structured result review, including false alerts and missed regressions |
+| Deployment | Fly.io eventually, but no deployment work until the local pilot-readiness gate passes |
+
+## 4. Recommended architecture decisions
+
+These are defaults for the plan. If the user changes one, update this document before implementing the affected task.
+
+### 4.1 Hybrid web boundary
+
+Mirror the useful boundary in the local `high_school` reference repository:
+
+- Public marketing, privacy, terms, and design-partner application pages remain server-rendered HEEx for a small, fast, indexable surface.
+- The authenticated product is implemented with Phoenix controllers rendering React pages through Inertia.
+- Phoenix owns routing, sessions, authorization, validation, persistence, and business rules.
+- React owns product interaction and presentation; it does not duplicate domain rules.
+- No independent REST API is introduced merely to connect the browser to Phoenix. Add JSON endpoints only for interactions that genuinely need them.
+
+### 4.2 Authentication and tenancy
+
+- Start from Phoenix 1.8 generated authentication and retain its token/session security model.
+- Adapt user-facing authentication screens to the agreed web boundary rather than keeping a second product UI stack.
+- Disable public registration.
+- Use email invitation tokens for design partners.
+- Model a `Workspace` as the tenant and billing boundary even though billing is absent.
+- Support `owner` and `member` roles only.
+- Put the current user, workspace, and membership in a Phoenix `Scope` passed to every workspace-owned context operation.
+- Never provide an unscoped public query for tenant-owned records.
+
+### 4.3 Provider credentials
+
+- Store provider keys only because scheduled replay requires server-side access.
+- Encrypt credential values at the application layer with AES-GCM using a runtime key that is never stored in the database.
+- The initial implementation may use `Cloak.Ecto`, subject to a dependency review during Task 4.
+- Never return a stored secret to React after creation.
+- Never place a secret in logs, exception metadata, analytics events, URLs, Oban arguments, or run artifacts.
+- Show only provider, user-defined label, status, last validation time, and a non-secret suffix or fingerprint.
+
+### 4.4 Durable work
+
+- Use PostgreSQL-backed Oban jobs for manual, baseline, and scheduled captures.
+- Store per-monitor cadence and `next_run_at` in application tables.
+- Use a small recurring dispatcher to enqueue due monitors rather than generating arbitrary user cron entries.
+- Enforce uniqueness and idempotency for a monitor and scheduled time window.
+- Treat provider retries as real calls that consume the configured call budget.
+
+### 4.5 Provider library boundary
+
+The product domain must depend on a provider behaviour, not on `Req`, ReqLLM, or a provider-specific response shape. Reuse the spike's proven request provenance and call-accounting logic where it remains generic.
+
+Do not adopt ReqLLM merely because `high_school` uses it. Reconsider it only after the private alpha has a stable normalized provider contract and compare it against direct `Req` adapters for provenance fidelity, retry visibility, model coverage, testability, and maintenance cost.
+
+### 4.6 Spike isolation
+
+- Keep `SilentRegression.Spike` intact as experimental evidence and regression reference.
+- Product code must not call Mix tasks or read spike JSON artifacts at runtime.
+- Move or rewrite reusable deterministic logic under product namespaces with product schemas, versioning, explanations, and independent tests.
+- Do not ship the lexical or handcrafted semantic representations that failed their held-out gates.
+
+## 5. What to borrow from `high_school`
+
+The local repository at `/Users/pedro/projects/high_school` is a reference, not a dependency and not a source to copy wholesale.
+
+| Borrow the pattern | Adapt for Silent Regression |
+| --- | --- |
+| Inertia plug, controller rendering, title helper, React page resolution | Use current `inertia` versions and TypeScript-first pages |
+| `assets/components.json`, `@` aliases, `cn` helper, shadcn primitives | Initialize with the current shadcn CLI; preview registry changes before writing |
+| Workspace-like scope containing user, organization, and membership | Rename the tenant to `Workspace`; require it in all tenant-owned queries |
+| Slug-scoped authenticated routes | Use `/app/:workspace_slug/...` and verify membership before assigning the scope |
+| React application layout and responsive navigation | Build a monitoring-specific shell rather than copying One Sideline navigation or branding |
+| Onboarding provider/checklist concept | Derive progress from persisted monitor state rather than manually toggled checklist flags |
+| Oban supervision and manual test mode | Add monitor-specific queues, uniqueness, call budgets, and idempotency |
+| Public HEEx pages separate from the Inertia product | Keep only the few pages needed for credibility and design-partner recruitment |
+
+Do not carry over Stripe billing, subscription gates, public registration, broad SEO routes, app-specific analytics, domain modules, or external/inline asset patterns that conflict with this repository's `AGENTS.md`.
+
+## 6. Scope
+
+### 6.1 Included in the private alpha
+
+- Invite-only authentication and workspace membership.
+- One workspace may have multiple invited users.
+- OpenAI and Anthropic credential storage, validation, rotation, and revocation.
+- Monitor creation with versioned prompt, context, cases, provider/model, and generation configuration.
+- Manual case entry and versioned JSON import.
+- Deterministic contract templates and explicit rule configuration.
+- Positive and negative fixture validation before contract approval.
+- Explicit baseline authorization and approval.
+- Manual, daily, and weekly durable runs.
+- Exact planned-versus-actual provider call accounting.
+- Run history, observations, deterministic evidence, and operational provenance.
+- In-app alerts plus one email notification path for actionable failures.
+- Structured review and contract revision.
+- A derived onboarding checklist and first-party learning events.
+- A minimal public site and design-partner application form.
+- Customer data deletion and credential revocation suitable for a controlled pilot.
+
+### 6.2 Explicitly deferred
+
+- Stripe, paid plans, trials, invoices, metering, and customer billing portals.
+- Public self-service registration.
+- Fly.io deployment and production infrastructure.
+- Semantic judges, embeddings, lexical drift alerts, or generalized quality scores.
+- Cross-provider/model comparisons and migration simulations.
+- Production SDKs, tracing, webhooks, or live traffic ingestion.
+- Slack, Teams, PagerDuty, or configurable notification integrations.
+- Arbitrary cron expressions and advanced scheduling.
+- SSO, SCIM, complex RBAC, enterprise audit exports, and regional hosting.
+- User-authored executable code or arbitrary regular expressions.
+- A broad blog, programmatic SEO, or AI-mention content program.
+
+## 7. Target domain model
+
+Exact migrations are finalized in their owning task. These boundaries are part of the architecture and should not be collapsed for short-term convenience.
+
+| Entity | Responsibility and important data |
+| --- | --- |
+| `User` / `UserToken` | Phoenix-generated identity, sessions, invitation acceptance, and login tokens |
+| `Workspace` | Tenant boundary, name, slug, status, timezone, and alpha entitlement |
+| `Membership` | User-to-workspace relationship with `owner` or `member` role |
+| `Invitation` | Hashed, expiring invitation token, email, workspace, role, inviter, acceptance state |
+| `DesignPartnerApplication` | Public request-access submission and internal review status |
+| `ProviderCredential` | Workspace, provider, label, encrypted secret, fingerprint/suffix, state, validation metadata |
+| `Monitor` | Stable identity, name, lifecycle state, active version references, cadence, and `next_run_at` |
+| `MonitorVersion` | Immutable provider/model, prompts, response format, generation config, and compatibility fingerprint |
+| `CaseVersion` | Immutable name, frozen variables/context, position, status, and fingerprint |
+| `ContractVersion` | Immutable schema version, configured rules, fixture references, approval state, fingerprint, approver |
+| `ContractFixture` | Known-valid or known-invalid customer example and its expected rule outcomes |
+| `BaselineSnapshot` | Approved monitor, workflow, case, contract, provider provenance, and member observations |
+| `CaptureRun` | Baseline/manual/scheduled purpose, lifecycle, plan, call budget, counts, timestamps, and terminal reason |
+| `Observation` | Immutable normalized response, completion state, requested/returned model, usage, latency, safe request ID, and errors |
+| `Evaluation` | Observation, contract version, evaluator engine version, overall result, and evaluation timestamp |
+| `RuleResult` | Stable rule ID, pass/fail/error, human explanation, and bounded evidence payload |
+| `Alert` | Actionable monitor/run failure with severity, open/resolved state, and notification state |
+| `ReviewDecision` | Append-only human classification, rationale, reviewer, evidence identity, and supersession link |
+| `AuditEvent` | Security- and approval-relevant action without secret or raw-output leakage |
+| `ProductEvent` | Minimal first-party onboarding and product-learning event with allowlisted properties |
+
+### 7.1 Required state transitions
+
+```text
+Monitor: draft -> validating -> ready -> baseline_pending -> active -> paused -> archived
+Contract: draft -> approved -> retired
+Baseline: pending -> approved -> superseded
+Run: planned -> queued -> running -> completed | partially_failed | failed | cancelled
+Alert: open -> acknowledged -> resolved
+```
+
+Behavior-affecting changes never mutate an approved version. They create a new monitor, case, or contract version and require compatibility validation. A provider/model/prompt/configuration change invalidates the active baseline until a replacement is approved.
+
+## 8. Alpha product flow
+
+### 8.1 Entry and onboarding
+
+1. A founder/operator approves a design partner.
+2. The system creates a workspace invitation.
+3. The user accepts the invite and authenticates.
+4. The empty dashboard directs them to `Create your first monitor`.
+5. A persisted setup flow guides them through workflow, cases, contract, validation, baseline, and schedule.
+6. Progress is derived from completed domain state and remains resumable.
+
+### 8.2 Monitor setup
+
+1. Name the monitor and describe the failure it protects against.
+2. Add or select an encrypted provider credential.
+3. Choose an allowlisted provider/model and generation configuration.
+4. Enter system/user prompt templates and response-format expectations.
+5. Add 1–20 representative cases manually or through the versioned JSON import format.
+6. Select deterministic templates and configure rules.
+7. Test the contract against known-valid and known-invalid fixtures without provider calls.
+8. Approve the contract.
+9. Preview exact baseline calls and authorize capture.
+10. Review baseline health and approve it.
+11. Select manual, daily, or weekly replay.
+
+### 8.3 Monitoring and review
+
+1. A due or manual run creates immutable observations.
+2. The approved deterministic contract evaluates each observation locally.
+3. Operational anomalies remain separate from content failures.
+4. A configured contract failure creates or updates an alert.
+5. The workspace owner receives an in-app alert and, when configured, one email notification.
+6. A reviewer sees exact failed rules and evidence, then classifies the result.
+7. If the rule or expectation is wrong, the user creates and validates a new contract version; history is not rewritten.
+
+## 9. Progress summary
+
+| Task | Deliverable | Depends on | Status | Commits |
+| --- | --- | --- | --- | --- |
+| 1 | Phoenix/Inertia/React/shadcn foundation | — | Not started | — |
+| 2 | Minimal public site and design-partner application | 1 | Not started | — |
+| 3 | Invite-only accounts, workspaces, memberships, and scope | 1 | Not started | — |
+| 4 | Encrypted provider credentials and validation | 3 | Not started | — |
+| 5 | Versioned monitor and case domain | 3 | Not started | — |
+| 6 | Persisted cold-start monitor setup | 4, 5 | Not started | — |
+| 7 | Generic deterministic contract engine | 5 | Not started | — |
+| 8 | Contract authoring, fixture validation, and approval | 6, 7 | Not started | — |
+| 9 | Durable capture execution and provider accounting | 4, 5, 7 | Not started | — |
+| 10 | Baseline capture, inspection, and approval | 8, 9 | Not started | — |
+| 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | Not started | — |
+| 12 | Run results, evidence, alerts, and operational signals | 9, 10 | Not started | — |
+| 13 | Structured review and versioned correction loop | 8, 12 | Not started | — |
+| 14 | Onboarding telemetry, notifications, security, and pilot readiness | 2–13 | Not started | — |
+
+## 10. Implementation tasks
+
+### Task 1 — Phoenix/Inertia/React/shadcn foundation
+
+**Status:** Not started
+
+**Objective:** Establish the product frontend and controller boundary without changing spike behavior.
+
+**Checklist:**
+
+- [ ] Add and configure the current official `inertia` Phoenix adapter.
+- [ ] Add React, React DOM, `@inertiajs/react`, TypeScript, and the minimal build dependencies under `assets`.
+- [ ] Convert the asset entry point to TypeScript/TSX and configure code splitting, extension resolution, and the `@` alias.
+- [ ] Configure the Inertia plug, root layout, CSRF handling, page title handling, and shared flash props.
+- [ ] Initialize `assets/components.json` using the current shadcn CLI with React, TSX, Tailwind 4, CSS variables, Lucide, and `@` aliases.
+- [ ] Use shadcn CLI `info`, documentation, `--dry-run`, and `--diff` before installing or updating registry components.
+- [ ] Add only the initial primitives: button, card, input, label, textarea, select, alert, badge, progress, skeleton, table, dialog, dropdown menu, and tooltip.
+- [ ] Define product design tokens in `app.css`; do not add daisyUI or use `@apply`.
+- [ ] Remove the unused daisyUI dependency and generated integration without disturbing the spike.
+- [ ] Create an Inertia smoke page and an authenticated-product layout placeholder.
+- [ ] Add `npm` scripts for type checking, frontend tests, and production build.
+- [ ] Add controller and frontend smoke tests.
+
+**Acceptance criteria:**
+
+- Phoenix renders an Inertia React page with working navigation, CSRF-protected actions, flash messages, and page titles.
+- TypeScript resolves `@/components`, `@/lib`, and page imports.
+- Tailwind and installed shadcn primitives render through the supported `app.js` and `app.css` bundles.
+- Existing spike and Phoenix tests continue to pass.
+
+**Verification:**
+
+- `npm run typecheck --prefix assets`
+- `npm test --prefix assets`
+- `mix assets.build`
+- Relevant controller tests
+- `mix precommit`
+
+### Task 2 — Minimal public site and design-partner application
+
+**Status:** Not started
+
+**Objective:** Provide enough public credibility and conversion support for founder-led design-partner recruitment.
+
+**Checklist:**
+
+- [ ] Keep the public surface server-rendered and separate from authenticated Inertia routes.
+- [ ] Build one polished homepage with the deterministic wedge, target workflows, how it works, limitations, and `Apply for design-partner access` CTA.
+- [ ] Add a short security/data-handling page describing managed replay and customer-provided credentials without making unimplemented compliance claims.
+- [ ] Add privacy and terms placeholders that are clearly marked for legal review before external use.
+- [ ] Add a compact design-partner application form and persist submissions.
+- [ ] Collect only name, work email, company, role, workflow description, current problem, provider, and willingness to participate in recurring feedback.
+- [ ] Add internal status values for new, contacted, qualified, invited, declined, and withdrawn applications.
+- [ ] Add canonical metadata, Open Graph metadata, sitemap, and correct robots behavior.
+- [ ] Ensure authenticated application pages are not indexed.
+- [ ] Do not add a pricing page, fake free plan, broad blog, or programmatic SEO pages.
+
+**Acceptance criteria:**
+
+- A prospect can understand the product boundary and submit an application.
+- Duplicate or invalid submissions are handled safely.
+- Public pages are usable without JavaScript and have appropriate metadata.
+- No page implies that semantic quality monitoring, public signup, or billing exists.
+
+**Verification:**
+
+- Controller and changeset tests
+- Accessibility and responsive browser check
+- Metadata, sitemap, and robots assertions
+- `mix precommit`
+
+### Task 3 — Invite-only accounts, workspaces, memberships, and scope
+
+**Status:** Not started
+
+**Objective:** Establish secure identity and tenant isolation before storing customer workflows or credentials.
+
+**Checklist:**
+
+- [ ] Generate Phoenix 1.8 authentication using binary IDs and preserve generated security behavior.
+- [ ] Adapt authentication pages to the chosen web boundary.
+- [ ] Disable public registration and reject uninvited account creation server-side.
+- [ ] Add workspaces, memberships, and hashed expiring invitation tokens.
+- [ ] Support only `owner` and `member` roles.
+- [ ] Add an operator Mix task for creating a workspace invitation.
+- [ ] Add invitation acceptance, expiration, revocation, and single-use enforcement.
+- [ ] Build a `Scope` containing user, workspace, and membership.
+- [ ] Add workspace-slug resolution and membership validation plugs.
+- [ ] Require the scope in every tenant-owned context function.
+- [ ] Add shared Inertia props for safe user/workspace identity and flash messages.
+- [ ] Record invite, membership, login-sensitive, and workspace actions in audit events.
+
+**Acceptance criteria:**
+
+- An invited user can authenticate and reach only workspaces where they have membership.
+- An uninvited visitor cannot create an account.
+- Changing a workspace slug or record ID cannot expose another tenant's records.
+- Tests cover revoked/expired tokens and cross-workspace access attempts.
+
+**Verification:**
+
+- Accounts, workspace, invitation, plug, controller, and scope tests
+- Explicit cross-tenant authorization tests
+- `mix precommit`
+
+### Task 4 — Encrypted provider credentials and validation
+
+**Status:** Not started
+
+**Decision gate:** Confirm the application-level encryption library and production key-rotation strategy before storing any external customer's secret.
+
+**Objective:** Let a workspace safely store, validate, rotate, and revoke OpenAI and Anthropic credentials.
+
+**Checklist:**
+
+- [ ] Review `Cloak.Ecto` and record the selected encryption approach in the decision log.
+- [ ] Add a runtime-managed encryption key with safe development and test configuration.
+- [ ] Add provider credential schema, context, lifecycle states, and audit events.
+- [ ] Encrypt the secret column and keep searchable/display metadata separate.
+- [ ] Never return decrypted credentials in Inertia props or inspection output.
+- [ ] Add create, list, validate, rotate, and revoke actions.
+- [ ] Use the normalized provider boundary for validation.
+- [ ] Retain returned-model and provider request provenance where available.
+- [ ] Redact provider authorization headers, request bodies, prompts, contexts, and outputs from logs.
+- [ ] Ensure workers accept only credential IDs and resolve secrets at execution time within workspace scope.
+- [ ] Add a safe fake provider implementation for automated tests; never call live APIs from the test suite.
+
+**Acceptance criteria:**
+
+- Database values and logs never contain a plaintext provider key.
+- Stored credentials cannot be fetched from another workspace.
+- Validation failures distinguish authentication, authorization/model access, rate limiting, transport, and provider errors without exposing secrets.
+- Rotation supersedes the old secret without rewriting historical run provenance.
+
+**Verification:**
+
+- Encryption-at-rest assertion using direct database reads
+- Redaction and cross-tenant tests
+- Mocked OpenAI and Anthropic adapter tests
+- Manually authorized live smoke test outside the automated suite
+- `mix precommit`
+
+### Task 5 — Versioned monitor and case domain
+
+**Status:** Not started
+
+**Objective:** Create the durable, immutable configuration lineage required for trustworthy comparisons.
+
+**Checklist:**
+
+- [ ] Add monitor, monitor version, and case version schemas and contexts.
+- [ ] Define monitor and configuration state transitions.
+- [ ] Store prompt templates, frozen context, input variables, response format, generation configuration, provider, and requested model.
+- [ ] Generate stable fingerprints from all behavior-affecting fields.
+- [ ] Define which fields are metadata-only and may be edited without a new version.
+- [ ] Create a new immutable version for every behavior-affecting change.
+- [ ] Add manual case entry and a documented versioned JSON import schema.
+- [ ] Enforce initial alpha caps of 1–20 active cases per monitor and bounded payload sizes through configuration.
+- [ ] Add provider/model allowlists without silently substituting models.
+- [ ] Reject comparisons and baselines with incompatible fingerprints or provenance.
+- [ ] Add audit events for monitor version activation, pausing, and archival.
+
+**Acceptance criteria:**
+
+- Approved configuration content cannot be mutated in place.
+- Fingerprints change for every behavior-affecting edit and remain stable for metadata-only edits.
+- Imported cases produce the same normalized representation as manually entered cases.
+- All queries are workspace-scoped.
+
+**Verification:**
+
+- Changeset, fingerprint, state-transition, import, and tenancy tests
+- `mix precommit`
+
+### Task 6 — Persisted cold-start monitor setup
+
+**Status:** Not started
+
+**Objective:** Give an invited design partner a resumable guided path from an empty workspace to a contract-ready monitor.
+
+**Checklist:**
+
+- [ ] Build the product shell with workspace switcher, monitors navigation, alerts navigation, and account menu.
+- [ ] Build an empty dashboard with one primary `Create your first monitor` action.
+- [ ] Implement persisted setup steps for purpose, credential/model, prompt/configuration, and cases.
+- [ ] Use Inertia form submissions and server changesets as the source of validation truth.
+- [ ] Preserve drafts and allow the user to leave and resume safely.
+- [ ] Derive progress from persisted domain state.
+- [ ] Show what data is stored and what will be sent to the selected provider.
+- [ ] Show case counts, payload limits, and estimated calls before any live execution.
+- [ ] Add loading, empty, validation, provider-error, and recovery states.
+- [ ] Ensure accessible keyboard flow and responsive layouts.
+- [ ] Record setup-step completion and abandonment as allowlisted product events.
+
+**Acceptance criteria:**
+
+- A new user can create a complete draft monitor without founder database intervention.
+- Refreshing or leaving the flow does not lose valid progress.
+- No provider call occurs during these steps.
+- The next incomplete action is always apparent.
+
+**Verification:**
+
+- Controller and context tests for every step
+- Frontend form and state tests
+- Browser test covering draft creation and resumption
+- `mix precommit`
+
+### Task 7 — Generic deterministic contract engine
+
+**Status:** Not started
+
+**Objective:** Convert the spike's proven deterministic concept into versioned, monitor-specific, explainable product primitives.
+
+**Initial rule primitives:**
+
+- JSON validity and required structure.
+- Required JSON path, type, exact value, allowed values, and numeric range/tolerance.
+- Normalized classification label from an allowed set.
+- Required text/fact alternatives declared by the customer.
+- Forbidden text/fact alternatives declared by the customer.
+- Required source IDs and bounded citation placement for a documented citation format.
+- Required abstention alternatives for explicitly unsupported cases.
+- Minimum/maximum length where it is a genuine contract requirement.
+- Composable `all`, `any`, and `not` groups with bounded depth.
+
+**Checklist:**
+
+- [ ] Define a versioned machine-readable rule schema with stable rule IDs.
+- [ ] Add strict parsing and validation with no atom creation from customer input.
+- [ ] Exclude arbitrary executable code and unbounded regular expressions.
+- [ ] Port or rewrite only generic spike logic; remove fixture-specific facts and phrases.
+- [ ] Return pass, fail, and evaluator-error separately.
+- [ ] Produce a concise human explanation and bounded structured evidence for each result.
+- [ ] Version the evaluator engine independently from the contract.
+- [ ] Separate observations from evaluations so stored outputs can be rescored.
+- [ ] Add positive, negative, malformed, boundary, and adversarial fixtures for every primitive.
+- [ ] Add held-out cases from domains beyond the original RAG fixtures.
+- [ ] Confirm the engine contains no lexical or semantic drift claims.
+
+**Acceptance criteria:**
+
+- Every primitive passes its conformance suite and produces useful evidence.
+- The engine is deterministic for the same observation, contract version, and evaluator version.
+- Re-evaluation creates a new evaluation record without mutating the observation.
+- No product rule contains hard-coded spike facts.
+
+**Verification:**
+
+- Evaluator unit and property-oriented boundary tests
+- Approved generic conformance fixtures
+- `mix precommit`
+
+### Task 8 — Contract authoring, fixture validation, and approval
+
+**Status:** Not started
+
+**Objective:** Make contract creation understandable enough to test whether customers can define and approve useful expectations.
+
+**Checklist:**
+
+- [ ] Build contract template selection based on workflow type.
+- [ ] Build shadcn-based forms for configuring rules without exposing raw internal JSON by default.
+- [ ] Provide an advanced read-only or validated JSON view for transparency and support.
+- [ ] Let users add known-valid and known-invalid fixture outputs.
+- [ ] Evaluate fixtures locally with no provider calls.
+- [ ] Show each rule's expected and actual fixture outcome.
+- [ ] Block approval when required fixture judgments are missing or contradicted.
+- [ ] Require explicit approval by a workspace owner.
+- [ ] Seal the approved contract version and fingerprint it.
+- [ ] Make edits create a new draft version.
+- [ ] Record which suggested templates were accepted, edited, or removed.
+- [ ] Keep in-product LLM contract drafting out of the alpha; Codex/founder assistance remains a concierge process until repeated needs justify automation.
+
+**Acceptance criteria:**
+
+- A customer can understand why a fixture passes or fails before spending provider calls.
+- Approval is attributable and tied to exact contract and fixture bytes.
+- An approved contract cannot be edited in place.
+- The product captures where founder assistance was required.
+
+**Verification:**
+
+- Contract lifecycle and approval authorization tests
+- Frontend rule-form and fixture-result tests
+- Browser test covering draft, validation failure, correction, and approval
+- `mix precommit`
+
+### Task 9 — Durable capture execution and provider accounting
+
+**Status:** Not started
+
+**Objective:** Replace CLI-only and in-memory capture with one durable execution path shared by baseline, manual, and scheduled runs.
+
+**Checklist:**
+
+- [ ] Add Oban and generate its migration through the supported Mix task.
+- [ ] Configure capture and scheduler queues plus manual testing mode.
+- [ ] Add capture run, observation, evaluation, and rule-result schemas.
+- [ ] Create planned runs with immutable provider, configuration, case, contract, and call-budget references.
+- [ ] Enqueue jobs with idempotency and uniqueness by run identity.
+- [ ] Resolve credentials at execution time without putting secrets in job arguments.
+- [ ] Apply bounded concurrency and back-pressure for provider calls.
+- [ ] Count retries against the maximum call budget.
+- [ ] Preserve requested and returned model, completion state, usage, latency, safe provider request ID, and failure category.
+- [ ] Normalize and store only provider response fields required for evidence and operations.
+- [ ] Make cancellation stop the scheduling of new calls and preserve completed observations.
+- [ ] Evaluate successful observations locally under the exact approved contract version.
+- [ ] Recover safely from worker restarts without duplicating completed calls where the provider boundary permits.
+
+**Acceptance criteria:**
+
+- Baseline, manual, and scheduled captures use the same orchestration path.
+- A run cannot exceed its call cap, including retries.
+- Duplicate worker execution does not duplicate completed observations or spend silently.
+- Partial provider failure produces an honest terminal state and retained evidence.
+
+**Verification:**
+
+- Oban worker tests using manual test mode
+- Retry, uniqueness, cancellation, restart, partial-failure, and cap tests
+- Mocked provider accounting tests
+- `mix precommit`
+
+### Task 10 — Baseline capture, inspection, and approval
+
+**Status:** Not started
+
+**Objective:** Make the first live spend explicit and create an immutable compatible reference for the monitor.
+
+**Checklist:**
+
+- [ ] Add a preflight that validates credential state, model access, monitor readiness, contract approval, cases, and call caps.
+- [ ] Show exact case count, samples per case, maximum requests, retry policy, and available usage estimate.
+- [ ] Require explicit user authorization before enqueueing the baseline.
+- [ ] Support a bounded alpha sample count with a conservative default.
+- [ ] Stream or poll durable progress without relying on an in-memory browser process.
+- [ ] Display successful, incomplete, failed, and unknown completions separately.
+- [ ] Surface returned-model mismatches as operational anomalies even when calls succeed.
+- [ ] Require all zero-tolerance contract conditions before normal approval; exceptional acceptance requires an explicit recorded rationale.
+- [ ] Seal approved baseline membership and provenance.
+- [ ] Invalidate compatibility when behavior-affecting configuration changes.
+
+**Acceptance criteria:**
+
+- No provider spend occurs without an exact preview and explicit authorization.
+- A baseline can be approved only under a compatible approved contract.
+- The user can inspect every observation and deterministic result before approval.
+- Approved membership and provenance cannot be silently rewritten.
+
+**Verification:**
+
+- Preflight, authorization, compatibility, mismatch, and approval tests
+- Browser test with fake provider from preview through approval
+- One manually authorized live provider smoke test
+- `mix precommit`
+
+### Task 11 — Manual/daily/weekly scheduling and monitor operations
+
+**Status:** Not started
+
+**Objective:** Deliver the continuous part of the wedge with a deliberately small scheduling surface.
+
+**Checklist:**
+
+- [ ] Support `Run now`, `Daily`, `Weekly`, `Pause`, and `Resume`.
+- [ ] Store cadence and the next scheduled UTC time on the monitor.
+- [ ] Add a small recurring Oban dispatcher that enqueues due monitors.
+- [ ] Lock or atomically claim due monitors to prevent duplicate scheduling.
+- [ ] Add unique scheduled-run identity by monitor and intended execution time.
+- [ ] Prevent overlapping runs for the same monitor.
+- [ ] Recalculate `next_run_at` only after an atomic scheduling decision.
+- [ ] Require an approved compatible baseline before activation.
+- [ ] Show last run, next run, cadence, monitor state, and unresolved alert count.
+- [ ] Pause automatically on revoked credentials, incompatible versions, repeated authentication failures, or exhausted workspace guardrails.
+- [ ] Record schedule and lifecycle audit events.
+
+**Acceptance criteria:**
+
+- Manual, daily, and weekly runs enqueue through the same capture pipeline.
+- Restarts and multiple nodes cannot silently duplicate a scheduled window.
+- Paused or incompatible monitors do not call providers.
+- The UI accurately represents the durable database state.
+
+**Verification:**
+
+- Dispatcher, uniqueness, overlap, pause/resume, and next-run tests
+- Time-controlled tests without `Process.sleep/1`
+- Browser test for schedule activation and pause
+- `mix precommit`
+
+### Task 12 — Run results, evidence, alerts, and operational signals
+
+**Status:** Not started
+
+**Objective:** Let users understand exactly what happened and why a result is actionable.
+
+**Checklist:**
+
+- [ ] Build monitor overview and run-history pages.
+- [ ] Build a run detail page with planned/actual calls, completion counts, latency, tokens, and provider failures.
+- [ ] Show each case, observation, evaluation, and rule result with bounded evidence.
+- [ ] Clearly separate contract failures from provider/latency/usage/model anomalies.
+- [ ] Support critical and warning rule severities plus a small explicit alert policy.
+- [ ] Create alerts idempotently from actionable run outcomes.
+- [ ] Add open, acknowledged, and resolved alert states.
+- [ ] Show baseline and current provenance together and reject incompatible comparisons.
+- [ ] Avoid unexplained aggregate quality scores.
+- [ ] Add safe empty, loading, partial failure, stale configuration, and no-alert states.
+- [ ] Ensure long prompts, contexts, and outputs cannot break layout or inject executable content.
+
+**Acceptance criteria:**
+
+- A reviewer can explain every alert from the displayed rule, evidence, observation, and provenance.
+- Operational anomalies are never described as content degradation.
+- Reloading or retrying result pages does not duplicate alerts.
+- Sensitive values are redacted in UI and exported diagnostic data.
+
+**Verification:**
+
+- Result presenter, alert lifecycle, provenance, and escaping tests
+- Frontend evidence and responsive-layout tests
+- Browser test from completed fake run to alert inspection
+- `mix precommit`
+
+### Task 13 — Structured review and versioned correction loop
+
+**Status:** Not started
+
+**Objective:** Capture design-partner judgment as governed evidence and make correction safe.
+
+**Review classifications:**
+
+- Correct pass.
+- Confirmed regression.
+- Acceptable variation / false alert.
+- Contract needs revision.
+- Test case or baseline problem.
+- Passed but should have failed.
+- Unsure / requires review.
+- Operational/provider anomaly.
+
+**Checklist:**
+
+- [ ] Add append-only review decisions tied to exact run, observation, evaluation, rule, contract, and baseline identities as applicable.
+- [ ] Require reviewer identity, classification, and optional rationale.
+- [ ] Allow a later decision to supersede, not overwrite, an earlier decision.
+- [ ] Add alert acknowledgment and resolution actions with authorization.
+- [ ] Add `passed but should have failed` entry points for false-negative discovery.
+- [ ] Record whether the review caused a prompt, case, contract, provider, or operational action.
+- [ ] Start a contract-revision flow from a review without mutating history.
+- [ ] Rescore stored observations under a newly approved contract version before activation.
+- [ ] Require a new baseline only when compatibility rules say the interpretation or monitored behavior changed materially.
+- [ ] Expose review counts and disagreement without calling them model accuracy until sample sizes support it.
+
+**Acceptance criteria:**
+
+- Every judgment remains attributable to exact evidence.
+- History remains reproducible after a contract correction.
+- The product captures false positives and false negatives, not merely thumbs up/down.
+- Workspace members cannot approve or resolve actions reserved for owners.
+
+**Verification:**
+
+- Review append/supersession, authorization, rescore, and history tests
+- Browser test covering false alert, missed regression, and contract revision
+- `mix precommit`
+
+### Task 14 — Onboarding telemetry, notifications, security, and pilot readiness
+
+**Status:** Not started
+
+**Decision gates before external data:**
+
+- Select the transactional email provider.
+- Approve raw prompt/context/output retention and deletion behavior.
+- Approve the credential master-key and rotation procedure.
+- Approve alpha usage/call caps and supported model allowlists.
+
+**Objective:** Make the complete local product safe and observable enough for controlled external use, without deploying it yet.
+
+**Checklist:**
+
+- [ ] Add a derived onboarding checklist for credential, workflow, cases, contract, baseline, and schedule.
+- [ ] Add allowlisted product events for time-to-first-monitor, step abandonment, founder assistance, baseline approval, schedule activation, alert review, and action taken.
+- [ ] Keep product events free of prompts, contexts, outputs, credentials, and arbitrary user text.
+- [ ] Add one actionable-alert email path with deduplication and preference control.
+- [ ] Use the local Swoosh adapter until a transactional provider is selected.
+- [ ] Add workspace-level run and call caps with clear errors.
+- [ ] Add retention, customer deletion, credential revocation, and workspace closure workflows.
+- [ ] Verify logs, telemetry, exceptions, job arguments, and audit events against a sensitive-data allowlist.
+- [ ] Add rate limiting for login, invitations, credential validation, and run authorization.
+- [ ] Add backup/restore and encryption-key rotation notes for eventual Fly.io deployment.
+- [ ] Add an operator runbook for invitations, failed jobs, provider incidents, data deletion, and pilot support.
+- [ ] Add end-to-end tests for the complete fake-provider journey.
+- [ ] Conduct separate manually authorized OpenAI and Anthropic smoke tests.
+- [ ] Record pilot limits and known limitations in customer-visible alpha documentation.
+- [ ] Produce a deployment-readiness checklist without creating Fly.io resources.
+
+**Acceptance criteria:**
+
+- A fresh invited user can complete the entire fake-provider flow without database intervention.
+- The operator can identify where onboarding stalled without reading customer content.
+- Alert email is sent once for an actionable alert and links to authorized evidence.
+- Customer data and credentials can be removed through a documented, tested path.
+- The app passes the security, tenancy, call-budget, and end-to-end pilot gates.
+- Fly.io deployment remains a separate, explicitly authorized follow-up.
+
+**Verification:**
+
+- Full backend and frontend suites
+- End-to-end private-alpha journey
+- Redaction, deletion, rate-limit, notification-deduplication, and cross-tenant suites
+- Manually authorized provider smoke tests
+- `mix precommit`
+
+## 11. Cross-cutting testing strategy
+
+### 11.1 Backend
+
+- Context and schema tests for state transitions and invariants.
+- `DataCase` tests for constraints, transactions, immutable records, and tenant scoping.
+- `ConnCase` tests for authentication, authorization, Inertia props, validation, and redirects.
+- Provider behaviour tests with deterministic fakes for success, incomplete output, authentication failure, rate limiting, timeout, malformed response, and returned-model mismatch.
+- Oban manual-mode tests for uniqueness, retries, cancellation, partial completion, and scheduling.
+- Evaluator conformance fixtures separated from their held-out verification cases.
+
+### 11.2 Frontend
+
+- TypeScript type checking.
+- Component tests for complex forms, rule evidence, state transitions, and error recovery.
+- Do not over-test shadcn primitives; test Silent Regression behavior composed from them.
+- Browser tests for invitation, setup resumption, contract approval, baseline authorization, scheduling, alert review, and correction.
+
+### 11.3 Live provider tests
+
+- Never execute live provider calls in automated tests.
+- Every live smoke command must preview provider, model, configuration, cases, samples, retries, and maximum calls.
+- Require explicit authorization and a hard maximum-call cap.
+- Record planned and actual calls plus returned-model provenance.
+
+## 12. Product-learning measurements
+
+The alpha is successful only if it produces customer evidence, not merely working software.
+
+| Question | Measurement |
+| --- | --- |
+| Can a partner activate? | Invitation accepted through approved baseline and active schedule |
+| How much assistance is required? | Founder interventions by setup step and reason |
+| Can customers define contracts? | Rules created, templates accepted/edited/rejected, validation iterations |
+| Is monitoring useful? | Reviewed alerts, confirmed regressions, actions taken, time to decision |
+| Is it trustworthy? | False alerts, missed regressions, unsure reviews, evaluator disputes |
+| Does it recur? | Active monitors and completed scheduled runs over successive periods |
+| Is the architecture acceptable? | Credential/data/security objections and blocked pilots |
+| Is there economic intent? | Paid pilot, procurement action, budget owner involvement, or explicit continuation commitment |
+
+Proposed product-validation gate before broader productization:
+
+- At least three design partners provide real workflows and representative cases.
+- The same core requirements recur across multiple partners.
+- At least two partners keep a monitor active across repeated scheduled runs.
+- Customers can approve or revise useful contracts without the founder inventing every rule.
+- Alerts cause concrete review and at least one operational or product action.
+- False-alert and missed-regression feedback is acceptable to the participating partners.
+- At least one partner demonstrates economic commitment.
+
+## 13. Definition of private-alpha ready
+
+The product is ready for the first external design partner only when:
+
+- [ ] Tasks 1–14 are complete.
+- [ ] Public registration and all billing routes are absent.
+- [ ] Tenant isolation has explicit adversarial tests.
+- [ ] Provider credentials are encrypted, redacted, revocable, and never returned to the browser.
+- [ ] The full onboarding and monitoring loop passes with the fake provider.
+- [ ] OpenAI and Anthropic smoke tests pass under explicit call caps.
+- [ ] Every behavior-affecting edit produces a compatible new version or invalidates the baseline.
+- [ ] Scheduled work is durable, bounded, unique, and recoverable.
+- [ ] Alerts show deterministic evidence and do not claim semantic understanding.
+- [ ] Result feedback records false alerts and missed regressions.
+- [ ] Customer-visible data use, retention, limitations, and deletion behavior are documented.
+- [ ] The operator runbook and deployment-readiness checklist are complete.
+- [ ] The user explicitly authorizes deployment and the first design-partner invitation.
+
+## 14. Risks and stop conditions
+
+| Risk | Early evidence | Response |
+| --- | --- | --- |
+| Contract authoring is too difficult | Founder writes nearly every rule | Narrow templates further; do not hide the problem with generated rules |
+| Deterministic checks are too brittle | Frequent acceptable-variation reviews | Improve monitor-specific contracts and fixtures; do not introduce an unvalidated semantic judge |
+| Hosted replay is unacceptable | Prospects refuse credentials or data transfer | Reassess the no-SDK hosted boundary before building enterprise features |
+| Wedge is only a feature | Partners prefer existing CI/eval tools | Identify a sharper managed-workflow advantage or stop expanding scope |
+| Provider cost is surprising | Runs approach caps or partners hesitate to schedule | Reduce defaults, improve previews, and require explicit budgets |
+| Duplicate execution | Planned/actual counts diverge or scheduled windows overlap | Stop scheduling until idempotency is corrected |
+| Cross-tenant exposure | Any authorization test or audit fails | Block all external access until fixed and reviewed |
+| Unique requests dominate | Every partner needs different primitives or integrations | Do not turn the alpha into custom consulting software without an explicit business decision |
+
+## 15. Decision log
+
+| Date | Decision | Rationale | Affected tasks |
+| --- | --- | --- | --- |
+| 2026-09-13 | Build a deterministic-only private alpha alongside design-partner recruitment | The spike validated a narrow technical wedge but not self-service adoption or market demand | All |
+| 2026-09-13 | Omit Stripe and plan selection | A free subscription validates no payment behavior and adds unrelated state and failure modes | 2, 3, 14 |
+| 2026-09-13 | Use invite-only workspace access | Customer prompts, outputs, and credentials require identity and tenant isolation while the product remains controlled | 3 onward |
+| 2026-09-13 | Use React/Inertia/shadcn for the product and a small server-rendered public surface | Matches the useful `high_school` boundary while keeping public pages simple and indexable | 1, 2 |
+| 2026-09-13 | Use durable PostgreSQL-backed jobs for captures and schedules | Scheduled provider spend must survive restarts and prevent duplicates | 9–11 |
+| 2026-09-13 | Keep direct `Req` adapters initially | The spike already proves provenance-aware provider calls; ReqLLM remains an evidence-based later decision | 4, 9 |
+
+## 16. Session log
+
+### 2026-09-13 — Planning
+
+- Created the private-alpha implementation sequence and progress tracker.
+- Inspected the existing Silent Regression Phoenix/spike structure.
+- Inspected the local `high_school` reference for Inertia, React, shadcn, workspace scope, onboarding, and Oban patterns.
+- Scoped out Stripe, public signup, semantic evaluation, broad SEO, and immediate Fly.io deployment.
+- No product implementation has started.
+
+## 17. References
+
+- [Feasibility spike implementation plan](implementation_plan.md)
+- [Productization gaps and future needs](productization_plan.md)
+- [Deferred semantic-layer plan](semantic_layer_plan.md)
+- [Phoenix 1.8 authentication generator](https://phoenix.hexdocs.pm/Mix.Tasks.Phx.Gen.Auth.html)
+- [Phoenix 1.8 scopes](https://phoenix.hexdocs.pm/authn_authz.html)
+- [Inertia Phoenix adapter](https://inertia.hexdocs.pm/readme.html)
+- [Oban periodic jobs](https://oban.hexdocs.pm/periodic_jobs.html)
+- [shadcn/ui installation](https://ui.shadcn.com/docs/installation)
+- [Cloak.Ecto encrypted fields](https://hexdocs.pm/cloak_ecto/readme.html)
