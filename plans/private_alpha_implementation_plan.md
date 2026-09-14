@@ -1,10 +1,10 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Draft ready for review; implementation not started
+> **Status:** Task 1 complete; Task 2 ready to start
 >
-> **Progress:** 0 of 14 tasks complete
+> **Progress:** 1 of 14 tasks complete
 >
-> **Last revised:** 2026-09-13
+> **Last revised:** 2026-09-14
 >
 > **Release target:** Invite-only design-partner alpha
 >
@@ -271,7 +271,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 
 | Task | Deliverable | Depends on | Status | Commits |
 | --- | --- | --- | --- | --- |
-| 1 | Phoenix/Inertia/React/shadcn foundation | — | Not started | — |
+| 1 | Phoenix/Inertia/React/shadcn foundation | — | Complete | `1897937` |
 | 2 | Minimal public site and design-partner application | 1 | Not started | — |
 | 3 | Invite-only accounts, workspaces, memberships, and scope | 1 | Not started | — |
 | 4 | Encrypted provider credentials and validation | 3 | Not started | — |
@@ -290,24 +290,24 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 
 ### Task 1 — Phoenix/Inertia/React/shadcn foundation
 
-**Status:** Not started
+**Status:** Complete
 
 **Objective:** Establish the product frontend and controller boundary without changing spike behavior.
 
 **Checklist:**
 
-- [ ] Add and configure the current official `inertia` Phoenix adapter.
-- [ ] Add React, React DOM, `@inertiajs/react`, TypeScript, and the minimal build dependencies under `assets`.
-- [ ] Convert the asset entry point to TypeScript/TSX and configure code splitting, extension resolution, and the `@` alias.
-- [ ] Configure the Inertia plug, root layout, CSRF handling, page title handling, and shared flash props.
-- [ ] Initialize `assets/components.json` using the current shadcn CLI with React, TSX, Tailwind 4, CSS variables, Lucide, and `@` aliases.
-- [ ] Use shadcn CLI `info`, documentation, `--dry-run`, and `--diff` before installing or updating registry components.
-- [ ] Add only the initial primitives: button, card, input, label, textarea, select, alert, badge, progress, skeleton, table, dialog, dropdown menu, and tooltip.
-- [ ] Define product design tokens in `app.css`; do not add daisyUI or use `@apply`.
-- [ ] Remove the unused daisyUI dependency and generated integration without disturbing the spike.
-- [ ] Create an Inertia smoke page and an authenticated-product layout placeholder.
-- [ ] Add `npm` scripts for type checking, frontend tests, and production build.
-- [ ] Add controller and frontend smoke tests.
+- [x] Add and configure the current official `inertia` Phoenix adapter.
+- [x] Add React, React DOM, `@inertiajs/react`, TypeScript, and the minimal build dependencies under `assets`.
+- [x] Convert the asset entry point to TypeScript/TSX and configure code splitting, extension resolution, and the `@` alias.
+- [x] Configure the Inertia plug, root layout, CSRF handling, page title handling, and shared flash props.
+- [x] Initialize `assets/components.json` using the current shadcn CLI with React, TSX, Tailwind 4, CSS variables, Lucide, and `@` aliases.
+- [x] Use shadcn CLI `info`, documentation, `--dry-run`, and `--diff` before installing or updating registry components.
+- [x] Add only the initial primitives: button, card, input, label, textarea, select, alert, badge, progress, skeleton, table, dialog, dropdown menu, and tooltip.
+- [x] Define product design tokens in `app.css`; do not add daisyUI or use `@apply`.
+- [x] Remove the unused daisyUI dependency and generated integration without disturbing the spike.
+- [x] Create an Inertia smoke page and an authenticated-product layout placeholder.
+- [x] Add `npm` scripts for type checking, frontend tests, and production build.
+- [x] Add controller and frontend smoke tests.
 
 **Acceptance criteria:**
 
@@ -893,6 +893,7 @@ The product is ready for the first external design partner only when:
 | 2026-09-13 | Use React/Inertia/shadcn for the product and a small server-rendered public surface | Matches the useful `high_school` boundary while keeping public pages simple and indexable | 1, 2 |
 | 2026-09-13 | Use durable PostgreSQL-backed jobs for captures and schedules | Scheduled provider spend must survive restarts and prevent duplicates | 9–11 |
 | 2026-09-13 | Keep direct `Req` adapters initially | The spike already proves provenance-aware provider calls; ReqLLM remains an evidence-based later decision | 4, 9 |
+| 2026-09-14 | Approve the implementation plan and begin Task 1 | The user approved the scoped sequence and the hybrid public/product frontend boundary recorded in the plan | 1 onward |
 
 ## 16. Session log
 
@@ -903,6 +904,21 @@ The product is ready for the first external design partner only when:
 - Inspected the local `high_school` reference for Inertia, React, shadcn, workspace scope, onboarding, and Oban patterns.
 - Scoped out Stripe, public signup, semantic evaluation, broad SEO, and immediate Fly.io deployment.
 - No product implementation has started.
+
+### 2026-09-14 — Task 1 started
+
+- The user approved the implementation plan.
+- Marked the Phoenix/Inertia/React/shadcn foundation as in progress.
+
+### 2026-09-14 — Task 1 complete
+
+- Added the Phoenix Inertia adapter and established a server-rendered public boundary plus a React/Inertia product boundary at `/app`.
+- Added the TypeScript toolchain, frontend test runner, Tailwind 4 design tokens, and the reviewed shadcn primitive set.
+- Added a product-shell smoke page with explicit disabled states for product capabilities scheduled in later tasks.
+- Removed daisyUI and retained the existing spike behavior and test suite.
+- Verified `npm run check`, `mix assets.build`, focused controller tests, and `mix precommit` with 252 passing Elixir tests.
+- Verified a real `GET /app` returned HTTP 200 with CSRF/XSRF tokens, the `Dashboard` Inertia payload, title props, and supported asset references.
+- Implementation commit: `1897937`.
 
 ## 17. References
 
