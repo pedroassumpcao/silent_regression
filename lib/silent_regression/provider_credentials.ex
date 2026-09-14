@@ -85,7 +85,7 @@ defmodule SilentRegression.ProviderCredentials do
     Repo.transaction(fn ->
       %ProviderCredential{}
       |> ProviderCredential.create_changeset(workspace, user, attrs)
-      |> Repo.insert()
+      |> Repo.insert(log: false)
       |> case do
         {:ok, credential} ->
           record_event!(credential, user.id, "provider_credential.created")
@@ -120,7 +120,7 @@ defmodule SilentRegression.ProviderCredentials do
              {:ok, successor} <-
                %ProviderCredential{}
                |> ProviderCredential.rotation_changeset(workspace, user, superseded, attrs)
-               |> Repo.insert() do
+               |> Repo.insert(log: false) do
           record_event!(superseded, user.id, "provider_credential.superseded", %{
             "successor_id" => successor.id
           })

@@ -1,6 +1,7 @@
 defmodule SilentRegression.ProviderCredentialsTest do
-  use SilentRegression.DataCase, async: true
+  use SilentRegression.DataCase, async: false
 
+  import ExUnit.CaptureLog
   import SilentRegression.ProviderCredentialsFixtures
   import SilentRegression.WorkspacesFixtures
 
@@ -49,6 +50,28 @@ defmodule SilentRegression.ProviderCredentialsTest do
 
       assert {:ok, fetched} = ProviderCredentials.get_credential(scope, credential.id)
       assert fetched == listed
+    end
+
+    test "suppresses plaintext credential values from Ecto query logs" do
+      scope = workspace_scope_fixture()
+      plaintext = "sk-test-query-log-plaintext-sentinel"
+
+      previous_level = Logger.level()
+      Logger.configure(level: :debug)
+      on_exit(fn -> Logger.configure(level: previous_level) end)
+
+      log =
+        capture_log(fn ->
+          assert {:ok, _credential} =
+                   ProviderCredentials.create_credential(scope, %{
+                     provider: :openai,
+                     label: "Log-safe key",
+                     secret: plaintext
+                   })
+        end)
+
+      assert log =~ ~s(source="audit_events")
+      refute log =~ plaintext
     end
 
     test "validates bounded attributes without leaking the submitted secret" do

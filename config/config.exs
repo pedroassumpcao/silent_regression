@@ -41,6 +41,10 @@ config :silent_regression, :provider_adapters,
   openai: SilentRegression.Providers.OpenAI,
   anthropic: SilentRegression.Providers.Anthropic
 
+# Provider credentials are write-only inputs. Phoenix filters matching keys at
+# every depth before request parameters are logged.
+config :phoenix, :filter_parameters, ["password", "secret", "api_key", "authorization"]
+
 # Configure the endpoint
 config :silent_regression, SilentRegressionWeb.Endpoint,
   url: [host: "localhost"],

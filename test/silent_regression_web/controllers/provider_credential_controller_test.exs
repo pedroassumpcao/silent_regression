@@ -51,6 +51,20 @@ defmodule SilentRegressionWeb.ProviderCredentialControllerTest do
   end
 
   describe "owner lifecycle actions" do
+    test "Phoenix filters nested credential secrets before logging request parameters" do
+      plaintext = "sk-test-request-log-plaintext-sentinel"
+
+      assert %{
+               "provider_credential" => %{"label" => "Production", "secret" => "[FILTERED]"}
+             } =
+               Phoenix.Logger.filter_values(%{
+                 "provider_credential" => %{
+                   "label" => "Production",
+                   "secret" => plaintext
+                 }
+               })
+    end
+
     test "creates, validates, rotates, and revokes without returning a secret", %{
       conn: conn,
       scope: scope,
