@@ -271,7 +271,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 
 | Task | Deliverable | Depends on | Status | Commits |
 | --- | --- | --- | --- | --- |
-| 1 | Phoenix/Inertia/React/shadcn foundation | — | Complete | `1897937` |
+| 1 | Phoenix/Inertia/React/shadcn foundation | — | Complete | `1897937`, `938bbbf` |
 | 2 | Minimal public site and design-partner application | 1 | Not started | — |
 | 3 | Invite-only accounts, workspaces, memberships, and scope | 1 | Not started | — |
 | 4 | Encrypted provider credentials and validation | 3 | Not started | — |
@@ -323,6 +323,8 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 - `mix assets.build`
 - Relevant controller tests
 - `mix precommit`
+
+**Post-completion dependency review (2026-09-14):** Upgraded the foundation to the latest compatible stable npm and Hex releases in `938bbbf`. The stable pairing remains Elixir `inertia 2.6.2` with `@inertiajs/react 2.3.28`. Revisit Inertia v3 when the Phoenix adapter has a stable `3.x` release; its current `3.0.0-rc5` line implements protocol changes required by the stable JavaScript v3 client.
 
 ### Task 2 — Minimal public site and design-partner application
 
@@ -894,6 +896,7 @@ The product is ready for the first external design partner only when:
 | 2026-09-13 | Use durable PostgreSQL-backed jobs for captures and schedules | Scheduled provider spend must survive restarts and prevent duplicates | 9–11 |
 | 2026-09-13 | Keep direct `Req` adapters initially | The spike already proves provenance-aware provider calls; ReqLLM remains an evidence-based later decision | 4, 9 |
 | 2026-09-14 | Approve the implementation plan and begin Task 1 | The user approved the scoped sequence and the hybrid public/product frontend boundary recorded in the plan | 1 onward |
+| 2026-09-14 | Use latest compatible stable dependencies and defer Inertia v3 | The JavaScript v3 client changes the initial-page protocol, while the matching Phoenix adapter is still on `3.0.0-rc5`; use stable `inertia 2.6.2` with the latest v2 React client until both sides are stable | 1 onward |
 
 ## 16. Session log
 
@@ -920,6 +923,15 @@ The product is ready for the first external design partner only when:
 - Verified a real `GET /app` returned HTTP 200 with CSRF/XSRF tokens, the `Dashboard` Inertia payload, title props, and supported asset references.
 - Implementation commit: `1897937`.
 
+### 2026-09-14 — Task 1 dependency currency follow-up
+
+- Audited direct npm and Hex dependencies against their registries rather than treating `high_school` as a version source.
+- Upgraded React and React DOM to `19.3.0`, Lucide React to `1.46.0`, Tailwind Merge to `3.7.0`, and `tw-animate-css` to `1.4.0`.
+- Upgraded Phoenix to `1.8.14`, DNS Cluster to `0.3.0`, and Phoenix LiveDashboard to `0.9.1`; Hex reports all direct dependencies current.
+- Confirmed Elixir `inertia 2.6.2` is the latest stable Phoenix adapter. Upgraded its matching v2 React client to `2.3.28` and deliberately deferred JavaScript v3 while the Phoenix `3.x` adapter remains a release candidate.
+- Verified a clean `npm ci` with zero reported vulnerabilities, frontend type checking and tests, the production asset build, 252 Elixir tests through `mix precommit`, a full-page HTTP 200, and an Inertia-versioned XHR HTTP 200 with the expected `Dashboard` payload.
+- Dependency commit: `938bbbf`.
+
 ## 17. References
 
 - [Feasibility spike implementation plan](implementation_plan.md)
@@ -928,6 +940,8 @@ The product is ready for the first external design partner only when:
 - [Phoenix 1.8 authentication generator](https://phoenix.hexdocs.pm/Mix.Tasks.Phx.Gen.Auth.html)
 - [Phoenix 1.8 scopes](https://phoenix.hexdocs.pm/authn_authz.html)
 - [Inertia Phoenix adapter](https://inertia.hexdocs.pm/readme.html)
+- [Inertia v3 upgrade guide](https://inertiajs.com/docs/v3/getting-started/upgrade-guide)
+- [Phoenix adapter Inertia v3 compatibility tracking](https://github.com/inertiajs/inertia-phoenix/issues/67)
 - [Oban periodic jobs](https://oban.hexdocs.pm/periodic_jobs.html)
 - [shadcn/ui installation](https://ui.shadcn.com/docs/installation)
 - [Cloak.Ecto encrypted fields](https://hexdocs.pm/cloak_ecto/readme.html)
