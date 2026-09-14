@@ -1,6 +1,6 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 4 complete; Task 5 ready to begin
+> **Status:** Task 5 in progress; append-only monitor version design selected
 >
 > **Progress:** 4 of 14 tasks complete
 >
@@ -275,7 +275,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 2 | Minimal public site and design-partner application | 1 | Complete | `0c1811b` |
 | 3 | Invite-only accounts, workspaces, memberships, and scope | 1 | Complete | `314e713` |
 | 4 | Encrypted provider credentials and validation | 3 | Complete | `c1f0bbf`, `252bb7e`, `9f5b2f6`, `93353bb`, `43be6f6`, `ee8ceca`, `cfdf2cb`, `dfbe096` |
-| 5 | Versioned monitor and case domain | 3 | Not started | — |
+| 5 | Versioned monitor and case domain | 3 | In progress | — |
 | 6 | Persisted cold-start monitor setup | 4, 5 | Not started | — |
 | 7 | Generic deterministic contract engine | 5 | Not started | — |
 | 8 | Contract authoring, fixture validation, and approval | 6, 7 | Not started | — |
@@ -437,7 +437,12 @@ that boundary and are covered by separate authorization and audit tests.
 
 ### Task 5 — Versioned monitor and case domain
 
-**Status:** Not started
+**Status:** In progress
+
+**Design decision:** Use complete append-only monitor/case snapshots with database-enforced content
+immutability. Keep monitor name and description as metadata-only fields. Persist incomplete Task 6
+setup separately, then promote a valid snapshot. Store exact allowlisted model IDs without aliases or
+fallback substitution. See [`docs/monitors/RESEARCH.md`](../docs/monitors/RESEARCH.md).
 
 **Objective:** Create the durable, immutable configuration lineage required for trustworthy comparisons.
 
@@ -1027,6 +1032,20 @@ The product is ready for the first external design partner only when:
   replacement then validated successfully in one request with model and request provenance.
 - Marked Task 4 complete after the live gate passed. Task 5, the versioned monitor and case domain, is
   now the next implementation task.
+
+### 2026-09-14 — Task 5 started
+
+- Selected complete append-only configuration and case snapshots instead of mutable sealed drafts or
+  event sourcing. PostgreSQL will enforce content immutability in addition to the context API.
+- Defined monitor name and description as the only metadata-only fields. Provider/model, prompts,
+  response format, generation configuration, case inputs/context, and active-case membership are
+  behavior-affecting.
+- Kept partial onboarding state out of executable history; Task 6 will persist setup separately and
+  promote only a complete valid snapshot.
+- Kept the private-alpha model catalog intentionally narrow and aligned with the approved spike pairs:
+  `gpt-5.6-luna`, `gpt-5.6-sol`, `claude-haiku-4-5-20251001`, and `claude-sonnet-5`.
+- Recorded the detailed design, limits, import boundary, compatibility contract, risks, and primary
+  references in [`docs/monitors/RESEARCH.md`](../docs/monitors/RESEARCH.md).
 
 ## 17. References
 
