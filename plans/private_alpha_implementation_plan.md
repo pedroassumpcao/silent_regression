@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 2 complete; Task 3 ready to start
+> **Status:** Task 3 complete; Task 4 ready for its encryption decision gate
 >
-> **Progress:** 2 of 14 tasks complete
+> **Progress:** 3 of 14 tasks complete
 >
 > **Last revised:** 2026-09-14
 >
@@ -273,7 +273,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | --- | --- | --- | --- | --- |
 | 1 | Phoenix/Inertia/React/shadcn foundation | — | Complete | `1897937`, `938bbbf` |
 | 2 | Minimal public site and design-partner application | 1 | Complete | `0c1811b` |
-| 3 | Invite-only accounts, workspaces, memberships, and scope | 1 | Not started | — |
+| 3 | Invite-only accounts, workspaces, memberships, and scope | 1 | Complete | `314e713` |
 | 4 | Encrypted provider credentials and validation | 3 | Not started | — |
 | 5 | Versioned monitor and case domain | 3 | Not started | — |
 | 6 | Persisted cold-start monitor setup | 4, 5 | Not started | — |
@@ -361,24 +361,29 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 
 ### Task 3 — Invite-only accounts, workspaces, memberships, and scope
 
-**Status:** Not started
+**Status:** Complete
 
 **Objective:** Establish secure identity and tenant isolation before storing customer workflows or credentials.
 
 **Checklist:**
 
-- [ ] Generate Phoenix 1.8 authentication using binary IDs and preserve generated security behavior.
-- [ ] Adapt authentication pages to the chosen web boundary.
-- [ ] Disable public registration and reject uninvited account creation server-side.
-- [ ] Add workspaces, memberships, and hashed expiring invitation tokens.
-- [ ] Support only `owner` and `member` roles.
-- [ ] Add an operator Mix task for creating a workspace invitation.
-- [ ] Add invitation acceptance, expiration, revocation, and single-use enforcement.
-- [ ] Build a `Scope` containing user, workspace, and membership.
-- [ ] Add workspace-slug resolution and membership validation plugs.
-- [ ] Require the scope in every tenant-owned context function.
-- [ ] Add shared Inertia props for safe user/workspace identity and flash messages.
-- [ ] Record invite, membership, login-sensitive, and workspace actions in audit events.
+- [x] Generate Phoenix 1.8 authentication using binary IDs and preserve generated security behavior.
+- [x] Adapt authentication pages to the chosen web boundary.
+- [x] Disable public registration and reject uninvited account creation server-side.
+- [x] Add workspaces, memberships, and hashed expiring invitation tokens.
+- [x] Support only `owner` and `member` roles.
+- [x] Add an operator Mix task for creating a workspace invitation.
+- [x] Add invitation acceptance, expiration, revocation, and single-use enforcement.
+- [x] Build a `Scope` containing user, workspace, and membership.
+- [x] Add workspace-slug resolution and membership validation plugs.
+- [x] Require the scope in every tenant-owned context function.
+- [x] Add shared Inertia props for safe user/workspace identity and flash messages.
+- [x] Record invite, membership, login-sensitive, and workspace actions in audit events.
+
+The scope requirement applies to authenticated, tenant-owned operations. The deliberately named
+operator provisioning entry point and invitation bearer-token lookup/acceptance are the only Task 3
+exceptions because neither begins with an authenticated workspace scope; both establish or verify
+that boundary and are covered by separate authorization and audit tests.
 
 **Acceptance criteria:**
 
@@ -897,6 +902,8 @@ The product is ready for the first external design partner only when:
 | 2026-09-13 | Keep direct `Req` adapters initially | The spike already proves provenance-aware provider calls; ReqLLM remains an evidence-based later decision | 4, 9 |
 | 2026-09-14 | Approve the implementation plan and begin Task 1 | The user approved the scoped sequence and the hybrid public/product frontend boundary recorded in the plan | 1 onward |
 | 2026-09-14 | Use latest compatible stable dependencies and defer Inertia v3 | The JavaScript v3 client changes the initial-page protocol, while the matching Phoenix adapter is still on `3.0.0-rc5`; use stable `inertia 2.6.2` with the latest v2 React client until both sides are stable | 1 onward |
+| 2026-09-14 | Make invitation acceptance the only account-creation boundary | The private alpha needs generated authentication security without exposing public registration; accepting a valid locked invitation atomically creates or confirms the identity and membership | 3 onward |
+| 2026-09-14 | Make `Workspace` the default Phoenix generator scope | Future tenant-owned contexts should generate `workspace_id` boundaries and `/app/:workspace_slug` routes by default; the user-only scope remains available for identity operations | 3 onward |
 
 ## 16. Session log
 
@@ -946,6 +953,24 @@ The product is ready for the first external design partner only when:
 - Fixed the Phoenix development live-reload event contract after the browser pass exposed a console exception on server-rendered navigation.
 - Verified 266 Elixir tests through `mix precommit`, frontend type checking and tests, the production asset build, desktop and mobile layouts, accessible browser control names, a clean console, and a real form submission through persistence and redirect. Removed the temporary QA record and browser artifacts afterward.
 - Implementation commit: `0c1811b`.
+
+### 2026-09-14 — Task 3 started
+
+- Audited Tasks 1–2 against their acceptance criteria and confirmed a clean implementation baseline; legal review of the placeholder policies remains an intentional pre-pilot gate rather than a Task 3 blocker.
+- Selected Phoenix 1.8 generated controller authentication with binary IDs as the security base, to be adapted to the existing React/Inertia product boundary.
+- Account creation will occur only while atomically accepting a valid hashed invitation; public registration remains absent at both the routing and context boundaries.
+- Workspace routes will use `/app/:workspace_slug/...` and require a scope containing the authenticated user, verified workspace, and membership.
+
+### 2026-09-14 — Task 3 complete
+
+- Added Phoenix-generated controller authentication with binary IDs, retained the generated session, magic-link, password, sudo-mode, and token-expiration behavior, and adapted every user-facing authentication screen to React/Inertia.
+- Removed public registration routes and context entry points. A valid, locked, expiring invitation is now the only account-creation path; acceptance creates or confirms the user and membership atomically and consumes the token exactly once.
+- Added workspaces, `owner`/`member` memberships, hashed invitation tokens, revocation and expiration enforcement, content-free audit events, and the `mix silent_regression.invite` operator command.
+- Added `/app/:workspace_slug` tenant resolution with indistinguishable 404 responses for unknown and unauthorized workspaces, safe shared Inertia identity props, and a verified `Scope` containing user, workspace, and membership.
+- Made `Workspace` the default Phoenix generator scope so later tenant-owned schemas use `workspace_id` and slug-scoped routes instead of accidentally defaulting to user ownership.
+- A real browser pass exposed and fixed a foundation-level CSRF integration gap by configuring Axios to send Phoenix's `x-csrf-token` header for all Inertia mutations; a frontend regression test now protects that contract.
+- Verified clean development migrations, 367 Elixir tests through `mix precommit`, frontend type checking and two frontend tests, the production asset build, invitation acceptance and authenticated redirect, consumed-link rejection, enumeration-safe login behavior, mobile login layout, and clean consoles on successful pages. Temporary QA records and browser artifacts were removed.
+- Implementation commit: `314e713`.
 
 ## 17. References
 
