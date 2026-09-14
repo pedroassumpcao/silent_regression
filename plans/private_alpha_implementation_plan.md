@@ -1,6 +1,6 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 4 in progress; encryption and authorization design approved
+> **Status:** Task 4 implementation complete; manually authorized live smoke test pending
 >
 > **Progress:** 3 of 14 tasks complete
 >
@@ -274,7 +274,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 1 | Phoenix/Inertia/React/shadcn foundation | — | Complete | `1897937`, `938bbbf` |
 | 2 | Minimal public site and design-partner application | 1 | Complete | `0c1811b` |
 | 3 | Invite-only accounts, workspaces, memberships, and scope | 1 | Complete | `314e713` |
-| 4 | Encrypted provider credentials and validation | 3 | In progress | — |
+| 4 | Encrypted provider credentials and validation | 3 | In progress | `c1f0bbf`, `252bb7e`, `9f5b2f6`, `93353bb`, `43be6f6`, `ee8ceca`, `cfdf2cb` |
 | 5 | Versioned monitor and case domain | 3 | Not started | — |
 | 6 | Persisted cold-start monitor setup | 4, 5 | Not started | — |
 | 7 | Generic deterministic contract engine | 5 | Not started | — |
@@ -400,7 +400,7 @@ that boundary and are covered by separate authorization and audit tests.
 
 ### Task 4 — Encrypted provider credentials and validation
 
-**Status:** In progress
+**Status:** In progress — implementation and automated/browser verification complete; manually authorized live smoke test pending
 
 **Decision gate:** Resolved 2026-09-14. Use `Cloak.Ecto` with a versioned application keyring and the documented zero-downtime re-encryption sequence. Owners manage credentials; members may view safe metadata and use valid credentials through server-side workflows.
 
@@ -409,16 +409,16 @@ that boundary and are covered by separate authorization and audit tests.
 **Checklist:**
 
 - [x] Review `Cloak.Ecto` and record the selected encryption approach in the decision log.
-- [ ] Add a runtime-managed encryption key with safe development and test configuration.
-- [ ] Add provider credential schema, context, lifecycle states, and audit events.
-- [ ] Encrypt the secret column and keep searchable/display metadata separate.
-- [ ] Never return decrypted credentials in Inertia props or inspection output.
-- [ ] Add create, list, validate, rotate, and revoke actions.
-- [ ] Use the normalized provider boundary for validation.
-- [ ] Retain returned-model and provider request provenance where available.
-- [ ] Redact provider authorization headers, request bodies, prompts, contexts, and outputs from logs.
-- [ ] Ensure workers accept only credential IDs and resolve secrets at execution time within workspace scope.
-- [ ] Add a safe fake provider implementation for automated tests; never call live APIs from the test suite.
+- [x] Add a runtime-managed encryption key with safe development and test configuration.
+- [x] Add provider credential schema, context, lifecycle states, and audit events.
+- [x] Encrypt the secret column and keep searchable/display metadata separate.
+- [x] Never return decrypted credentials in Inertia props or inspection output.
+- [x] Add create, list, validate, rotate, and revoke actions.
+- [x] Use the normalized provider boundary for validation.
+- [x] Retain returned-model and provider request provenance where available.
+- [x] Redact provider authorization headers, request bodies, prompts, contexts, outputs, and encrypted-field query parameters from logs.
+- [x] Establish the execution boundary so callers pass only credential IDs and secrets are resolved at call time within workspace scope.
+- [x] Add a safe fake provider implementation for automated tests; never call live APIs from the test suite.
 
 **Acceptance criteria:**
 
@@ -429,11 +429,11 @@ that boundary and are covered by separate authorization and audit tests.
 
 **Verification:**
 
-- Encryption-at-rest assertion using direct database reads
-- Redaction and cross-tenant tests
-- Mocked OpenAI and Anthropic adapter tests
-- Manually authorized live smoke test outside the automated suite
-- `mix precommit`
+- [x] Encryption-at-rest assertion using direct database reads
+- [x] Redaction and cross-tenant tests
+- [x] Mocked OpenAI and Anthropic adapter tests
+- [ ] Manually authorized live smoke test outside the automated suite
+- [x] `mix precommit`
 
 ### Task 5 — Versioned monitor and case domain
 
@@ -992,6 +992,30 @@ The product is ready for the first external design partner only when:
   metadata and use valid credentials through future server-side monitor execution, but they cannot
   retrieve plaintext or administer credential lifecycle.
 - Kept provider-credential rotation separate from application-master-key re-encryption.
+
+### 2026-09-14 — Task 4 implementation complete; live smoke pending
+
+- Added `Cloak.Ecto` AES-256-GCM encryption with a supervised, versioned vault. Development and test
+  use explicit environment-only keys; production requires a Base64-encoded 32-byte runtime secret.
+- Added workspace-scoped OpenAI and Anthropic credential records with safe metadata projections,
+  pending/valid/invalid/revoked/superseded lifecycle states, append-only audit events, and preserved
+  rotation lineage.
+- Added normalized OpenAI and Anthropic validation adapters that make exactly one non-generative
+  Models API request, retain safe request/model provenance, distinguish actionable failure classes,
+  and never expose provider bodies or authorization data.
+- Added owner-only create, validate, rotate, and revoke routes and a responsive Inertia credential
+  page. Members receive safe status and provenance metadata without mutation controls or plaintext.
+- A real owner/member browser pass verified creation, suffix-only display, rotation, supersession,
+  revocation, member read-only behavior, mobile layout, and clean consoles. It also exposed two
+  plaintext logging surfaces: Phoenix request parameters and Ecto pre-encryption query parameters.
+  Both are now suppressed and covered by regression tests.
+- Verified 396 Elixir tests through `mix precommit`, frontend type checking, three frontend test files
+  with four passing tests, the production asset build, direct database ciphertext, and disposable
+  QA-data cleanup. No automated test contacted a live provider.
+- The final manually authorized live validation remains pending. Task 4 stays `In progress` until an
+  owner validates an intentionally supplied OpenAI or Anthropic credential through the product UI.
+- Implementation commits: `c1f0bbf`, `252bb7e`, `9f5b2f6`, `93353bb`, `43be6f6`, `ee8ceca`, and
+  `cfdf2cb`.
 
 ## 17. References
 
