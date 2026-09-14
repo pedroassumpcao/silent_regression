@@ -11,6 +11,8 @@ defmodule SilentRegression.ProviderCredentials do
   alias SilentRegression.Accounts.Scope
   alias SilentRegression.Audit
   alias SilentRegression.ProviderCredentials.ProviderCredential
+  alias SilentRegression.Providers
+  alias SilentRegression.Providers.{CredentialValidation, Failure}
   alias SilentRegression.Repo
   alias SilentRegression.Workspaces.{Membership, Workspace}
 
@@ -158,6 +160,35 @@ defmodule SilentRegression.ProviderCredentials do
 
   def revoke_credential(%Scope{}, _credential_id), do: {:error, :owner_required}
 
+  def validate_credential(scope, credential_id, attrs \\ %{})
+
+  def validate_credential(
+        %Scope{
+          workspace: %Workspace{id: workspace_id},
+          membership: %Membership{role: :owner},
+          user: user
+        },
+        credential_id,
+        attrs
+      )
+      when is_map(attrs) do
+    with {:ok, options} <- validation_options(attrs),
+         %ProviderCredential{} = credential <- load_credential(workspace_id, credential_id),
+         :ok <- ensure_active(credential) do
+      result = Providers.validate_credential(credential.provider, credential.secret, options)
+
+      case persist_validation(workspace_id, credential_id, user.id, result) do
+        {:ok, metadata} -> return_validation(result, metadata)
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      nil -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def validate_credential(%Scope{}, _credential_id, _attrs), do: {:error, :owner_required}
+
   defp lock_credential(workspace_id, credential_id) do
     ProviderCredential
     |> where([credential], credential.workspace_id == ^workspace_id)
@@ -166,11 +197,96 @@ defmodule SilentRegression.ProviderCredentials do
     |> Repo.one()
   end
 
+  defp load_credential(workspace_id, credential_id) do
+    ProviderCredential
+    |> where([credential], credential.workspace_id == ^workspace_id)
+    |> where([credential], credential.id == ^credential_id)
+    |> Repo.one()
+  end
+
   defp ensure_active(%ProviderCredential{status: status})
        when status in [:pending_validation, :valid, :invalid],
        do: :ok
 
   defp ensure_active(%ProviderCredential{}), do: {:error, :not_active}
+
+  defp validation_options(attrs) do
+    case Map.get(attrs, :model) || Map.get(attrs, "model") do
+      nil ->
+        {:ok, []}
+
+      "" ->
+        {:ok, []}
+
+      model when is_binary(model) ->
+        model = String.trim(model)
+
+        if String.valid?(model) and model != "" and byte_size(model) <= 200 do
+          {:ok, [model: model]}
+        else
+          {:error, :invalid_model}
+        end
+
+      _model ->
+        {:error, :invalid_model}
+    end
+  end
+
+  defp persist_validation(workspace_id, credential_id, actor_user_id, result) do
+    Repo.transaction(fn ->
+      with %ProviderCredential{} = credential <- lock_credential(workspace_id, credential_id),
+           :ok <- ensure_active(credential),
+           {:ok, credential} <- update_validation(credential, result) do
+        record_validation_event!(credential, actor_user_id, result)
+        to_safe_metadata(credential)
+      else
+        nil -> Repo.rollback(:not_found)
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp update_validation(credential, {:ok, %CredentialValidation{} = result}) do
+    credential
+    |> ProviderCredential.validation_changeset(result, DateTime.utc_now(:second))
+    |> Repo.update()
+  end
+
+  defp update_validation(credential, {:error, %Failure{} = failure}) do
+    credential
+    |> ProviderCredential.validation_changeset(failure, DateTime.utc_now(:second))
+    |> Repo.update()
+  end
+
+  defp return_validation({:ok, %CredentialValidation{}}, metadata), do: {:ok, metadata}
+  defp return_validation({:error, %Failure{} = failure}, _metadata), do: {:error, failure}
+
+  defp record_validation_event!(credential, actor_user_id, result) do
+    {action, result_metadata} = validation_event(result)
+
+    record_event!(credential, actor_user_id, action, result_metadata)
+  end
+
+  defp validation_event({:ok, %CredentialValidation{} = result}) do
+    {"provider_credential.validation_succeeded", validation_provenance(result)}
+  end
+
+  defp validation_event({:error, %Failure{} = failure}) do
+    {"provider_credential.validation_failed",
+     failure
+     |> validation_provenance()
+     |> Map.put("category", Atom.to_string(failure.category))}
+  end
+
+  defp validation_provenance(result) do
+    %{"attempts" => result.attempts}
+    |> put_optional_metadata("requested_model", result.requested_model)
+    |> put_optional_metadata("returned_model", result.returned_model)
+    |> put_optional_metadata("provider_request_id", result.request_id)
+  end
+
+  defp put_optional_metadata(metadata, _key, nil), do: metadata
+  defp put_optional_metadata(metadata, key, value), do: Map.put(metadata, key, value)
 
   defp record_event!(credential, actor_user_id, action, extra_metadata \\ %{}) do
     Audit.record_event!(%{

@@ -11,6 +11,7 @@ defmodule SilentRegression.ProviderCredentials.ProviderCredential do
 
   alias SilentRegression.Accounts.User
   alias SilentRegression.Encrypted.Binary, as: EncryptedBinary
+  alias SilentRegression.Providers.{CredentialValidation, Failure}
   alias SilentRegression.Workspaces.Workspace
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -100,6 +101,36 @@ defmodule SilentRegression.ProviderCredentials.ProviderCredential do
     |> check_constraint(:status, name: :provider_credentials_status_check)
   end
 
+  def validation_changeset(credential, %CredentialValidation{} = result, at) do
+    credential
+    |> change(
+      status: :valid,
+      last_validation_status: :succeeded,
+      last_failure_category: nil,
+      last_validated_at: at,
+      last_requested_model: result.requested_model,
+      last_returned_model: result.returned_model,
+      last_provider_request_id: result.request_id,
+      last_validation_attempts: result.attempts
+    )
+    |> validate_validation_fields()
+  end
+
+  def validation_changeset(credential, %Failure{} = failure, at) do
+    credential
+    |> change(
+      status: status_after_failure(credential.status, failure.category),
+      last_validation_status: :failed,
+      last_failure_category: failure.category,
+      last_validated_at: at,
+      last_requested_model: failure.requested_model,
+      last_returned_model: failure.returned_model,
+      last_provider_request_id: failure.request_id,
+      last_validation_attempts: failure.attempts
+    )
+    |> validate_validation_fields()
+  end
+
   def providers, do: @providers
   def statuses, do: @statuses
 
@@ -142,4 +173,29 @@ defmodule SilentRegression.ProviderCredentials.ProviderCredential do
     |> check_constraint(:provider, name: :provider_credentials_provider_check)
     |> check_constraint(:status, name: :provider_credentials_status_check)
   end
+
+  defp validate_validation_fields(changeset) do
+    changeset
+    |> validate_required([:last_validation_status, :last_validated_at, :last_validation_attempts])
+    |> validate_length(:last_requested_model, max: 200)
+    |> validate_length(:last_returned_model, max: 200)
+    |> validate_length(:last_provider_request_id, max: 200)
+    |> validate_number(:last_validation_attempts, greater_than: 0)
+    |> check_constraint(:status, name: :provider_credentials_status_check)
+    |> check_constraint(:last_validation_status,
+      name: :provider_credentials_validation_status_check
+    )
+    |> check_constraint(:last_failure_category,
+      name: :provider_credentials_failure_category_check
+    )
+    |> check_constraint(:last_validation_attempts,
+      name: :provider_credentials_attempts_check
+    )
+  end
+
+  defp status_after_failure(_current_status, category)
+       when category in [:authentication, :authorization, :model_mismatch],
+       do: :invalid
+
+  defp status_after_failure(current_status, _category), do: current_status
 end

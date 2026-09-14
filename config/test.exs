@@ -26,6 +26,10 @@ config :silent_regression, SilentRegressionWeb.Endpoint,
 # In test we don't send emails
 config :silent_regression, SilentRegression.Mailer, adapter: Swoosh.Adapters.Test
 
+config :silent_regression, :provider_adapters,
+  openai: SilentRegression.Providers.FakeOpenAI,
+  anthropic: SilentRegression.Providers.FakeAnthropic
+
 # Fixed, test-only material keeps encryption assertions deterministic. Never
 # reuse this key outside the automated test environment.
 config :silent_regression, SilentRegression.Vault,

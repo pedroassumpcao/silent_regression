@@ -37,6 +37,10 @@ config :silent_regression,
   ecto_repos: [SilentRegression.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true]
 
+config :silent_regression, :provider_adapters,
+  openai: SilentRegression.Providers.OpenAI,
+  anthropic: SilentRegression.Providers.Anthropic
+
 # Configure the endpoint
 config :silent_regression, SilentRegressionWeb.Endpoint,
   url: [host: "localhost"],

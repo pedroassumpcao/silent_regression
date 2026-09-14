@@ -177,6 +177,115 @@ defmodule SilentRegression.ProviderCredentialsTest do
     end
   end
 
+  describe "validate_credential/3" do
+    test "persists successful, content-free provider provenance" do
+      scope = workspace_scope_fixture()
+
+      credential =
+        provider_credential_fixture(scope, %{
+          provider: :anthropic,
+          secret: "sk-ant-test-valid-credential"
+        })
+
+      assert {:ok, validated} =
+               ProviderCredentials.validate_credential(scope, credential.id, %{
+                 model: "claude-test"
+               })
+
+      assert validated.status == :valid
+      assert validated.last_validation_status == :succeeded
+      assert validated.last_failure_category == nil
+      assert validated.last_requested_model == "claude-test"
+      assert validated.last_returned_model == "claude-test"
+      assert validated.last_provider_request_id == "fake_anthropic_validation_request"
+      assert validated.last_validation_attempts == 1
+      assert validated.last_validated_at
+      refute Map.has_key?(validated, :secret)
+
+      event =
+        scope
+        |> Audit.list_workspace_events()
+        |> Enum.find(&(&1.action == "provider_credential.validation_succeeded"))
+
+      assert event.metadata == %{
+               "attempts" => 1,
+               "provider" => "anthropic",
+               "provider_request_id" => "fake_anthropic_validation_request",
+               "requested_model" => "claude-test",
+               "returned_model" => "claude-test"
+             }
+    end
+
+    test "authentication failure invalidates the credential without exposing its secret" do
+      scope = workspace_scope_fixture()
+      secret = "sk-test-authentication-error"
+      credential = provider_credential_fixture(scope, %{secret: secret})
+
+      assert {:error, failure} =
+               ProviderCredentials.validate_credential(scope, credential.id)
+
+      assert failure.category == :authentication
+      refute inspect(failure) =~ secret
+
+      assert {:ok, invalid} = ProviderCredentials.get_credential(scope, credential.id)
+      assert invalid.status == :invalid
+      assert invalid.last_validation_status == :failed
+      assert invalid.last_failure_category == :authentication
+      assert invalid.last_provider_request_id == "fake_authentication_request"
+
+      event =
+        scope
+        |> Audit.list_workspace_events()
+        |> Enum.find(&(&1.action == "provider_credential.validation_failed"))
+
+      assert event.metadata["category"] == "authentication"
+      refute inspect(event) =~ secret
+    end
+
+    test "transient validation failure does not declare a pending credential invalid" do
+      scope = workspace_scope_fixture()
+      credential = provider_credential_fixture(scope, %{secret: "sk-test-rate-limited"})
+
+      assert {:error, failure} =
+               ProviderCredentials.validate_credential(scope, credential.id)
+
+      assert failure.category == :rate_limited
+
+      assert {:ok, pending} = ProviderCredentials.get_credential(scope, credential.id)
+      assert pending.status == :pending_validation
+      assert pending.last_validation_status == :failed
+      assert pending.last_failure_category == :rate_limited
+    end
+
+    test "members and other workspaces cannot trigger provider validation" do
+      accepted = accepted_workspace_fixture()
+      owner_scope = Scope.for_workspace(accepted.user, accepted.workspace, accepted.membership)
+      credential = provider_credential_fixture(owner_scope)
+
+      member = invite_and_accept_member(owner_scope)
+      member_scope = Scope.for_workspace(member.user, member.workspace, member.membership)
+      other_scope = workspace_scope_fixture()
+
+      assert {:error, :owner_required} =
+               ProviderCredentials.validate_credential(member_scope, credential.id)
+
+      assert {:error, :not_found} =
+               ProviderCredentials.validate_credential(other_scope, credential.id)
+    end
+
+    test "rejects invalid requested model metadata before validation" do
+      scope = workspace_scope_fixture()
+      credential = provider_credential_fixture(scope)
+
+      assert {:error, :invalid_model} =
+               ProviderCredentials.validate_credential(scope, credential.id, %{model: 123})
+
+      assert {:ok, unchanged} = ProviderCredentials.get_credential(scope, credential.id)
+      assert unchanged.status == :pending_validation
+      assert unchanged.last_validation_status == nil
+    end
+  end
+
   test "provider and lifecycle sets remain deliberately bounded" do
     assert ProviderCredential.providers() == [:openai, :anthropic]
 
