@@ -4,6 +4,7 @@ import {
   Activity,
   BellRing,
   FlaskConical,
+  KeyRound,
   LogOut,
   LayoutDashboard,
   Settings2,
@@ -20,14 +21,8 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
-const navigation = [
-  { label: "Overview", icon: LayoutDashboard, current: true },
-  { label: "Monitors", icon: Activity, current: false },
-  { label: "Alerts", icon: BellRing, current: false },
-  { label: "Settings", icon: Settings2, current: false },
-]
-
 type ProductShellProps = PropsWithChildren<{
+  currentSection?: "overview" | "credentials"
   releaseStage: string
   userEmail: string
   workspace: { name: string; slug: string }
@@ -36,11 +31,29 @@ type ProductShellProps = PropsWithChildren<{
 
 export function ProductShell({
   children,
+  currentSection = "overview",
   membershipRole,
   releaseStage,
   userEmail,
   workspace,
 }: ProductShellProps) {
+  const navigation = [
+    {
+      label: "Overview",
+      icon: LayoutDashboard,
+      href: `/app/${workspace.slug}`,
+      current: currentSection === "overview",
+    },
+    {
+      label: "Credentials",
+      icon: KeyRound,
+      href: `/app/${workspace.slug}/credentials`,
+      current: currentSection === "credentials",
+    },
+    { label: "Monitors", icon: Activity, href: null, current: false },
+    { label: "Alerts", icon: BellRing, href: null, current: false },
+  ]
+
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background text-foreground">
@@ -71,22 +84,37 @@ export function ProductShell({
                 return (
                   <Tooltip key={item.label}>
                     <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        disabled={!item.current}
-                        aria-current={item.current ? "page" : undefined}
-                        className={cn(
-                          "h-10 w-full justify-start rounded-lg px-3 text-sidebar-foreground",
-                          item.current &&
-                            "bg-sidebar-accent text-sidebar-accent-foreground shadow-xs",
-                        )}
-                      >
-                        <Icon />
-                        {item.label}
-                      </Button>
+                      {item.href ? (
+                        <Button
+                          asChild
+                          variant="ghost"
+                          className={cn(
+                            "h-10 w-full justify-start rounded-lg px-3 text-sidebar-foreground",
+                            item.current &&
+                              "bg-sidebar-accent text-sidebar-accent-foreground shadow-xs",
+                          )}
+                        >
+                          <Link
+                            href={item.href}
+                            aria-current={item.current ? "page" : undefined}
+                          >
+                            <Icon />
+                            {item.label}
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled
+                          className="h-10 w-full justify-start rounded-lg px-3 text-sidebar-foreground"
+                        >
+                          <Icon />
+                          {item.label}
+                        </Button>
+                      )}
                     </TooltipTrigger>
-                    {!item.current && (
+                    {!item.href && (
                       <TooltipContent side="right">Available in a later task</TooltipContent>
                     )}
                   </Tooltip>
@@ -146,6 +174,37 @@ export function ProductShell({
                   {releaseStage}
                 </Badge>
               </div>
+              <nav
+                id="mobile-product-navigation"
+                className="flex gap-1 overflow-x-auto border-t border-border/70 px-3 py-2 lg:hidden"
+                aria-label="Product"
+              >
+                {navigation
+                  .filter(item => item.href)
+                  .map(item => {
+                    const Icon = item.icon
+
+                    return (
+                      <Button
+                        key={item.label}
+                        asChild
+                        size="sm"
+                        variant="ghost"
+                        className={cn(
+                          "shrink-0",
+                          item.current && "bg-accent text-accent-foreground",
+                        )}
+                      >
+                        <Link
+                          href={item.href!}
+                          aria-current={item.current ? "page" : undefined}
+                        >
+                          <Icon /> {item.label}
+                        </Link>
+                      </Button>
+                    )
+                  })}
+              </nav>
             </header>
 
             <main id="product-content" className="px-4 py-8 sm:px-6 lg:px-8 lg:py-10">

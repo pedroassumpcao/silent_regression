@@ -55,6 +55,11 @@ defmodule SilentRegressionWeb.Router do
     pipe_through [:browser, :authenticated, :workspace_scope]
 
     get "/", AppController, :index
+    get "/credentials", ProviderCredentialController, :index
+    post "/credentials", ProviderCredentialController, :create
+    post "/credentials/:id/validate", ProviderCredentialController, :validate
+    post "/credentials/:id/rotate", ProviderCredentialController, :rotate
+    delete "/credentials/:id", ProviderCredentialController, :revoke
   end
 
   scope "/", SilentRegressionWeb do

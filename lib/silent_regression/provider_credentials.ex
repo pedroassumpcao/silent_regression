@@ -56,14 +56,18 @@ defmodule SilentRegression.ProviderCredentials do
         },
         credential_id
       ) do
-    ProviderCredential
-    |> where([credential], credential.workspace_id == ^workspace_id)
-    |> where([credential], credential.id == ^credential_id)
-    |> select([credential], map(credential, ^@safe_fields))
-    |> Repo.one()
-    |> case do
-      nil -> {:error, :not_found}
-      credential -> {:ok, credential}
+    with {:ok, credential_id} <- cast_credential_id(credential_id) do
+      ProviderCredential
+      |> where([credential], credential.workspace_id == ^workspace_id)
+      |> where([credential], credential.id == ^credential_id)
+      |> select([credential], map(credential, ^@safe_fields))
+      |> Repo.one()
+      |> case do
+        nil -> {:error, :not_found}
+        credential -> {:ok, credential}
+      end
+    else
+      :error -> {:error, :not_found}
     end
   end
 
@@ -105,31 +109,35 @@ defmodule SilentRegression.ProviderCredentials do
         attrs
       )
       when is_map(attrs) do
-    Repo.transaction(fn ->
-      with %ProviderCredential{} = credential <- lock_credential(workspace.id, credential_id),
-           :ok <- ensure_active(credential),
-           {:ok, superseded} <-
-             credential
-             |> ProviderCredential.supersede_changeset(DateTime.utc_now(:second))
-             |> Repo.update(),
-           {:ok, successor} <-
-             %ProviderCredential{}
-             |> ProviderCredential.rotation_changeset(workspace, user, superseded, attrs)
-             |> Repo.insert() do
-        record_event!(superseded, user.id, "provider_credential.superseded", %{
-          "successor_id" => successor.id
-        })
+    with {:ok, credential_id} <- cast_credential_id(credential_id) do
+      Repo.transaction(fn ->
+        with %ProviderCredential{} = credential <- lock_credential(workspace.id, credential_id),
+             :ok <- ensure_active(credential),
+             {:ok, superseded} <-
+               credential
+               |> ProviderCredential.supersede_changeset(DateTime.utc_now(:second))
+               |> Repo.update(),
+             {:ok, successor} <-
+               %ProviderCredential{}
+               |> ProviderCredential.rotation_changeset(workspace, user, superseded, attrs)
+               |> Repo.insert() do
+          record_event!(superseded, user.id, "provider_credential.superseded", %{
+            "successor_id" => successor.id
+          })
 
-        record_event!(successor, user.id, "provider_credential.rotated", %{
-          "supersedes_id" => superseded.id
-        })
+          record_event!(successor, user.id, "provider_credential.rotated", %{
+            "supersedes_id" => superseded.id
+          })
 
-        to_safe_metadata(successor)
-      else
-        nil -> Repo.rollback(:not_found)
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end)
+          to_safe_metadata(successor)
+        else
+          nil -> Repo.rollback(:not_found)
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    else
+      :error -> {:error, :not_found}
+    end
   end
 
   def rotate_credential(%Scope{}, _credential_id, _attrs), do: {:error, :owner_required}
@@ -142,20 +150,24 @@ defmodule SilentRegression.ProviderCredentials do
         },
         credential_id
       ) do
-    Repo.transaction(fn ->
-      with %ProviderCredential{} = credential <- lock_credential(workspace_id, credential_id),
-           :ok <- ensure_active(credential),
-           {:ok, revoked} <-
-             credential
-             |> ProviderCredential.revoke_changeset(user, DateTime.utc_now(:second))
-             |> Repo.update() do
-        record_event!(revoked, user.id, "provider_credential.revoked")
-        to_safe_metadata(revoked)
-      else
-        nil -> Repo.rollback(:not_found)
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end)
+    with {:ok, credential_id} <- cast_credential_id(credential_id) do
+      Repo.transaction(fn ->
+        with %ProviderCredential{} = credential <- lock_credential(workspace_id, credential_id),
+             :ok <- ensure_active(credential),
+             {:ok, revoked} <-
+               credential
+               |> ProviderCredential.revoke_changeset(user, DateTime.utc_now(:second))
+               |> Repo.update() do
+          record_event!(revoked, user.id, "provider_credential.revoked")
+          to_safe_metadata(revoked)
+        else
+          nil -> Repo.rollback(:not_found)
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    else
+      :error -> {:error, :not_found}
+    end
   end
 
   def revoke_credential(%Scope{}, _credential_id), do: {:error, :owner_required}
@@ -172,7 +184,8 @@ defmodule SilentRegression.ProviderCredentials do
         attrs
       )
       when is_map(attrs) do
-    with {:ok, options} <- validation_options(attrs),
+    with {:ok, credential_id} <- cast_credential_id(credential_id),
+         {:ok, options} <- validation_options(attrs),
          %ProviderCredential{} = credential <- load_credential(workspace_id, credential_id),
          :ok <- ensure_active(credential) do
       result = Providers.validate_credential(credential.provider, credential.secret, options)
@@ -182,6 +195,7 @@ defmodule SilentRegression.ProviderCredentials do
         {:error, reason} -> {:error, reason}
       end
     else
+      :error -> {:error, :not_found}
       nil -> {:error, :not_found}
       {:error, reason} -> {:error, reason}
     end
@@ -209,6 +223,8 @@ defmodule SilentRegression.ProviderCredentials do
        do: :ok
 
   defp ensure_active(%ProviderCredential{}), do: {:error, :not_active}
+
+  defp cast_credential_id(credential_id), do: Ecto.UUID.cast(credential_id)
 
   defp validation_options(attrs) do
     case Map.get(attrs, :model) || Map.get(attrs, "model") do
