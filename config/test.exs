@@ -26,6 +26,18 @@ config :silent_regression, SilentRegressionWeb.Endpoint,
 # In test we don't send emails
 config :silent_regression, SilentRegression.Mailer, adapter: Swoosh.Adapters.Test
 
+# Fixed, test-only material keeps encryption assertions deterministic. Never
+# reuse this key outside the automated test environment.
+config :silent_regression, SilentRegression.Vault,
+  json_library: Jason,
+  ciphers: [
+    default:
+      {Cloak.Ciphers.AES.GCM,
+       tag: "AES.GCM.V1",
+       key: Base.decode64!("dGVzdC1vbmx5LWtleS1tYXRlcmlhbC0zMi1ieXRlcyE="),
+       iv_length: 12}
+  ]
+
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
 

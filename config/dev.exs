@@ -55,6 +55,19 @@ config :silent_regression, SilentRegressionWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :silent_regression, dev_routes: true
 
+# This key is deliberately limited to local development data. Set
+# PROVIDER_CREDENTIAL_ENCRYPTION_KEY to a Base64-encoded 32-byte key when a
+# stable, non-placeholder development key is required.
+config :silent_regression, SilentRegression.Vault,
+  json_library: Jason,
+  ciphers: [
+    default:
+      {Cloak.Ciphers.AES.GCM,
+       tag: "AES.GCM.V1",
+       key: Base.decode64!("ZGV2ZWxvcG1lbnQtb25seS1rZXktbWF0ZXJpYWwhISE="),
+       iv_length: 12}
+  ]
+
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
 

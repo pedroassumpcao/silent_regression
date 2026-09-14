@@ -10,6 +10,7 @@ defmodule SilentRegression.Application do
     children = [
       SilentRegressionWeb.Telemetry,
       SilentRegression.Repo,
+      SilentRegression.Vault,
       {DNSCluster, query: Application.get_env(:silent_regression, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: SilentRegression.PubSub},
       # Start a worker by calling: SilentRegression.Worker.start_link(arg)

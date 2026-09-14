@@ -24,6 +24,26 @@ config :silent_regression, SilentRegressionWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 if config_env() == :dev do
+  case System.get_env("PROVIDER_CREDENTIAL_ENCRYPTION_KEY") do
+    nil ->
+      :ok
+
+    encoded_key ->
+      key =
+        case Base.decode64(encoded_key) do
+          {:ok, key} when byte_size(key) == 32 -> key
+          _other -> raise "PROVIDER_CREDENTIAL_ENCRYPTION_KEY must encode exactly 32 bytes"
+        end
+
+      config :silent_regression, SilentRegression.Vault,
+        json_library: Jason,
+        ciphers: [
+          default: {Cloak.Ciphers.AES.GCM, tag: "AES.GCM.V1", key: key, iv_length: 12}
+        ]
+  end
+end
+
+if config_env() == :dev do
   # Reload browser tabs when matching files change.
   config :silent_regression, SilentRegressionWeb.Endpoint,
     live_reload: [
@@ -41,6 +61,29 @@ if config_env() == :dev do
 end
 
 if config_env() == :prod do
+  provider_credential_encryption_key =
+    case System.get_env("PROVIDER_CREDENTIAL_ENCRYPTION_KEY") do
+      nil ->
+        raise """
+        environment variable PROVIDER_CREDENTIAL_ENCRYPTION_KEY is missing.
+        Generate 32 random bytes and store their Base64 encoding as a runtime secret.
+        """
+
+      encoded_key ->
+        case Base.decode64(encoded_key) do
+          {:ok, key} when byte_size(key) == 32 -> key
+          _other -> raise "PROVIDER_CREDENTIAL_ENCRYPTION_KEY must encode exactly 32 bytes"
+        end
+    end
+
+  config :silent_regression, SilentRegression.Vault,
+    json_library: Jason,
+    ciphers: [
+      default:
+        {Cloak.Ciphers.AES.GCM,
+         tag: "AES.GCM.V1", key: provider_credential_encryption_key, iv_length: 12}
+    ]
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """
