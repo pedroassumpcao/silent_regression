@@ -7,6 +7,32 @@
 # General application configuration
 import Config
 
+config :silent_regression, :scopes,
+  user: [
+    default: false,
+    module: SilentRegression.Accounts.Scope,
+    assign_key: :current_scope,
+    access_path: [:user, :id],
+    schema_key: :user_id,
+    schema_type: :binary_id,
+    schema_table: :users,
+    test_data_fixture: SilentRegression.AccountsFixtures,
+    test_setup_helper: :register_and_log_in_user
+  ],
+  workspace: [
+    default: true,
+    module: SilentRegression.Accounts.Scope,
+    assign_key: :current_scope,
+    access_path: [:workspace, :id],
+    route_prefix: "/app/:workspace_slug",
+    route_access_path: [:workspace, :slug],
+    schema_key: :workspace_id,
+    schema_type: :binary_id,
+    schema_table: :workspaces,
+    test_data_fixture: SilentRegression.WorkspacesFixtures,
+    test_setup_helper: :register_and_log_in_workspace
+  ]
+
 config :silent_regression,
   ecto_repos: [SilentRegression.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true]

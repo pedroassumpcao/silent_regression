@@ -1,4 +1,5 @@
 import "phoenix_html"
+import "@/lib/http"
 
 import { createInertiaApp, Head, router } from "@inertiajs/react"
 import { Socket } from "phoenix"

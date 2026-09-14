@@ -1,6 +1,8 @@
 defmodule SilentRegressionWeb.Router do
   use SilentRegressionWeb, :router
 
+  import SilentRegressionWeb.UserAuth
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -8,7 +10,17 @@ defmodule SilentRegressionWeb.Router do
     plug :put_root_layout, html: {SilentRegressionWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug :fetch_current_scope_for_user
     plug Inertia.Plug
+    plug SilentRegressionWeb.Plugs.InertiaSharedProps
+  end
+
+  pipeline :authenticated do
+    plug :require_authenticated_user
+  end
+
+  pipeline :workspace_scope do
+    plug SilentRegressionWeb.Plugs.FetchWorkspaceScope
   end
 
   pipeline :api do
@@ -27,7 +39,34 @@ defmodule SilentRegressionWeb.Router do
     get "/design-partner/apply/thanks", DesignPartnerApplicationController, :thanks
     get "/robots.txt", SEOController, :robots
     get "/sitemap.xml", SEOController, :sitemap
-    get "/app", AppController, :index
+  end
+
+  scope "/", SilentRegressionWeb do
+    pipe_through [:browser, :authenticated]
+
+    get "/app", AppController, :entry
+    get "/users/settings", UserSettingsController, :edit
+    put "/users/settings/email", UserSettingsController, :update_email
+    put "/users/settings/password", UserSettingsController, :update_password
+    get "/users/settings/confirm-email/:token", UserSettingsController, :confirm_email
+  end
+
+  scope "/app/:workspace_slug", SilentRegressionWeb do
+    pipe_through [:browser, :authenticated, :workspace_scope]
+
+    get "/", AppController, :index
+  end
+
+  scope "/", SilentRegressionWeb do
+    pipe_through :browser
+
+    get "/invitations/:token", WorkspaceInvitationController, :show
+    post "/invitations/:token", WorkspaceInvitationController, :accept
+
+    get "/users/log-in", UserSessionController, :new
+    get "/users/log-in/:token", UserSessionController, :confirm
+    post "/users/log-in", UserSessionController, :create
+    delete "/users/log-out", UserSessionController, :delete
   end
 
   # Other scopes may use custom stacks.

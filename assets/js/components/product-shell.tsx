@@ -1,8 +1,10 @@
+import { Link } from "@inertiajs/react"
 import type { PropsWithChildren } from "react"
 import {
   Activity,
   BellRing,
   FlaskConical,
+  LogOut,
   LayoutDashboard,
   Settings2,
   ShieldCheck,
@@ -27,17 +29,26 @@ const navigation = [
 
 type ProductShellProps = PropsWithChildren<{
   releaseStage: string
+  userEmail: string
+  workspace: { name: string; slug: string }
+  membershipRole: "owner" | "member"
 }>
 
-export function ProductShell({ children, releaseStage }: ProductShellProps) {
+export function ProductShell({
+  children,
+  membershipRole,
+  releaseStage,
+  userEmail,
+  workspace,
+}: ProductShellProps) {
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background text-foreground">
         <div className="mx-auto flex min-h-screen max-w-[1600px]">
-          <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar px-4 py-5 lg:block">
-            <a
+          <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-4 py-5 lg:flex">
+            <Link
               id="product-brand"
-              href="/app"
+              href={`/app/${workspace.slug}`}
               className="flex items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-sidebar-accent"
             >
               <span className="grid size-9 place-items-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
@@ -51,7 +62,7 @@ export function ProductShell({ children, releaseStage }: ProductShellProps) {
                   Deterministic monitoring
                 </span>
               </span>
-            </a>
+            </Link>
 
             <nav id="product-navigation" className="mt-8 space-y-1" aria-label="Product">
               {navigation.map(item => {
@@ -92,6 +103,27 @@ export function ProductShell({ children, releaseStage }: ProductShellProps) {
                 Provider credentials and captured outputs stay inside each workspace boundary.
               </p>
             </div>
+
+            <div className="mt-auto border-t border-sidebar-border pt-5">
+              <p className="truncate px-2 text-xs font-medium text-sidebar-foreground">
+                {userEmail}
+              </p>
+              <p className="mt-1 px-2 text-xs capitalize text-sidebar-foreground/55">
+                {membershipRole}
+              </p>
+              <div className="mt-3 grid gap-1">
+                <Button asChild variant="ghost" className="h-9 justify-start px-2">
+                  <Link href="/users/settings">
+                    <Settings2 /> Account settings
+                  </Link>
+                </Button>
+                <Button asChild variant="ghost" className="h-9 justify-start px-2">
+                  <Link href="/users/log-out" method="delete" as="button">
+                    <LogOut /> Log out
+                  </Link>
+                </Button>
+              </div>
+            </div>
           </aside>
 
           <div className="min-w-0 flex-1">
@@ -101,11 +133,14 @@ export function ProductShell({ children, releaseStage }: ProductShellProps) {
                   <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
                     <FlaskConical className="size-4" />
                   </span>
-                  <span className="text-sm font-semibold">Silent Regression</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">{workspace.name}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{userEmail}</span>
+                  </span>
                 </div>
                 <div className="hidden items-center gap-2 text-sm text-muted-foreground lg:flex">
                   <Activity className="size-4 text-primary" />
-                  Product foundation
+                  {workspace.name}
                 </div>
                 <Badge variant="secondary" className="rounded-full px-3 py-1">
                   {releaseStage}

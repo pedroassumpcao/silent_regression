@@ -1,4 +1,4 @@
-import { Head } from "@inertiajs/react"
+import { Head, Link } from "@inertiajs/react"
 import { ArrowRight, Check, CircleDashed, FlaskConical, Plus } from "lucide-react"
 
 import { ProductShell } from "@/components/product-shell"
@@ -12,10 +12,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import type { SharedPageProps } from "@/types/page"
 
 type DashboardProps = {
   releaseStage: string
   foundationStatus: string
+  workspace: { name: string; slug: string }
+  auth: SharedPageProps["auth"]
 }
 
 const foundationChecks = [
@@ -24,9 +27,14 @@ const foundationChecks = [
   "Tailwind v4 tokens and shadcn component system",
 ]
 
-export function DashboardView({ foundationStatus, releaseStage }: DashboardProps) {
+export function DashboardView({ auth, foundationStatus, releaseStage, workspace }: DashboardProps) {
   return (
-    <ProductShell releaseStage={releaseStage}>
+    <ProductShell
+      releaseStage={releaseStage}
+      userEmail={auth.user?.email || "Invited user"}
+      workspace={workspace}
+      membershipRole={auth.membership?.role || "member"}
+    >
       <div className="mx-auto max-w-6xl space-y-8">
         <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
@@ -91,23 +99,23 @@ export function DashboardView({ foundationStatus, releaseStage }: DashboardProps
                 <CircleDashed className="size-5 text-primary" />
                 Up next
               </CardTitle>
-              <CardDescription>Task 2 of the private-alpha plan</CardDescription>
+              <CardDescription>Task 4 of the private-alpha plan</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="rounded-xl border border-dashed border-border bg-muted/35 p-4">
                 <FlaskConical className="size-5 text-primary" />
-                <p className="mt-3 text-sm font-medium">Design-partner entry point</p>
+                <p className="mt-3 text-sm font-medium">Encrypted provider credentials</p>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  A minimal public site and application flow—without opening self-service signup.
+                  Securely store and validate OpenAI or Anthropic credentials inside this workspace.
                 </p>
               </div>
-              <a
-                href="/"
+              <Link
+                href="/security"
                 className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
               >
-                View the public boundary
+                Review the security boundary
                 <ArrowRight className="size-4" />
-              </a>
+              </Link>
             </CardContent>
           </Card>
         </section>
