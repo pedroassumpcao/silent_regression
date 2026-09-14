@@ -8,12 +8,9 @@ defmodule SilentRegressionWeb.CoreComponents do
   with doc strings and declarative assigns. You may customize and style
   them in any way you want, based on your application growth and needs.
 
-  The foundation for styling is Tailwind CSS, a utility-first CSS framework,
-  augmented with daisyUI, a Tailwind CSS plugin that provides UI components
-  and themes. Here are useful references:
-
-    * [daisyUI](https://daisyui.com/docs/intro/) - a good place to get
-      started and see the available components.
+  The foundation for styling is Tailwind CSS, a utility-first CSS framework.
+  React product pages use shadcn/ui, while these components support the small
+  server-rendered surface. Here are useful references:
 
     * [Tailwind CSS](https://tailwindcss.com) - the foundational framework
       we build on. You will use it for layout, sizing, flexbox, grid, and
@@ -63,13 +60,13 @@ defmodule SilentRegressionWeb.CoreComponents do
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
       role="alert"
-      class="toast toast-top toast-end z-50"
+      class="fixed inset-x-4 top-4 z-50 flex flex-col items-end gap-2 sm:left-auto sm:w-96"
       {@rest}
     >
       <div class={[
-        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap",
-        @kind == :info && "alert-info",
-        @kind == :error && "alert-error"
+        "flex w-full items-start gap-3 rounded-xl border bg-card px-4 py-3 text-sm text-card-foreground shadow-lg shadow-slate-950/10",
+        @kind == :info && "border-primary/25",
+        @kind == :error && "border-destructive/30"
       ]}>
         <.icon :if={@kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
         <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-5 shrink-0" />
@@ -77,8 +74,12 @@ defmodule SilentRegressionWeb.CoreComponents do
           <p :if={@title} class="font-semibold">{@title}</p>
           <p>{msg}</p>
         </div>
-        <div class="flex-1" />
-        <button type="button" class="group self-start cursor-pointer" aria-label={gettext("close")}>
+        <div class="flex-1"></div>
+        <button
+          type="button"
+          class="group rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          aria-label={gettext("close")}
+        >
           <.icon name="hero-x-mark" class="size-5 opacity-40 group-hover:opacity-70" />
         </button>
       </div>
@@ -101,11 +102,17 @@ defmodule SilentRegressionWeb.CoreComponents do
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
-    variants = %{"primary" => "btn-primary", nil => "btn-primary btn-soft"}
+    variants = %{
+      "primary" => "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
+      nil => "border border-border bg-card text-card-foreground shadow-sm hover:bg-muted"
+    }
 
     assigns =
       assign_new(assigns, :class, fn ->
-        ["btn", Map.fetch!(variants, assigns[:variant])]
+        [
+          "inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+          Map.fetch!(variants, assigns[:variant])
+        ]
       end)
 
     if rest[:href] || rest[:navigate] || rest[:patch] do
@@ -212,8 +219,8 @@ defmodule SilentRegressionWeb.CoreComponents do
       end)
 
     ~H"""
-    <div class="fieldset mb-2">
-      <label for={@id}>
+    <div class="mb-4 space-y-2">
+      <label for={@id} class="flex items-center gap-2 text-sm font-medium text-foreground">
         <input
           type="hidden"
           name={@name}
@@ -221,14 +228,17 @@ defmodule SilentRegressionWeb.CoreComponents do
           disabled={@rest[:disabled]}
           form={@rest[:form]}
         />
-        <span class="label">
+        <span class="flex items-center gap-2">
           <input
             type="checkbox"
             id={@id}
             name={@name}
             value="true"
             checked={@checked}
-            class={@class || "checkbox checkbox-sm"}
+            class={
+              @class ||
+                "size-4 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            }
             {@rest}
           />{@label}
         </span>
@@ -240,13 +250,17 @@ defmodule SilentRegressionWeb.CoreComponents do
 
   def input(%{type: "select"} = assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="mb-4 space-y-2">
+      <label for={@id} class="block text-sm font-medium text-foreground">
+        <span :if={@label} class="mb-2 block">{@label}</span>
         <select
           id={@id}
           name={@name}
-          class={[@class || "w-full select", @errors != [] && (@error_class || "select-error")]}
+          class={[
+            @class ||
+              "h-10 w-full rounded-lg border border-input bg-card px-3 text-sm shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring",
+            @errors != [] && (@error_class || "border-destructive focus-visible:ring-destructive")
+          ]}
           multiple={@multiple}
           {@rest}
         >
@@ -261,15 +275,16 @@ defmodule SilentRegressionWeb.CoreComponents do
 
   def input(%{type: "textarea"} = assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="mb-4 space-y-2">
+      <label for={@id} class="block text-sm font-medium text-foreground">
+        <span :if={@label} class="mb-2 block">{@label}</span>
         <textarea
           id={@id}
           name={@name}
           class={[
-            @class || "w-full textarea",
-            @errors != [] && (@error_class || "textarea-error")
+            @class ||
+              "min-h-28 w-full resize-y rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-sm outline-none transition placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring",
+            @errors != [] && (@error_class || "border-destructive focus-visible:ring-destructive")
           ]}
           {@rest}
         >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
@@ -282,17 +297,18 @@ defmodule SilentRegressionWeb.CoreComponents do
   # All other inputs text, datetime-local, url, password, etc. are handled here...
   def input(assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="mb-4 space-y-2">
+      <label for={@id} class="block text-sm font-medium text-foreground">
+        <span :if={@label} class="mb-2 block">{@label}</span>
         <input
           type={@type}
           name={@name}
           id={@id}
           value={Phoenix.HTML.Form.normalize_value(@type, @value)}
           class={[
-            @class || "w-full input",
-            @errors != [] && (@error_class || "input-error")
+            @class ||
+              "h-10 w-full rounded-lg border border-input bg-card px-3 text-sm shadow-sm outline-none transition placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring",
+            @errors != [] && (@error_class || "border-destructive focus-visible:ring-destructive")
           ]}
           {@rest}
         />
@@ -305,7 +321,7 @@ defmodule SilentRegressionWeb.CoreComponents do
   # Helper used by inputs to generate form errors
   defp error(assigns) do
     ~H"""
-    <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
+    <p class="mt-1.5 flex items-center gap-2 text-sm text-destructive">
       <.icon name="hero-exclamation-circle" class="size-5" />
       {render_slot(@inner_block)}
     </p>
@@ -323,10 +339,10 @@ defmodule SilentRegressionWeb.CoreComponents do
     ~H"""
     <header class={[@actions != [] && "flex items-center justify-between gap-6", "pb-4"]}>
       <div>
-        <h1 class="text-lg font-semibold leading-8">
+        <h1 class="text-xl font-semibold tracking-tight text-foreground">
           {render_slot(@inner_block)}
         </h1>
-        <p :if={@subtitle != []} class="text-sm text-base-content/70">
+        <p :if={@subtitle != []} class="mt-1 text-sm text-muted-foreground">
           {render_slot(@subtitle)}
         </p>
       </div>
@@ -367,34 +383,44 @@ defmodule SilentRegressionWeb.CoreComponents do
       end
 
     ~H"""
-    <table class="table table-zebra">
-      <thead>
-        <tr>
-          <th :for={col <- @col}>{col[:label]}</th>
-          <th :if={@action != []}>
-            <span class="sr-only">{gettext("Actions")}</span>
-          </th>
-        </tr>
-      </thead>
-      <tbody id={@id} phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}>
-        <tr :for={row <- @rows} id={@row_id && @row_id.(row)}>
-          <td
-            :for={col <- @col}
-            phx-click={@row_click && @row_click.(row)}
-            class={@row_click && "hover:cursor-pointer"}
+    <div class="overflow-hidden rounded-xl border border-border bg-card">
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-border bg-muted/60 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th :for={col <- @col} class="px-4 py-3">{col[:label]}</th>
+            <th :if={@action != []} class="px-4 py-3">
+              <span class="sr-only">{gettext("Actions")}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody
+          id={@id}
+          class="divide-y divide-border"
+          phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}
+        >
+          <tr
+            :for={row <- @rows}
+            id={@row_id && @row_id.(row)}
+            class="transition-colors hover:bg-muted/40"
           >
-            {render_slot(col, @row_item.(row))}
-          </td>
-          <td :if={@action != []} class="w-0 font-semibold">
-            <div class="flex gap-4">
-              <%= for action <- @action do %>
-                {render_slot(action, @row_item.(row))}
-              <% end %>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+            <td
+              :for={col <- @col}
+              phx-click={@row_click && @row_click.(row)}
+              class={["px-4 py-3", @row_click && "cursor-pointer"]}
+            >
+              {render_slot(col, @row_item.(row))}
+            </td>
+            <td :if={@action != []} class="w-0 px-4 py-3 font-semibold">
+              <div class="flex gap-4">
+                <%= for action <- @action do %>
+                  {render_slot(action, @row_item.(row))}
+                <% end %>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     """
   end
 
@@ -414,11 +440,11 @@ defmodule SilentRegressionWeb.CoreComponents do
 
   def list(assigns) do
     ~H"""
-    <ul class="list">
-      <li :for={item <- @item} class="list-row">
-        <div class="list-col-grow">
-          <div class="font-bold">{item.title}</div>
-          <div>{render_slot(item)}</div>
+    <ul class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+      <li :for={item <- @item} class="px-4 py-3">
+        <div>
+          <div class="text-sm font-semibold text-foreground">{item.title}</div>
+          <div class="mt-1 text-sm text-muted-foreground">{render_slot(item)}</div>
         </div>
       </li>
     </ul>
