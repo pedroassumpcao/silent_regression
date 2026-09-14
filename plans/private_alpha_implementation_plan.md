@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 1 complete; Task 2 ready to start
+> **Status:** Task 2 complete; Task 3 ready to start
 >
-> **Progress:** 1 of 14 tasks complete
+> **Progress:** 2 of 14 tasks complete
 >
 > **Last revised:** 2026-09-14
 >
@@ -272,7 +272,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | Task | Deliverable | Depends on | Status | Commits |
 | --- | --- | --- | --- | --- |
 | 1 | Phoenix/Inertia/React/shadcn foundation | — | Complete | `1897937`, `938bbbf` |
-| 2 | Minimal public site and design-partner application | 1 | Not started | — |
+| 2 | Minimal public site and design-partner application | 1 | Complete | `0c1811b` |
 | 3 | Invite-only accounts, workspaces, memberships, and scope | 1 | Not started | — |
 | 4 | Encrypted provider credentials and validation | 3 | Not started | — |
 | 5 | Versioned monitor and case domain | 3 | Not started | — |
@@ -328,22 +328,22 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 
 ### Task 2 — Minimal public site and design-partner application
 
-**Status:** Not started
+**Status:** Complete
 
 **Objective:** Provide enough public credibility and conversion support for founder-led design-partner recruitment.
 
 **Checklist:**
 
-- [ ] Keep the public surface server-rendered and separate from authenticated Inertia routes.
-- [ ] Build one polished homepage with the deterministic wedge, target workflows, how it works, limitations, and `Apply for design-partner access` CTA.
-- [ ] Add a short security/data-handling page describing managed replay and customer-provided credentials without making unimplemented compliance claims.
-- [ ] Add privacy and terms placeholders that are clearly marked for legal review before external use.
-- [ ] Add a compact design-partner application form and persist submissions.
-- [ ] Collect only name, work email, company, role, workflow description, current problem, provider, and willingness to participate in recurring feedback.
-- [ ] Add internal status values for new, contacted, qualified, invited, declined, and withdrawn applications.
-- [ ] Add canonical metadata, Open Graph metadata, sitemap, and correct robots behavior.
-- [ ] Ensure authenticated application pages are not indexed.
-- [ ] Do not add a pricing page, fake free plan, broad blog, or programmatic SEO pages.
+- [x] Keep the public surface server-rendered and separate from authenticated Inertia routes.
+- [x] Build one polished homepage with the deterministic wedge, target workflows, how it works, limitations, and `Apply for design-partner access` CTA.
+- [x] Add a short security/data-handling page describing managed replay and customer-provided credentials without making unimplemented compliance claims.
+- [x] Add privacy and terms placeholders that are clearly marked for legal review before external use.
+- [x] Add a compact design-partner application form and persist submissions.
+- [x] Collect only name, work email, company, role, workflow description, current problem, provider, and willingness to participate in recurring feedback.
+- [x] Add internal status values for new, contacted, qualified, invited, declined, and withdrawn applications.
+- [x] Add canonical metadata, Open Graph metadata, sitemap, and correct robots behavior.
+- [x] Ensure authenticated application pages are not indexed.
+- [x] Do not add a pricing page, fake free plan, broad blog, or programmatic SEO pages.
 
 **Acceptance criteria:**
 
@@ -931,6 +931,21 @@ The product is ready for the first external design partner only when:
 - Confirmed Elixir `inertia 2.6.2` is the latest stable Phoenix adapter. Upgraded its matching v2 React client to `2.3.28` and deliberately deferred JavaScript v3 while the Phoenix `3.x` adapter remains a release candidate.
 - Verified a clean `npm ci` with zero reported vulnerabilities, frontend type checking and tests, the production asset build, 252 Elixir tests through `mix precommit`, a full-page HTTP 200, and an Inertia-versioned XHR HTTP 200 with the expected `Dashboard` payload.
 - Dependency commit: `938bbbf`.
+
+### 2026-09-14 — Task 2 started
+
+- Began the server-rendered public site and persisted design-partner application.
+- Kept the application form outside account creation and retained the separate React/Inertia product boundary.
+- Chose privacy-preserving idempotent handling for case-insensitive duplicate email submissions; no application-management UI is included in this task.
+
+### 2026-09-14 — Task 2 complete
+
+- Added the polished server-rendered homepage, security page, legal-review privacy and terms placeholders, and a selective design-partner application flow without adding public signup, pricing, billing, or unsupported semantic-monitoring claims.
+- Persisted the eight approved application fields with database-enforced provider/status values, case-insensitive email uniqueness, six internal lifecycle states, validation, and privacy-preserving duplicate submission behavior.
+- Added canonical, description, Open Graph, and robots metadata plus dynamic sitemap and robots responses; `/app` and the application confirmation page are explicitly non-indexable.
+- Fixed the Phoenix development live-reload event contract after the browser pass exposed a console exception on server-rendered navigation.
+- Verified 266 Elixir tests through `mix precommit`, frontend type checking and tests, the production asset build, desktop and mobile layouts, accessible browser control names, a clean console, and a real form submission through persistence and redirect. Removed the temporary QA record and browser artifacts afterward.
+- Implementation commit: `0c1811b`.
 
 ## 17. References
 
