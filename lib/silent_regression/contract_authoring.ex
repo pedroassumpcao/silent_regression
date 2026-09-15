@@ -23,6 +23,7 @@ defmodule SilentRegression.ContractAuthoring do
 
   alias SilentRegression.Contracts
   alias SilentRegression.Contracts.{Evaluation, RuleResult}
+  alias SilentRegression.MonitorSetups.Setup
   alias SilentRegression.Monitors.{Monitor, MonitorVersion}
   alias SilentRegression.Repo
   alias SilentRegression.Workspaces.{Membership, Workspace}
@@ -93,6 +94,7 @@ defmodule SilentRegression.ContractAuthoring do
         with {:ok, monitor} <- fetch_locked_monitor(workspace_id, monitor_id),
              {:ok, monitor_version} <- fetch_current_monitor_version(monitor),
              existing <- load_contract(monitor.id, :draft),
+             :ok <- ensure_editable_draft(existing, monitor),
              identity <- draft_identity(existing, monitor),
              {:ok, normalized} <- DraftInput.normalize(attrs, identity),
              normalized <- Map.put(normalized, :contract_id, identity.contract_id),
@@ -666,8 +668,23 @@ defmodule SilentRegression.ContractAuthoring do
     }
   end
 
+  defp ensure_editable_draft(%ContractVersion{}, _monitor), do: :ok
+
+  defp ensure_editable_draft(nil, monitor) do
+    if load_contract(monitor.id, :approved), do: {:error, :revision_required}, else: :ok
+  end
+
   defp current_monitor_version(monitor) do
-    load_monitor_version(monitor.id, monitor.draft_version_id || monitor.active_version_id)
+    version_id =
+      Setup
+      |> where(
+        [setup],
+        setup.monitor_id == ^monitor.id and setup.status == :completed
+      )
+      |> select([setup], setup.completed_monitor_version_id)
+      |> Repo.one()
+
+    load_monitor_version(monitor.id, version_id)
   end
 
   defp fetch_current_monitor_version(monitor) do

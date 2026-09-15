@@ -63,6 +63,20 @@ defmodule SilentRegressionWeb.Router do
     patch "/monitors/:monitor_id/setup/:step", MonitorSetupController, :update
     post "/monitors/:monitor_id/setup/complete", MonitorSetupController, :complete
     post "/monitors/:monitor_id/setup/leave", MonitorSetupController, :leave
+    get "/monitors/:monitor_id/contract", ContractAuthoringController, :show
+    put "/monitors/:monitor_id/contract", ContractAuthoringController, :save
+    post "/monitors/:monitor_id/contract/fixtures", ContractAuthoringController, :create_fixture
+
+    patch "/monitors/:monitor_id/contract/fixtures/:fixture_id",
+          ContractAuthoringController,
+          :update_fixture
+
+    delete "/monitors/:monitor_id/contract/fixtures/:fixture_id",
+           ContractAuthoringController,
+           :delete_fixture
+
+    post "/monitors/:monitor_id/contract/approve", ContractAuthoringController, :approve
+    post "/monitors/:monitor_id/contract/revise", ContractAuthoringController, :revise
     get "/credentials", ProviderCredentialController, :index
     post "/credentials", ProviderCredentialController, :create
     post "/credentials/:id/validate", ProviderCredentialController, :validate

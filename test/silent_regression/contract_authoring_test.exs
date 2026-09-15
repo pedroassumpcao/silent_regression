@@ -263,6 +263,14 @@ defmodule SilentRegression.ContractAuthoringTest do
         })
 
       {:ok, approved} = ContractAuthoring.approve(scope, monitor.id)
+
+      assert {:error, :revision_required} =
+               ContractAuthoring.save_draft(scope, monitor.id, %{
+                 template_key: "classification",
+                 assistance_mode: "self_serve",
+                 root: approved.root
+               })
+
       assert {:ok, revision} = ContractAuthoring.create_revision(scope, monitor.id)
 
       assert revision.status == :draft
