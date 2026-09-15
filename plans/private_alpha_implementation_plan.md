@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 5 in progress; append-only monitor version design selected
+> **Status:** Task 5 complete; Task 6 ready
 >
-> **Progress:** 4 of 14 tasks complete
+> **Progress:** 5 of 14 tasks complete
 >
 > **Last revised:** 2026-09-14
 >
@@ -275,7 +275,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 2 | Minimal public site and design-partner application | 1 | Complete | `0c1811b` |
 | 3 | Invite-only accounts, workspaces, memberships, and scope | 1 | Complete | `314e713` |
 | 4 | Encrypted provider credentials and validation | 3 | Complete | `c1f0bbf`, `252bb7e`, `9f5b2f6`, `93353bb`, `43be6f6`, `ee8ceca`, `cfdf2cb`, `dfbe096` |
-| 5 | Versioned monitor and case domain | 3 | In progress | — |
+| 5 | Versioned monitor and case domain | 3 | Complete | `1fda0d5`, `bab97d9` |
 | 6 | Persisted cold-start monitor setup | 4, 5 | Not started | — |
 | 7 | Generic deterministic contract engine | 5 | Not started | — |
 | 8 | Contract authoring, fixture validation, and approval | 6, 7 | Not started | — |
@@ -437,7 +437,7 @@ that boundary and are covered by separate authorization and audit tests.
 
 ### Task 5 — Versioned monitor and case domain
 
-**Status:** In progress
+**Status:** Complete
 
 **Design decision:** Use complete append-only monitor/case snapshots with database-enforced content
 immutability. Keep monitor name and description as metadata-only fields. Persist incomplete Task 6
@@ -448,17 +448,17 @@ fallback substitution. See [`docs/monitors/RESEARCH.md`](../docs/monitors/RESEAR
 
 **Checklist:**
 
-- [ ] Add monitor, monitor version, and case version schemas and contexts.
-- [ ] Define monitor and configuration state transitions.
-- [ ] Store prompt templates, frozen context, input variables, response format, generation configuration, provider, and requested model.
-- [ ] Generate stable fingerprints from all behavior-affecting fields.
-- [ ] Define which fields are metadata-only and may be edited without a new version.
-- [ ] Create a new immutable version for every behavior-affecting change.
-- [ ] Add manual case entry and a documented versioned JSON import schema.
-- [ ] Enforce initial alpha caps of 1–20 active cases per monitor and bounded payload sizes through configuration.
-- [ ] Add provider/model allowlists without silently substituting models.
-- [ ] Reject comparisons and baselines with incompatible fingerprints or provenance.
-- [ ] Add audit events for monitor version activation, pausing, and archival.
+- [x] Add monitor, monitor version, and case version schemas and contexts.
+- [x] Define monitor and configuration state transitions.
+- [x] Store prompt templates, frozen context, input variables, response format, generation configuration, provider, and requested model.
+- [x] Generate stable fingerprints from all behavior-affecting fields.
+- [x] Define which fields are metadata-only and may be edited without a new version.
+- [x] Create a new immutable version for every behavior-affecting change.
+- [x] Add manual case entry and a documented versioned JSON import schema.
+- [x] Enforce initial alpha caps of 1–20 active cases per monitor and bounded payload sizes through configuration.
+- [x] Add provider/model allowlists without silently substituting models.
+- [x] Reject comparisons and baselines with incompatible fingerprints or provenance.
+- [x] Add audit events for monitor version activation, pausing, and archival.
 
 **Acceptance criteria:**
 
@@ -910,6 +910,7 @@ The product is ready for the first external design partner only when:
 | 2026-09-14 | Make invitation acceptance the only account-creation boundary | The private alpha needs generated authentication security without exposing public registration; accepting a valid locked invitation atomically creates or confirms the identity and membership | 3 onward |
 | 2026-09-14 | Make `Workspace` the default Phoenix generator scope | Future tenant-owned contexts should generate `workspace_id` boundaries and `/app/:workspace_slug` routes by default; the user-only scope remains available for identity operations | 3 onward |
 | 2026-09-14 | Encrypt provider credentials with Cloak.Ecto and restrict lifecycle management to owners | AES-256-GCM with a runtime application keyring is the smallest appropriate private-alpha boundary and supports versioned rotation; members may use valid credentials without gaining create, rotate, revoke, or plaintext access | 4, 9, 14 |
+| 2026-09-14 | Use complete append-only monitor snapshots with behavior-based compatibility | Database triggers protect executable and case content; monitor metadata remains editable, while case display-only successors retain the same fingerprint and baseline compatibility. Owners and members may collaborate on monitor definitions | 5 onward |
 
 ## 16. Session log
 
@@ -1046,6 +1047,26 @@ The product is ready for the first external design partner only when:
   `gpt-5.6-luna`, `gpt-5.6-sol`, `claude-haiku-4-5-20251001`, and `claude-sonnet-5`.
 - Recorded the detailed design, limits, import boundary, compatibility contract, risks, and primary
   references in [`docs/monitors/RESEARCH.md`](../docs/monitors/RESEARCH.md).
+
+### 2026-09-14 — Task 5 complete
+
+- Added workspace-scoped monitor identities plus complete append-only monitor and case snapshots.
+  Owners and members may collaborate on monitor definitions; archived monitors reject new versions.
+- Added PostgreSQL constraints and triggers that reject in-place configuration or case-content
+  updates while preserving lifecycle transitions and later user anonymization.
+- Added canonical SHA-256 fingerprints for provider/model, prompts, response format, generation
+  configuration, active case membership, variables, and frozen context. Monitor name/description and
+  case display name/order remain metadata-only.
+- Added exact OpenAI and Anthropic allowlists, explicit payload/case bounds, normalized manual entry,
+  and the documented `case-import-v1.schema.json` boundary. Unknown fields and silent model
+  substitutions are rejected.
+- Added transactional candidate creation, monotonic lineage, activation, supersession, monitor state
+  transitions, content-free lifecycle audits, and strict provenance compatibility with explicit
+  mismatch reasons.
+- Fixed a final review edge case so exact no-op saves are rejected while metadata-only case
+  successors can remain compatible without mutating history.
+- Verified 18 focused monitor-domain tests and 414 total tests through `mix precommit`.
+- Implementation commits: `1fda0d5` and `bab97d9`.
 
 ## 17. References
 
