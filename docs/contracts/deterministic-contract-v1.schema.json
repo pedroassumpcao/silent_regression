@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://silentregression.com/schemas/deterministic-contract-v1.schema.json",
+  "title": "Silent Regression deterministic contract version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_id", "contract_version", "monitor_id", "root"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "contract_id": {"type": "string", "minLength": 1, "maxLength": 100},
+    "contract_version": {"type": "integer", "minimum": 1},
+    "monitor_id": {"type": "string", "minLength": 1, "maxLength": 100},
+    "root": {"$ref": "#/$defs/rule"}
+  },
+  "$defs": {
+    "ruleId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,79}$"
+    },
+    "jsonPointer": {
+      "type": "string",
+      "maxLength": 1000,
+      "pattern": "^(|/(?:[^~/]|~[01])*)$"
+    },
+    "numericComparison": {
+      "enum": ["strict", "mathematical"]
+    },
+    "alternative": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "alternatives": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/alternative"}
+    },
+    "sourceId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sourceIds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/sourceId"}
+    },
+    "rule": {
+      "oneOf": [
+        {"$ref": "#/$defs/allRule"},
+        {"$ref": "#/$defs/anyRule"},
+        {"$ref": "#/$defs/notRule"},
+        {"$ref": "#/$defs/jsonValidRule"},
+        {"$ref": "#/$defs/jsonPathExistsRule"},
+        {"$ref": "#/$defs/jsonPathTypeRule"},
+        {"$ref": "#/$defs/jsonPathEqualsRule"},
+        {"$ref": "#/$defs/jsonPathAllowedValuesRule"},
+        {"$ref": "#/$defs/jsonPathNumberRule"},
+        {"$ref": "#/$defs/classificationRule"},
+        {"$ref": "#/$defs/requiredTextRule"},
+        {"$ref": "#/$defs/forbiddenTextRule"},
+        {"$ref": "#/$defs/requiredSourceIdsRule"},
+        {"$ref": "#/$defs/allowedSourceIdsRule"},
+        {"$ref": "#/$defs/factCitationRule"},
+        {"$ref": "#/$defs/requiredAbstentionRule"},
+        {"$ref": "#/$defs/lengthRule"}
+      ]
+    },
+    "allRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "rules"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "all"},
+        "rules": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {"$ref": "#/$defs/rule"}
+        }
+      }
+    },
+    "anyRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "rules"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "any"},
+        "rules": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {"$ref": "#/$defs/rule"}
+        }
+      }
+    },
+    "notRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "rule"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "not"},
+        "rule": {"$ref": "#/$defs/rule"}
+      }
+    },
+    "jsonValidRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "json_valid"}
+      }
+    },
+    "jsonPathExistsRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "path"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "json_path_exists"},
+        "path": {"$ref": "#/$defs/jsonPointer"}
+      }
+    },
+    "jsonPathTypeRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "path", "expected_type"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "json_path_type"},
+        "path": {"$ref": "#/$defs/jsonPointer"},
+        "expected_type": {"enum": ["object", "array", "string", "number", "integer", "boolean", "null"]}
+      }
+    },
+    "jsonPathEqualsRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "path", "expected", "numeric_comparison"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "json_path_equals"},
+        "path": {"$ref": "#/$defs/jsonPointer"},
+        "expected": {},
+        "numeric_comparison": {"$ref": "#/$defs/numericComparison"}
+      }
+    },
+    "jsonPathAllowedValuesRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "path", "allowed_values", "numeric_comparison"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "json_path_allowed_values"},
+        "path": {"$ref": "#/$defs/jsonPointer"},
+        "allowed_values": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {}
+        },
+        "numeric_comparison": {"$ref": "#/$defs/numericComparison"}
+      }
+    },
+    "jsonPathNumberRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "path"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "json_path_number"},
+        "path": {"$ref": "#/$defs/jsonPointer"},
+        "minimum": {"type": "number"},
+        "maximum": {"type": "number"},
+        "target": {"type": "number"},
+        "tolerance": {"type": "number", "minimum": 0}
+      },
+      "anyOf": [
+        {"required": ["minimum"]},
+        {"required": ["maximum"]},
+        {"required": ["target"]}
+      ],
+      "dependentRequired": {
+        "target": ["tolerance"],
+        "tolerance": ["target"]
+      }
+    },
+    "classificationRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "allowed_values"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "classification"},
+        "allowed_values": {"$ref": "#/$defs/alternatives"}
+      }
+    },
+    "requiredTextRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "alternatives"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "required_text"},
+        "alternatives": {"$ref": "#/$defs/alternatives"}
+      }
+    },
+    "forbiddenTextRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "alternatives"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "forbidden_text"},
+        "alternatives": {"$ref": "#/$defs/alternatives"}
+      }
+    },
+    "requiredSourceIdsRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "source_ids"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "required_source_ids"},
+        "source_ids": {"$ref": "#/$defs/sourceIds"}
+      }
+    },
+    "allowedSourceIdsRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "source_ids", "require_at_least_one"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "allowed_source_ids"},
+        "source_ids": {"$ref": "#/$defs/sourceIds"},
+        "require_at_least_one": {"type": "boolean"}
+      }
+    },
+    "factCitationRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "fact_alternatives", "source_ids", "max_distance_characters"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "fact_citation"},
+        "fact_alternatives": {"$ref": "#/$defs/alternatives"},
+        "source_ids": {"$ref": "#/$defs/sourceIds"},
+        "max_distance_characters": {"type": "integer", "minimum": 1, "maximum": 500}
+      }
+    },
+    "requiredAbstentionRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "alternatives"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "required_abstention"},
+        "alternatives": {"$ref": "#/$defs/alternatives"}
+      }
+    },
+    "lengthRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "unit"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ruleId"},
+        "type": {"const": "length"},
+        "unit": {"enum": ["graphemes", "words"]},
+        "minimum": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "maximum": {"type": "integer", "minimum": 0, "maximum": 1000000}
+      },
+      "anyOf": [
+        {"required": ["minimum"]},
+        {"required": ["maximum"]}
+      ]
+    }
+  }
+}

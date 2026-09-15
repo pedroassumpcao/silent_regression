@@ -1,6 +1,6 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 6 complete; Task 7 is next
+> **Status:** Task 7 in progress
 >
 > **Progress:** 6 of 14 tasks complete
 >
@@ -514,7 +514,7 @@ progress from persisted validity rather than user-controlled completion flags. S
 
 ### Task 7 — Generic deterministic contract engine
 
-**Status:** Not started
+**Status:** In progress
 
 **Objective:** Convert the spike's proven deterministic concept into versioned, monitor-specific, explainable product primitives.
 
@@ -918,6 +918,7 @@ The product is ready for the first external design partner only when:
 | 2026-09-14 | Encrypt provider credentials with Cloak.Ecto and restrict lifecycle management to owners | AES-256-GCM with a runtime application keyring is the smallest appropriate private-alpha boundary and supports versioned rotation; members may use valid credentials without gaining create, rotate, revoke, or plaintext access | 4, 9, 14 |
 | 2026-09-14 | Use complete append-only monitor snapshots with behavior-based compatibility | Database triggers protect executable and case content; monitor metadata remains editable, while case display-only successors retain the same fingerprint and baseline compatibility. Owners and members may collaborate on monitor definitions | 5 onward |
 | 2026-09-14 | Persist cold-start input outside immutable history and promote only when complete | A mutable workspace-scoped setup draft supports refresh/resume while Task 5 remains append-only; credential identity is operational configuration, so rotation does not silently change the behavior fingerprint | 6, 9–11 |
+| 2026-09-15 | Use a bounded declarative contract DSL with separately versioned pure evaluations | Strict versioned parsing, fixed normalization/citation syntax, RFC 6901 paths, and hard resource limits make deterministic judgments explainable and safe; Task 8 owns approval persistence and Task 9 owns durable execution records | 7–9, 12 |
 
 ## 16. Session log
 
@@ -1114,6 +1115,18 @@ The product is ready for the first external design partner only when:
 - Verified 18 focused setup tests, 10 frontend tests with TypeScript checking, the production asset
   build, and 432 total Elixir tests through `mix precommit`.
 - Implementation commits: `c3c9ef5`, `6335d29`, `0db2a94`, and `b4c7142`.
+
+### 2026-09-15 — Task 7 started
+
+- Defined Task 7 as the product-owned, pure contract/evaluation boundary. Task 8 will persist and
+  approve contracts and fixtures; Task 9 will persist capture observations, evaluations, and rule
+  results without changing the engine semantics.
+- Selected a bounded version-1 declarative DSL with stable rule IDs, RFC 6901 JSON Pointers, fixed
+  literal-text normalization, exact bracketed citation IDs, no customer-authored regex or executable
+  code, and explicit pass/fail/evaluator-error outcomes.
+- Recorded the contract envelope, primitives, safety limits, evidence rules, rescoring boundary,
+  deferred needs, and primary references in
+  [`docs/contracts/RESEARCH.md`](../docs/contracts/RESEARCH.md).
 
 ## 17. References
 
