@@ -9,7 +9,7 @@ defmodule SilentRegression.Contracts.ConformanceTest do
   @categories ~w(positive negative malformed_output boundary adversarial)
   @statuses ~w(pass fail evaluator_error)
 
-  test "candidate conformance fixture set covers every version-1 primitive" do
+  test "approved conformance fixture set covers every version-1 primitive" do
     fixture_set = load_fixture_set!("conformance.json")
     validate_fixture_set!(fixture_set, "conformance")
 
@@ -25,7 +25,7 @@ defmodule SilentRegression.Contracts.ConformanceTest do
              Enum.sort(@categories)
   end
 
-  test "candidate conformance judgments match deterministic-v1" do
+  test "approved conformance judgments match deterministic-v1" do
     fixture_set = load_fixture_set!("conformance.json")
     validate_fixture_set!(fixture_set, "conformance")
     evaluate_fixture_set!(fixture_set)

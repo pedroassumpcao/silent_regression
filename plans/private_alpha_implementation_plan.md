@@ -1127,6 +1127,9 @@ The product is ready for the first external design partner only when:
 - Recorded the contract envelope, primitives, safety limits, evidence rules, rescoring boundary,
   deferred needs, and primary references in
   [`docs/contracts/RESEARCH.md`](../docs/contracts/RESEARCH.md).
+- Received human approval for all 31 generic conformance judgments and promoted the conformance
+  fixture set from candidate to approved. The separate held-out fixture outcomes remain unevaluated
+  pending human approval of their labels.
 
 ## 17. References
 
