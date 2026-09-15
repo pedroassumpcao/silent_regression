@@ -22,7 +22,14 @@ defmodule SilentRegression.Contracts.Text do
 
   @spec contains_literal?(String.t(), String.t()) :: boolean()
   def contains_literal?(text, literal) when is_binary(text) and is_binary(literal) do
-    normalized_text = normalize(text)
+    text
+    |> normalize()
+    |> contains_normalized_literal?(literal)
+  end
+
+  @spec contains_normalized_literal?(String.t(), String.t()) :: boolean()
+  def contains_normalized_literal?(normalized_text, literal)
+      when is_binary(normalized_text) and is_binary(literal) do
     normalized_literal = normalize(literal)
 
     normalized_literal != "" and

@@ -72,6 +72,9 @@ defmodule SilentRegression.Contracts.ParserTest do
         ~s({"schema_version":1,"contract_id":"one","contract_id":"two","contract_version":1,"monitor_id":"m","root":{"id":"json","type":"json_valid"}})
 
       assert {:error, %{"code" => "duplicate_object_key"}} = Parser.parse_json(encoded)
+
+      deeply_nested = String.duplicate("[", 65) <> "0" <> String.duplicate("]", 65)
+      assert {:error, %{"code" => "json_nesting_too_deep"}} = Parser.parse_json(deeply_nested)
     end
 
     test "rejects malformed configuration for every leaf primitive" do
@@ -102,6 +105,19 @@ defmodule SilentRegression.Contracts.ParserTest do
          }, "invalid_allowed_values"},
         {%{"id" => "number", "type" => "json_path_number", "path" => "/score", "target" => 1},
          "incomplete_tolerance"},
+        {%{
+           "id" => "null_number",
+           "type" => "json_path_number",
+           "path" => "/score",
+           "minimum" => nil,
+           "maximum" => 1
+         }, "invalid_numeric_bound"},
+        {%{
+           "id" => "huge_number",
+           "type" => "json_path_number",
+           "path" => "/score",
+           "maximum" => 9_007_199_254_740_992
+         }, "invalid_numeric_bound"},
         {%{
            "id" => "class",
            "type" => "classification",

@@ -10,6 +10,7 @@ defmodule SilentRegression.Contracts.Parser do
 
   @rule_id ~r/\A[a-z][a-z0-9_-]{0,79}\z/
   @source_id ~r/\A[A-Za-z0-9][A-Za-z0-9._:-]*\z/
+  @identity ~r/\A[A-Za-z0-9][A-Za-z0-9._:-]{0,99}\z/
   @rule_types ~w(
     all
     any
@@ -119,7 +120,7 @@ defmodule SilentRegression.Contracts.Parser do
   defp validate_identity(attributes, field) do
     value = attributes[field]
 
-    if is_binary(value) and String.trim(value) != "" and byte_size(value) <= 100 do
+    if is_binary(value) and Regex.match?(@identity, value) do
       :ok
     else
       error(
@@ -485,15 +486,23 @@ defmodule SilentRegression.Contracts.Parser do
   defp valid_source_id?(_value), do: false
 
   defp validate_numeric_bounds(rule, path) do
-    values = Enum.map(~w(minimum maximum target tolerance), &{&1, Map.get(rule, &1)})
-    present = Enum.reject(values, fn {_field, value} -> is_nil(value) end)
+    configured =
+      ~w(minimum maximum target tolerance)
+      |> Enum.filter(&Map.has_key?(rule, &1))
+      |> Enum.map(&{&1, rule[&1]})
 
     cond do
-      present == [] ->
+      configured == [] ->
         error(path, "missing_numeric_bound", "A numeric rule needs a range or target tolerance")
 
-      Enum.any?(present, fn {_field, value} -> not is_number(value) end) ->
-        error(path, "invalid_numeric_bound", "Numeric bounds must be JSON numbers")
+      Enum.any?(configured, fn {_field, value} ->
+        not is_number(value) or abs(value) > Limits.max_numeric_magnitude()
+      end) ->
+        error(
+          path,
+          "invalid_numeric_bound",
+          "Numeric bounds must be interoperable finite JSON numbers"
+        )
 
       Map.has_key?(rule, "target") != Map.has_key?(rule, "tolerance") ->
         error(path, "incomplete_tolerance", "target and tolerance must be configured together")

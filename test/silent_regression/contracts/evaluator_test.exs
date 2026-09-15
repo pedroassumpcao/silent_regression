@@ -11,6 +11,7 @@ defmodule SilentRegression.Contracts.EvaluatorTest do
       assert_result(json_valid(), ~s({"ready":true}), :pass, "valid_json")
       assert_result(json_valid(), "```json\n{}\n```", :fail, "invalid_json")
       assert_result(json_valid(), ~s({"ready":true,"ready":false}), :fail, "duplicate_object_key")
+      assert_result(json_valid(), Jason.encode!(String.duplicate("[", 100)), :pass, "valid_json")
 
       deeply_nested = String.duplicate("[", 65) <> "0" <> String.duplicate("]", 65)
       assert_result(json_valid(), deeply_nested, :evaluator_error, "json_nesting_too_deep")
@@ -202,6 +203,12 @@ defmodule SilentRegression.Contracts.EvaluatorTest do
       assert_result(rule, "The answer [guide-1].", :pass, "source_ids_allowed")
       assert_result(rule, "The answer [invented-9].", :fail, "disallowed_source_id_present")
       assert_result(rule, "The answer has no citation.", :fail, "source_id_missing")
+
+      many_sources = Enum.map_join(1..30, " ", &"[unlisted-#{&1}]")
+      result = assert_result(rule, many_sources, :fail, "disallowed_source_id_present")
+      assert result.evidence["found_source_ids"]["count"] == 30
+      assert result.evidence["found_source_ids"]["truncated"]
+      assert length(result.evidence["found_source_ids"]["items"]) == 20
     end
 
     test "requires an allowed trailing citation in the same bounded sentence segment" do

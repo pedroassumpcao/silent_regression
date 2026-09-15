@@ -144,6 +144,8 @@ Version 1 fixes conservative application limits:
 - 32 pointer tokens;
 - 20 alternatives or source IDs per rule;
 - 500 encoded bytes per configured text alternative;
+- numeric range/tolerance configuration within the interoperable JSON integer magnitude of
+  `±9,007,199,254,740,991`;
 - 1,000,000 encoded bytes per observed output; and
 - 500 encoded bytes per individual evidence excerpt.
 

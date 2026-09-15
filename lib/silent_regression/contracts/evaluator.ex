@@ -317,7 +317,11 @@ defmodule SilentRegression.Contracts.Evaluator do
   end
 
   defp do_evaluate_rule(%{"type" => "required_text"} = rule, context) do
-    matched = Enum.find(rule["alternatives"], &Text.contains_literal?(context.output, &1))
+    matched =
+      Enum.find(
+        rule["alternatives"],
+        &Text.contains_normalized_literal?(context.normalized_output, &1)
+      )
 
     if matched do
       leaf(
@@ -343,7 +347,11 @@ defmodule SilentRegression.Contracts.Evaluator do
   end
 
   defp do_evaluate_rule(%{"type" => "forbidden_text"} = rule, context) do
-    matched = Enum.find(rule["alternatives"], &Text.contains_literal?(context.output, &1))
+    matched =
+      Enum.find(
+        rule["alternatives"],
+        &Text.contains_normalized_literal?(context.normalized_output, &1)
+      )
 
     if matched do
       leaf(
@@ -372,7 +380,10 @@ defmodule SilentRegression.Contracts.Evaluator do
     found = Citations.ids(context.citations)
     missing = Enum.reject(rule["source_ids"], &(&1 in found))
 
-    evidence = %{"required_source_ids" => rule["source_ids"], "missing_source_ids" => missing}
+    evidence = %{
+      "required_source_ids" => Evidence.list(rule["source_ids"]),
+      "missing_source_ids" => Evidence.list(missing)
+    }
 
     if missing == [] do
       leaf(
@@ -398,8 +409,8 @@ defmodule SilentRegression.Contracts.Evaluator do
     disallowed = Enum.reject(found, &(&1 in rule["source_ids"]))
 
     evidence = %{
-      "found_source_ids" => found,
-      "disallowed_source_ids" => disallowed,
+      "found_source_ids" => Evidence.list(found),
+      "disallowed_source_ids" => Evidence.list(disallowed),
       "require_at_least_one" => rule["require_at_least_one"]
     }
 
@@ -435,12 +446,15 @@ defmodule SilentRegression.Contracts.Evaluator do
 
   defp do_evaluate_rule(%{"type" => "fact_citation"} = rule, context) do
     matched_fact =
-      Enum.find(rule["fact_alternatives"], &Text.contains_literal?(context.output, &1))
+      Enum.find(
+        rule["fact_alternatives"],
+        &Text.contains_normalized_literal?(context.normalized_output, &1)
+      )
 
     evidence = %{
       "matched_fact" => if(is_nil(matched_fact), do: nil, else: Evidence.text(matched_fact)),
-      "found_source_ids" => Citations.ids(context.citations),
-      "allowed_source_ids" => rule["source_ids"],
+      "found_source_ids" => Evidence.list(Citations.ids(context.citations)),
+      "allowed_source_ids" => Evidence.list(rule["source_ids"]),
       "max_distance_characters" => rule["max_distance_characters"]
     }
 
@@ -484,7 +498,11 @@ defmodule SilentRegression.Contracts.Evaluator do
   end
 
   defp do_evaluate_rule(%{"type" => "required_abstention"} = rule, context) do
-    matched = Enum.find(rule["alternatives"], &Text.contains_literal?(context.output, &1))
+    matched =
+      Enum.find(
+        rule["alternatives"],
+        &Text.contains_normalized_literal?(context.normalized_output, &1)
+      )
 
     if matched do
       leaf(
@@ -707,7 +725,9 @@ defmodule SilentRegression.Contracts.Evaluator do
       "above_maximum"
     )
     |> maybe_violation(
-      Map.has_key?(rule, "target") and abs(actual - rule["target"]) > rule["tolerance"],
+      Map.has_key?(rule, "target") and
+        (actual < rule["target"] - rule["tolerance"] or
+           actual > rule["target"] + rule["tolerance"]),
       "outside_tolerance"
     )
   end

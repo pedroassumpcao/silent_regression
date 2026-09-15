@@ -26,6 +26,17 @@ defmodule SilentRegression.Contracts.Evidence do
     %{"preview" => excerpt.text, "truncated" => excerpt.truncated}
   end
 
+  @spec list([term()]) :: map()
+  def list(values) when is_list(values) do
+    limit = Limits.evidence_list_items()
+
+    %{
+      "items" => Enum.take(values, limit),
+      "count" => length(values),
+      "truncated" => length(values) > limit
+    }
+  end
+
   @spec json_type(term()) :: String.t()
   def json_type(value) when is_map(value), do: "object"
   def json_type(value) when is_list(value), do: "array"

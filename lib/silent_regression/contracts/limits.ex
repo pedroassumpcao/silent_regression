@@ -14,6 +14,8 @@ defmodule SilentRegression.Contracts.Limits do
   @alternative_bytes 500
   @source_id_characters 128
   @evidence_excerpt_bytes 500
+  @evidence_list_items 20
+  @max_numeric_magnitude 9_007_199_254_740_991
 
   def contract_bytes, do: @contract_bytes
   def output_bytes, do: @output_bytes
@@ -28,4 +30,6 @@ defmodule SilentRegression.Contracts.Limits do
   def alternative_bytes, do: @alternative_bytes
   def source_id_characters, do: @source_id_characters
   def evidence_excerpt_bytes, do: @evidence_excerpt_bytes
+  def evidence_list_items, do: @evidence_list_items
+  def max_numeric_magnitude, do: @max_numeric_magnitude
 end
