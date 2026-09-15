@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 9 in progress
+> **Status:** Task 9 complete; Task 10 next
 >
-> **Progress:** 8 of 14 tasks complete
+> **Progress:** 9 of 14 tasks complete
 >
 > **Last revised:** 2026-09-15
 >
@@ -226,7 +226,7 @@ Exact migrations are finalized in their owning task. These boundaries are part o
 Monitor: draft -> validating -> ready -> baseline_pending -> active -> paused -> archived
 Contract: draft -> approved -> retired
 Baseline: pending -> approved -> superseded
-Run: planned -> queued -> running -> completed | partially_failed | failed | cancelled
+Run: planned -> queued -> running -> succeeded | partial_failed | failed | cancelled | needs_review
 Alert: open -> acknowledged -> resolved
 ```
 
@@ -279,7 +279,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 6 | Persisted cold-start monitor setup | 4, 5 | Complete | `c3c9ef5`, `6335d29`, `0db2a94`, `b4c7142` |
 | 7 | Generic deterministic contract engine | 5 | Complete | `2d93261`, `7d0dbba`, `b0fd9c4`, `b3ad353`, `7626997`, `3215268`, `d7f9671` |
 | 8 | Contract authoring, fixture validation, and approval | 6, 7 | Complete | `e766a02`, `40321b3`, `3798fd5`, `fd14b70` |
-| 9 | Durable capture execution and provider accounting | 4, 5, 7 | In progress | — |
+| 9 | Durable capture execution and provider accounting | 4, 5, 7 | Complete | `36d385b`, `fff370f`, `e81ef85`, `fa169c6`, `9f3d518` |
 | 10 | Baseline capture, inspection, and approval | 8, 9 | Not started | — |
 | 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | Not started | — |
 | 12 | Run results, evidence, alerts, and operational signals | 9, 10 | Not started | — |
@@ -594,25 +594,25 @@ progress from persisted validity rather than user-controlled completion flags. S
 
 ### Task 9 — Durable capture execution and provider accounting
 
-**Status:** In progress
+**Status:** Complete
 
 **Objective:** Replace CLI-only and in-memory capture with one durable execution path shared by baseline, manual, and scheduled runs.
 
 **Checklist:**
 
-- [ ] Add Oban and generate its migration through the supported Mix task.
-- [ ] Configure capture and scheduler queues plus manual testing mode.
-- [ ] Add capture run, observation, evaluation, and rule-result schemas.
-- [ ] Create planned runs with immutable provider, configuration, case, contract, and call-budget references.
-- [ ] Enqueue jobs with idempotency and uniqueness by run identity.
-- [ ] Resolve credentials at execution time without putting secrets in job arguments.
-- [ ] Apply bounded concurrency and back-pressure for provider calls.
-- [ ] Count retries against the maximum call budget.
-- [ ] Preserve requested and returned model, completion state, usage, latency, safe provider request ID, and failure category.
-- [ ] Normalize and store only provider response fields required for evidence and operations.
-- [ ] Make cancellation stop the scheduling of new calls and preserve completed observations.
-- [ ] Evaluate successful observations locally under the exact approved contract version.
-- [ ] Recover safely from worker restarts without duplicating completed calls where the provider boundary permits.
+- [x] Add Oban and generate its migration through the supported Mix task.
+- [x] Configure capture and scheduler queues plus manual testing mode.
+- [x] Add capture run, observation, evaluation, and rule-result schemas.
+- [x] Create planned runs with immutable provider, configuration, case, contract, and call-budget references.
+- [x] Enqueue jobs with idempotency and uniqueness by run identity.
+- [x] Resolve credentials at execution time without putting secrets in job arguments.
+- [x] Apply bounded concurrency and back-pressure for provider calls.
+- [x] Count retries against the maximum call budget.
+- [x] Preserve requested and returned model, completion state, usage, latency, safe provider request ID, and failure category.
+- [x] Normalize and store only provider response fields required for evidence and operations.
+- [x] Make cancellation stop the scheduling of new calls and preserve completed observations.
+- [x] Evaluate successful observations locally under the exact approved contract version.
+- [x] Recover safely from worker restarts without duplicating completed calls where the provider boundary permits.
 
 **Acceptance criteria:**
 
@@ -1190,6 +1190,28 @@ The product is ready for the first external design partner only when:
   visible to the durable worker.
 - Recorded the staged implementation, persistence, cancellation, failure, and recovery boundaries in
   [`docs/capture-execution/RESEARCH.md`](../docs/capture-execution/RESEARCH.md).
+
+### 2026-09-15 — Task 9 complete
+
+- Added Oban 2.24 with bounded capture and scheduler queues, application supervision, a supported
+  database migration, and manual test mode.
+- Added immutable capture runs, observations, provider-attempt ledger entries, evaluations, and
+  per-rule results with database constraints, uniqueness, indexes, and terminal-evidence guards.
+- Added a provider-neutral one-attempt completion boundary for OpenAI and Anthropic. Direct Req
+  adapters disable internal retries, retain bounded request/model/usage/latency provenance, and
+  discard raw provider bodies.
+- Added one workspace-scoped planning and execution path for baseline, manual, and scheduled run
+  kinds. Jobs carry only run and observation IDs; encrypted credentials are resolved immediately
+  before execution.
+- Added ledger-first retry accounting, hard run call caps, queue-level and database idempotency,
+  cooperative cancellation, exact-contract local evaluation, honest partial-failure finalization,
+  and leased in-flight reservations. An abandoned reservation becomes `unknown`/`needs_review`
+  after its lease instead of silently replaying a possibly billable call.
+- Verified the shared execution path, duplicate enqueue and execution, tenant isolation, known
+  retry, call-cap exhaustion, cancellation, active and expired leases, partial failure, normalized
+  evidence, and local evaluation with 14 focused tests. All 495 repository tests passed through
+  `mix precommit`.
+- Implementation commits: `36d385b`, `fff370f`, `e81ef85`, `fa169c6`, and `9f3d518`.
 
 ## 17. References
 
