@@ -118,7 +118,8 @@ export function CredentialsView({
   }
 
   return (
-    <ProductShell
+      <ProductShell
+        availableWorkspaces={auth.workspaces}
         currentSection="credentials"
         releaseStage={releaseStage}
         userEmail={user?.email || "Invited user"}

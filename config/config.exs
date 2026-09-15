@@ -59,7 +59,19 @@ config :silent_regression, :monitor_domain,
 
 # Provider credentials are write-only inputs. Phoenix filters matching keys at
 # every depth before request parameters are logged.
-config :phoenix, :filter_parameters, ["password", "secret", "api_key", "authorization"]
+config :phoenix, :filter_parameters, [
+  "password",
+  "secret",
+  "api_key",
+  "authorization",
+  "system_prompt",
+  "user_prompt_template",
+  "frozen_context",
+  "input_variables",
+  "input_variables_json",
+  "case_import",
+  "output"
+]
 
 # Configure the endpoint
 config :silent_regression, SilentRegressionWeb.Endpoint,

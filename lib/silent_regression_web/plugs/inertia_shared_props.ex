@@ -7,6 +7,7 @@ defmodule SilentRegressionWeb.Plugs.InertiaSharedProps do
   import Inertia.Controller, only: [assign_prop: 3]
 
   alias SilentRegression.Accounts.Scope
+  alias SilentRegression.Workspaces
 
   def init(opts), do: opts
 
@@ -16,13 +17,14 @@ defmodule SilentRegressionWeb.Plugs.InertiaSharedProps do
     assign_prop(conn, :auth, auth_prop(conn.assigns[:current_scope]))
   end
 
-  defp auth_prop(nil), do: %{user: nil, workspace: nil, membership: nil}
+  defp auth_prop(nil), do: %{user: nil, workspace: nil, membership: nil, workspaces: []}
 
   defp auth_prop(%Scope{} = scope) do
     %{
       user: user_prop(scope.user),
       workspace: workspace_prop(scope.workspace),
-      membership: membership_prop(scope.membership)
+      membership: membership_prop(scope.membership),
+      workspaces: workspace_props(scope)
     }
   end
 
@@ -37,4 +39,20 @@ defmodule SilentRegressionWeb.Plugs.InertiaSharedProps do
 
   defp membership_prop(nil), do: nil
   defp membership_prop(membership), do: %{id: membership.id, role: membership.role}
+
+  defp workspace_props(%Scope{user: nil}), do: []
+
+  defp workspace_props(%Scope{} = scope) do
+    scope
+    |> Workspaces.list_user_workspaces()
+    |> Enum.map(fn {workspace, membership} ->
+      %{
+        id: workspace.id,
+        name: workspace.name,
+        slug: workspace.slug,
+        role: membership.role,
+        current: not is_nil(scope.workspace) and workspace.id == scope.workspace.id
+      }
+    end)
+  end
 end

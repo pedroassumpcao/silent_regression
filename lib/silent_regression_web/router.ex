@@ -55,6 +55,14 @@ defmodule SilentRegressionWeb.Router do
     pipe_through [:browser, :authenticated, :workspace_scope]
 
     get "/", AppController, :index
+    get "/monitors", AppController, :monitors
+    get "/monitors/new", MonitorSetupController, :new
+    post "/monitors", MonitorSetupController, :create
+    get "/monitors/:monitor_id/setup", MonitorSetupController, :resume
+    get "/monitors/:monitor_id/setup/:step", MonitorSetupController, :show
+    patch "/monitors/:monitor_id/setup/:step", MonitorSetupController, :update
+    post "/monitors/:monitor_id/setup/complete", MonitorSetupController, :complete
+    post "/monitors/:monitor_id/setup/leave", MonitorSetupController, :leave
     get "/credentials", ProviderCredentialController, :index
     post "/credentials", ProviderCredentialController, :create
     post "/credentials/:id/validate", ProviderCredentialController, :validate

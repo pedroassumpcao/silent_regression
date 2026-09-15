@@ -3,28 +3,75 @@ import { describe, expect, it } from "vitest"
 
 import { DashboardView } from "@/pages/Dashboard"
 
+const auth = {
+  user: { id: "user-id", email: "owner@acme.example" },
+  workspace: { id: "workspace-id", name: "Acme AI", slug: "acme-ai" },
+  membership: { id: "membership-id", role: "owner" as const },
+  workspaces: [
+    {
+      id: "workspace-id",
+      name: "Acme AI",
+      slug: "acme-ai",
+      role: "owner" as const,
+      current: true,
+    },
+  ],
+}
+
 describe("DashboardView", () => {
-  it("renders the private-alpha foundation state without exposing unfinished actions", () => {
+  it("gives an empty workspace one clear path into monitor setup", () => {
     render(
       <DashboardView
         releaseStage="Private alpha"
-        foundationStatus="Workspace access is isolated"
+        currentSection="overview"
+        monitors={[]}
         workspace={{ name: "Acme AI", slug: "acme-ai" }}
-        auth={{
-          user: { id: "user-id", email: "owner@acme.example" },
-          workspace: { id: "workspace-id", name: "Acme AI", slug: "acme-ai" },
-          membership: { id: "membership-id", role: "owner" },
-        }}
+        auth={auth}
       />,
     )
 
-    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument()
-    expect(screen.getByText("Workspace access is isolated")).toBeInTheDocument()
-    expect(screen.getByRole("progressbar", { name: "Foundation progress" })).toHaveAttribute(
-      "aria-valuenow",
-      "100",
+    expect(screen.getByRole("heading", { level: 1, name: "Your monitoring workspace" })).toBeInTheDocument()
+    expect(screen.getByText("Start with one critical workflow")).toBeInTheDocument()
+
+    const createLinks = screen.getAllByRole("link", { name: /create your first monitor/i })
+    expect(createLinks).toHaveLength(2)
+    expect(createLinks[0]).toHaveAttribute("href", "/app/acme-ai/monitors/new")
+    expect(screen.getByText(/Setup does not call your provider\./)).toBeInTheDocument()
+  })
+
+  it("shows persisted progress and a resume action for draft monitors", () => {
+    render(
+      <DashboardView
+        releaseStage="Private alpha"
+        currentSection="monitors"
+        monitors={[
+          {
+            id: "monitor-id",
+            name: "Citation guard",
+            description: "Keep source citations attached to supported answers.",
+            state: "draft",
+            setupStatus: "in_progress",
+            completedSteps: 2,
+            totalSteps: 4,
+            progressPercent: 50,
+            nextStep: "prompt",
+            updatedAt: "2026-09-15T03:00:00Z",
+          },
+        ]}
+        workspace={{ name: "Acme AI", slug: "acme-ai" }}
+        auth={auth}
+      />,
     )
-    expect(screen.getByRole("button", { name: "Create monitor" })).toBeDisabled()
-    expect(screen.getByText("No monitors yet")).toBeInTheDocument()
+
+    expect(screen.getByRole("heading", { level: 1, name: "Monitors" })).toBeInTheDocument()
+    expect(screen.getByRole("progressbar", { name: "Citation guard setup progress" })).toHaveAttribute(
+      "aria-valuenow",
+      "50",
+    )
+    expect(screen.getByText("Next: Prompt and configuration")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /resume setup/i })).toHaveAttribute(
+      "href",
+      "/app/acme-ai/monitors/monitor-id/setup",
+    )
   })
 })

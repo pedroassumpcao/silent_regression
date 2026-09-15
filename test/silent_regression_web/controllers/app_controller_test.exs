@@ -42,10 +42,20 @@ defmodule SilentRegressionWeb.AppControllerTest do
              auth: %{
                user: %{id: user_id, email: email},
                workspace: %{id: workspace_id, name: "Acme AI", slug: "acme-ai"},
-               membership: %{id: membership_id, role: :owner}
+               membership: %{id: membership_id, role: :owner},
+               workspaces: [
+                 %{
+                   id: workspace_id,
+                   name: "Acme AI",
+                   slug: "acme-ai",
+                   role: :owner,
+                   current: true
+                 }
+               ]
              },
-             foundationStatus: "Workspace access is isolated",
-             pageTitle: "Product foundation",
+             currentSection: "overview",
+             monitors: [],
+             pageTitle: "Monitors",
              releaseStage: "Private alpha",
              workspace: %{name: "Acme AI", slug: "acme-ai"}
            } = inertia_props(conn)

@@ -7,6 +7,15 @@ const auth = {
   user: { id: "user-id", email: "owner@acme.example" },
   workspace: { id: "workspace-id", name: "Acme AI", slug: "acme-ai" },
   membership: { id: "membership-id", role: "owner" as const },
+  workspaces: [
+    {
+      id: "workspace-id",
+      name: "Acme AI",
+      slug: "acme-ai",
+      role: "owner" as const,
+      current: true,
+    },
+  ],
 }
 
 const credential = {

@@ -3,16 +3,26 @@ import type { PropsWithChildren } from "react"
 import {
   Activity,
   BellRing,
+  Check,
+  ChevronsUpDown,
   FlaskConical,
   KeyRound,
   LogOut,
   LayoutDashboard,
   Settings2,
   ShieldCheck,
+  UserRound,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Tooltip,
   TooltipContent,
@@ -22,15 +32,23 @@ import {
 import { cn } from "@/lib/utils"
 
 type ProductShellProps = PropsWithChildren<{
-  currentSection?: "overview" | "credentials"
+  currentSection?: "overview" | "credentials" | "monitors"
   releaseStage: string
   userEmail: string
   workspace: { name: string; slug: string }
   membershipRole: "owner" | "member"
+  availableWorkspaces?: Array<{
+    id: string
+    name: string
+    slug: string
+    role: "owner" | "member"
+    current: boolean
+  }>
 }>
 
 export function ProductShell({
   children,
+  availableWorkspaces = [],
   currentSection = "overview",
   membershipRole,
   releaseStage,
@@ -50,7 +68,12 @@ export function ProductShell({
       href: `/app/${workspace.slug}/credentials`,
       current: currentSection === "credentials",
     },
-    { label: "Monitors", icon: Activity, href: null, current: false },
+    {
+      label: "Monitors",
+      icon: Activity,
+      href: `/app/${workspace.slug}/monitors`,
+      current: currentSection === "monitors",
+    },
     { label: "Alerts", icon: BellRing, href: null, current: false },
   ]
 
@@ -77,7 +100,12 @@ export function ProductShell({
               </span>
             </Link>
 
-            <nav id="product-navigation" className="mt-8 space-y-1" aria-label="Product">
+            <WorkspaceSwitcher
+              availableWorkspaces={availableWorkspaces}
+              workspace={workspace}
+            />
+
+            <nav id="product-navigation" className="mt-5 space-y-1" aria-label="Product">
               {navigation.map(item => {
                 const Icon = item.icon
 
@@ -170,9 +198,16 @@ export function ProductShell({
                   <Activity className="size-4 text-primary" />
                   {workspace.name}
                 </div>
-                <Badge variant="secondary" className="rounded-full px-3 py-1">
-                  {releaseStage}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="rounded-full px-3 py-1">
+                    {releaseStage}
+                  </Badge>
+                  <MobileAccountMenu
+                    availableWorkspaces={availableWorkspaces}
+                    userEmail={userEmail}
+                    workspace={workspace}
+                  />
+                </div>
               </div>
               <nav
                 id="mobile-product-navigation"
@@ -214,5 +249,117 @@ export function ProductShell({
         </div>
       </div>
     </TooltipProvider>
+  )
+}
+
+function MobileAccountMenu({
+  availableWorkspaces,
+  userEmail,
+  workspace,
+}: {
+  availableWorkspaces: ProductShellProps["availableWorkspaces"]
+  userEmail: string
+  workspace: { name: string; slug: string }
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          id="mobile-account-menu"
+          type="button"
+          size="icon"
+          variant="outline"
+          className="lg:hidden"
+          aria-label="Open account menu"
+        >
+          <UserRound />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <div className="px-2 py-2">
+          <p className="truncate text-sm font-medium">{userEmail}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{workspace.name}</p>
+        </div>
+        {availableWorkspaces && availableWorkspaces.length > 1 && (
+          <>
+            <DropdownMenuSeparator />
+            {availableWorkspaces.map(item => (
+              <DropdownMenuItem key={item.id} asChild>
+                <Link href={`/app/${item.slug}`} className="flex justify-between">
+                  <span className="truncate">{item.name}</span>
+                  {item.current && <Check className="size-4 text-primary" />}
+                </Link>
+              </DropdownMenuItem>
+            ))}
+          </>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/users/settings"><Settings2 /> Account settings</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/users/log-out" method="delete" as="button"><LogOut /> Log out</Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function WorkspaceSwitcher({
+  availableWorkspaces,
+  workspace,
+}: {
+  availableWorkspaces: Array<{
+    id: string
+    name: string
+    slug: string
+    role: "owner" | "member"
+    current: boolean
+  }>
+  workspace: { name: string; slug: string }
+}) {
+  if (availableWorkspaces.length <= 1) {
+    return (
+      <div className="mt-5 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-2.5">
+        <p className="truncate text-sm font-medium text-sidebar-foreground">{workspace.name}</p>
+        <p className="mt-0.5 text-xs text-sidebar-foreground/55">Current workspace</p>
+      </div>
+    )
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          id="workspace-switcher"
+          variant="outline"
+          className="mt-5 h-auto w-full justify-between border-sidebar-border bg-sidebar-accent/40 px-3 py-2.5 text-sidebar-foreground"
+        >
+          <span className="min-w-0 text-left">
+            <span className="block truncate text-sm font-medium">{workspace.name}</span>
+            <span className="block text-xs font-normal text-sidebar-foreground/55">
+              Switch workspace
+            </span>
+          </span>
+          <ChevronsUpDown className="size-4 shrink-0" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56">
+        {availableWorkspaces.map(item => (
+          <DropdownMenuItem key={item.id} asChild>
+            <Link
+              href={`/app/${item.slug}`}
+              className="flex w-full cursor-pointer items-center justify-between gap-3"
+            >
+              <span className="min-w-0">
+                <span className="block truncate">{item.name}</span>
+                <span className="block text-xs capitalize text-muted-foreground">{item.role}</span>
+              </span>
+              {item.current && <Check className="size-4 shrink-0 text-primary" />}
+            </Link>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
