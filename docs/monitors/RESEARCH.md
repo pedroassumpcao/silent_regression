@@ -78,7 +78,8 @@ The public context exposes no content-update operation. PostgreSQL triggers prov
 defense:
 
 - behavior-affecting `monitor_versions` columns cannot change after insertion;
-- `case_versions` rows cannot be updated at all; and
+- `case_versions` behavior and display content cannot be updated (the creator reference may be
+  cleared later during user anonymization); and
 - lifecycle-only monitor-version fields may transition through controlled context functions.
 
 Creating a candidate, inserting all cases, computing its fingerprints, superseding an older
@@ -95,8 +96,9 @@ required.
 - A monitor-version fingerprint covers its schema version, exact provider/model, prompts, response
   format, generation configuration, and case-set fingerprint.
 - Compatibility requires equal monitor-version fingerprints, exact provider/model provenance, and
-  the same case-key-to-fingerprint mapping. A mismatch returns explicit fields rather than a boolean
-  that a later caller might ignore.
+  the same case-key-to-fingerprint mapping within the same monitor. Version IDs remain evidence but
+  do not invalidate a metadata-only successor. A mismatch returns explicit fields rather than a
+  boolean that a later caller might ignore.
 
 ## Bounds and normalized input
 

@@ -41,6 +41,22 @@ config :silent_regression, :provider_adapters,
   openai: SilentRegression.Providers.OpenAI,
   anthropic: SilentRegression.Providers.Anthropic
 
+config :silent_regression, :monitor_domain,
+  schema_version: 1,
+  allowed_models: %{
+    openai: ["gpt-5.6-luna", "gpt-5.6-sol"],
+    anthropic: ["claude-haiku-4-5-20251001", "claude-sonnet-5"]
+  },
+  max_active_cases: 20,
+  max_total_cases: 50,
+  max_prompt_bytes: 40_000,
+  max_context_bytes: 100_000,
+  max_variables_bytes: 50_000,
+  max_response_format_bytes: 40_000,
+  max_generation_config_bytes: 4_000,
+  max_import_bytes: 2_000_000,
+  max_output_tokens: 8_192
+
 # Provider credentials are write-only inputs. Phoenix filters matching keys at
 # every depth before request parameters are logged.
 config :phoenix, :filter_parameters, ["password", "secret", "api_key", "authorization"]
