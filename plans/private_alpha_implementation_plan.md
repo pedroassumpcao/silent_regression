@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 8 in progress
+> **Status:** Task 8 complete; Task 9 ready
 >
-> **Progress:** 7 of 14 tasks complete
+> **Progress:** 8 of 14 tasks complete
 >
 > **Last revised:** 2026-09-15
 >
@@ -278,7 +278,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 5 | Versioned monitor and case domain | 3 | Complete | `1fda0d5`, `bab97d9` |
 | 6 | Persisted cold-start monitor setup | 4, 5 | Complete | `c3c9ef5`, `6335d29`, `0db2a94`, `b4c7142` |
 | 7 | Generic deterministic contract engine | 5 | Complete | `2d93261`, `7d0dbba`, `b0fd9c4`, `b3ad353`, `7626997`, `3215268`, `d7f9671` |
-| 8 | Contract authoring, fixture validation, and approval | 6, 7 | In progress | — |
+| 8 | Contract authoring, fixture validation, and approval | 6, 7 | Complete | `e766a02`, `40321b3`, `3798fd5`, `fd14b70` |
 | 9 | Durable capture execution and provider accounting | 4, 5, 7 | Not started | — |
 | 10 | Baseline capture, inspection, and approval | 8, 9 | Not started | — |
 | 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | Not started | — |
@@ -559,24 +559,24 @@ progress from persisted validity rather than user-controlled completion flags. S
 
 ### Task 8 — Contract authoring, fixture validation, and approval
 
-**Status:** In progress
+**Status:** Complete
 
 **Objective:** Make contract creation understandable enough to test whether customers can define and approve useful expectations.
 
 **Checklist:**
 
-- [ ] Build contract template selection based on workflow type.
-- [ ] Build shadcn-based forms for configuring rules without exposing raw internal JSON by default.
-- [ ] Provide an advanced read-only or validated JSON view for transparency and support.
-- [ ] Let users add known-valid and known-invalid fixture outputs.
-- [ ] Evaluate fixtures locally with no provider calls.
-- [ ] Show each rule's expected and actual fixture outcome.
-- [ ] Block approval when required fixture judgments are missing or contradicted.
-- [ ] Require explicit approval by a workspace owner.
-- [ ] Seal the approved contract version and fingerprint it.
-- [ ] Make edits create a new draft version.
-- [ ] Record which suggested templates were accepted, edited, or removed.
-- [ ] Keep in-product LLM contract drafting out of the alpha; Codex/founder assistance remains a concierge process until repeated needs justify automation.
+- [x] Build contract template selection based on workflow type.
+- [x] Build shadcn-based forms for configuring rules without exposing raw internal JSON by default.
+- [x] Provide an advanced read-only or validated JSON view for transparency and support.
+- [x] Let users add known-valid and known-invalid fixture outputs.
+- [x] Evaluate fixtures locally with no provider calls.
+- [x] Show each rule's expected and actual fixture outcome.
+- [x] Block approval when required fixture judgments are missing or contradicted.
+- [x] Require explicit approval by a workspace owner.
+- [x] Seal the approved contract version and fingerprint it.
+- [x] Make edits create a new draft version.
+- [x] Record which suggested templates were accepted, edited, or removed.
+- [x] Keep in-product LLM contract drafting out of the alpha; Codex/founder assistance remains a concierge process until repeated needs justify automation.
 
 **Acceptance criteria:**
 
@@ -920,6 +920,7 @@ The product is ready for the first external design partner only when:
 | 2026-09-14 | Persist cold-start input outside immutable history and promote only when complete | A mutable workspace-scoped setup draft supports refresh/resume while Task 5 remains append-only; credential identity is operational configuration, so rotation does not silently change the behavior fingerprint | 6, 9–11 |
 | 2026-09-15 | Use a bounded declarative contract DSL with separately versioned pure evaluations | Strict versioned parsing, fixed normalization/citation syntax, RFC 6901 paths, and hard resource limits make deterministic judgments explainable and safe; Task 8 owns approval persistence and Task 9 owns durable execution records | 7–9, 12 |
 | 2026-09-15 | Use workflow templates, a bounded flat rule editor, and fixture-gated owner approval | The alpha needs to test whether customers understand deterministic expectations without making raw DSL authoring the default; exact contract and fixture bytes remain sealed and attributable | 8, 10, 13 |
+| 2026-09-15 | Preserve evaluator-owned map keys as JSON strings across the Inertia boundary | Recursive prop camelization is useful for application props but must not rename contract DSL or rule-ID keys; explicit JSON transport preserves exact deterministic bytes and is covered by controller and browser tests | 8–13 |
 
 ## 16. Session log
 
@@ -1154,6 +1155,27 @@ The product is ready for the first external design partner only when:
   judgments, and exact agreement with local deterministic evaluation. No provider call is involved.
 - Recorded the design, authorization, provenance, UI, safety, and test boundaries in
   [`docs/contract-authoring/RESEARCH.md`](../docs/contract-authoring/RESEARCH.md).
+
+### 2026-09-15 — Task 8 complete
+
+- Added immutable, workspace-scoped contract versions and fixtures with database-enforced sealing,
+  exact contract/fixture/combined fingerprints, attributable owner approval, and explicit successor
+  drafts instead of in-place edits.
+- Added four workflow templates, structured forms for all Task 7 leaf rules, a read-only advanced JSON
+  view, and explicit self-serve, founder-assisted, or Codex-assisted provenance.
+- Added known-valid and known-invalid fixture authoring with zero-provider-call local evaluation,
+  exact expected-versus-actual rule evidence, and approval blockers for incomplete or contradicted
+  judgments.
+- Routed completed setup and monitor cards into the authenticated, workspace-scoped contract flow.
+  The route remains behind `:authenticated` and `:workspace_scope` because contract definitions and
+  fixture outputs are tenant-owned product data.
+- Browser-tested the complete flow from template selection through draft save, passing and failing
+  fixtures, owner approval, immutable sealed review, and successor creation. The pass exposed and
+  corrected evaluator-key mutation at the camelizing Inertia boundary, expected-status key mutation,
+  an invalid Chromium pattern, and sidebar contrast issues.
+- Verified frontend type checking and 15 component tests, the production asset build, 20 focused
+  lifecycle/controller tests, and all 478 repository tests through `mix precommit`.
+- Implementation commits: `e766a02`, `40321b3`, `3798fd5`, and `fd14b70`.
 
 ## 17. References
 
