@@ -684,6 +684,7 @@ function FixtureCard({ contract, fixture, path, readOnly }: { contract: Contract
 function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness }: { canApprove: boolean; contract: ContractVersion; fixtureCount: number; path: string; readiness: ContractAuthoringProps["readiness"] }) {
   const form = useForm({})
   const approved = contract.status === "approved"
+  const baselinePath = path.replace(/\/contract$/, "/baseline")
 
   return (
     <section aria-labelledby="approval-heading">
@@ -713,7 +714,10 @@ function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness }: 
           <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">{approved ? `Approved ${formatDate(contract.approvedAt)} · fingerprint ${contract.fingerprint}` : canApprove ? "Your approval will be attributable to your account." : "A workspace owner must perform final approval."}</p>
             {approved ? (
-              <Button id="create-contract-revision" type="button" disabled={form.processing} onClick={() => form.post(`${path}/revise`)}>{form.processing ? <LoaderCircle className="animate-spin" /> : <Pencil />} Create successor draft</Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button id="create-contract-revision" type="button" variant="outline" disabled={form.processing} onClick={() => form.post(`${path}/revise`)}>{form.processing ? <LoaderCircle className="animate-spin" /> : <Pencil />} Create successor draft</Button>
+                <Button id="continue-to-baseline" asChild><Link href={baselinePath}><FlaskConical /> Preview baseline capture</Link></Button>
+              </div>
             ) : (
               <Button id="approve-contract" type="button" disabled={!canApprove || !readiness.ready || form.processing} onClick={() => form.post(`${path}/approve`)}>{form.processing ? <LoaderCircle className="animate-spin" /> : <LockKeyhole />} Approve and seal contract</Button>
             )}

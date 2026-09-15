@@ -104,4 +104,35 @@ describe("DashboardView", () => {
       "/app/acme-ai/monitors/monitor-id/contract",
     )
   })
+
+  it("takes a baseline-pending monitor back to durable capture review", () => {
+    render(
+      <DashboardView
+        releaseStage="Private alpha"
+        currentSection="monitors"
+        monitors={[
+          {
+            id: "monitor-id",
+            name: "Citation guard",
+            description: "Keep source citations attached to supported answers.",
+            state: "baseline_pending",
+            setupStatus: "completed",
+            completedSteps: 4,
+            totalSteps: 4,
+            progressPercent: 100,
+            nextStep: "review",
+            updatedAt: "2026-09-15T03:00:00Z",
+          },
+        ]}
+        workspace={{ name: "Acme AI", slug: "acme-ai" }}
+        auth={auth}
+      />,
+    )
+
+    expect(screen.getByText("Baseline capture and approval")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /review baseline/i })).toHaveAttribute(
+      "href",
+      "/app/acme-ai/monitors/monitor-id/baseline",
+    )
+  })
 })

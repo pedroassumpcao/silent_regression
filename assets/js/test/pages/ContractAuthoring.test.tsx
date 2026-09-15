@@ -194,6 +194,10 @@ describe("ContractAuthoringView", () => {
 
     expect(screen.queryByRole("button", { name: "Save and validate rules" })).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Create successor draft" })).toBeEnabled()
+    expect(screen.getByRole("link", { name: "Preview baseline capture" })).toHaveAttribute(
+      "href",
+      "/app/acme-ai/monitors/monitor-id/baseline",
+    )
     expect(screen.getByText("Contract version 1 is sealed")).toBeInTheDocument()
   })
 })
