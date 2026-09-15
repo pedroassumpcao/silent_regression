@@ -7,7 +7,8 @@ defmodule SilentRegression.Monitors.VersionInput do
     GenerationConfig,
     JsonValue,
     Limits,
-    ModelCatalog
+    ModelCatalog,
+    ResponseFormat
   }
 
   @keys ~w(provider requested_model system_prompt user_prompt_template response_format generation_config)
@@ -20,7 +21,8 @@ defmodule SilentRegression.Monitors.VersionInput do
          {:ok, system_prompt} <- prompt(attributes, "system_prompt", :system_prompt, false),
          {:ok, user_prompt_template} <-
            prompt(attributes, "user_prompt_template", :user_prompt_template, true),
-         {:ok, response_format} <- response_format(attributes),
+         {:ok, response_format} <-
+           ResponseFormat.normalize(Map.get(attributes, "response_format")),
          {:ok, generation_config} <-
            GenerationConfig.normalize(Map.get(attributes, "generation_config")),
          {:ok, cases} <- CaseInput.normalize_many(cases) do
@@ -83,42 +85,4 @@ defmodule SilentRegression.Monitors.VersionInput do
       {:error, %{field: field_atom, reason: :invalid}}
     end
   end
-
-  defp response_format(attributes) do
-    value = Map.get(attributes, "response_format", %{"type" => "text"})
-
-    with true <- is_map(value),
-         {:ok, normalized} <- JsonValue.normalize(value),
-         {:ok, normalized} <- normalize_response_format(normalized),
-         {:ok, size} <- JsonValue.encoded_size(normalized),
-         true <- size <= Limits.fetch!(:max_response_format_bytes) do
-      {:ok, normalized}
-    else
-      _reason -> {:error, %{field: :response_format, reason: :invalid}}
-    end
-  end
-
-  defp normalize_response_format(%{"type" => type} = format)
-       when type in ["text", "json_object"] do
-    if Map.keys(format) == ["type"], do: {:ok, format}, else: {:error, :unknown_field}
-  end
-
-  defp normalize_response_format(
-         %{
-           "type" => "json_schema",
-           "name" => name,
-           "schema" => schema
-         } = format
-       )
-       when is_binary(name) and is_map(schema) do
-    if Map.keys(format) -- ~w(name schema strict type) == [] and
-         String.trim(name) != "" and byte_size(name) <= 80 and
-         Map.get(format, "strict", true) in [true, false] do
-      {:ok, Map.put_new(format, "strict", true)}
-    else
-      {:error, :invalid_json_schema}
-    end
-  end
-
-  defp normalize_response_format(_format), do: {:error, :invalid_response_format}
 end

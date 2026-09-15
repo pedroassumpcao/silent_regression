@@ -12,6 +12,7 @@ defmodule SilentRegression.Monitors.Monitor do
 
   alias SilentRegression.Accounts.User
   alias SilentRegression.Monitors.MonitorVersion
+  alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Workspaces.Workspace
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -30,6 +31,7 @@ defmodule SilentRegression.Monitors.Monitor do
     belongs_to :created_by_user, User
     belongs_to :active_version, MonitorVersion
     belongs_to :draft_version, MonitorVersion
+    belongs_to :provider_credential, ProviderCredential
     has_many :versions, MonitorVersion
 
     timestamps(type: :utc_datetime)
@@ -60,6 +62,21 @@ defmodule SilentRegression.Monitors.Monitor do
     monitor
     |> change(draft_version_id: version.id)
     |> foreign_key_constraint(:draft_version_id)
+  end
+
+  def credential_changeset(
+        %__MODULE__{workspace_id: workspace_id} = monitor,
+        %ProviderCredential{workspace_id: workspace_id} = credential
+      ) do
+    monitor
+    |> change(provider_credential_id: credential.id)
+    |> foreign_key_constraint(:provider_credential_id)
+  end
+
+  def credential_changeset(%__MODULE__{} = monitor, %ProviderCredential{}) do
+    monitor
+    |> change()
+    |> add_error(:provider_credential_id, "does not belong to this workspace")
   end
 
   def activate_configuration_changeset(
