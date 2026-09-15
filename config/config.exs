@@ -70,7 +70,15 @@ config :phoenix, :filter_parameters, [
   "input_variables",
   "input_variables_json",
   "case_import",
-  "output"
+  "output",
+  "output_text",
+  "contract",
+  "root",
+  "rules",
+  "alternatives",
+  "fact_alternatives",
+  "source_ids",
+  "allowed_values"
 ]
 
 # Configure the endpoint

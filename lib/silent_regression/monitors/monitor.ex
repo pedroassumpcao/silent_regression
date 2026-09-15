@@ -11,6 +11,7 @@ defmodule SilentRegression.Monitors.Monitor do
   import Ecto.Changeset
 
   alias SilentRegression.Accounts.User
+  alias SilentRegression.ContractAuthoring.ContractVersion
   alias SilentRegression.Monitors.MonitorVersion
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Workspaces.Workspace
@@ -33,6 +34,7 @@ defmodule SilentRegression.Monitors.Monitor do
     belongs_to :draft_version, MonitorVersion
     belongs_to :provider_credential, ProviderCredential
     has_many :versions, MonitorVersion
+    has_many :contract_versions, ContractVersion
 
     timestamps(type: :utc_datetime)
   end

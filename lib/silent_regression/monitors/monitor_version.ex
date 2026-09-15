@@ -11,6 +11,7 @@ defmodule SilentRegression.Monitors.MonitorVersion do
   import Ecto.Changeset
 
   alias SilentRegression.Accounts.User
+  alias SilentRegression.ContractAuthoring.ContractVersion
   alias SilentRegression.Monitors.{CaseVersion, Monitor}
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -38,6 +39,7 @@ defmodule SilentRegression.Monitors.MonitorVersion do
     belongs_to :predecessor, __MODULE__
     belongs_to :created_by_user, User
     has_many :cases, CaseVersion
+    has_many :contract_versions, ContractVersion
 
     timestamps(type: :utc_datetime)
   end
