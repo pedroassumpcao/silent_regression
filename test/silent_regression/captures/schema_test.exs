@@ -104,7 +104,8 @@ defmodule SilentRegression.Captures.SchemaTest do
       |> ProviderAttempt.create_changeset(run, observation, %{
         attempt_number: 1,
         client_request_id: Ecto.UUID.generate(),
-        started_at: now
+        started_at: now,
+        lease_expires_at: DateTime.add(now, 900, :second)
       })
       |> Repo.insert!()
       |> ProviderAttempt.result_changeset(%{

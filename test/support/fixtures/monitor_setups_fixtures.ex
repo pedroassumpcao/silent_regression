@@ -41,16 +41,20 @@ defmodule SilentRegression.MonitorSetupsFixtures do
         generation_config: %{max_output_tokens: "256", temperature: "0"}
       })
 
+    default_case = %{
+      case_key: "supported-answer",
+      name: "Supported answer",
+      input_variables_json: ~s({"question":"Which plan includes SSO?"}),
+      frozen_context: "The Enterprise plan includes SSO.",
+      status: "active"
+    }
+
     {:ok, _setup} =
-      MonitorSetups.update_cases(scope, result.monitor.id, [
-        %{
-          case_key: "supported-answer",
-          name: "Supported answer",
-          input_variables_json: ~s({"question":"Which plan includes SSO?"}),
-          frozen_context: "The Enterprise plan includes SSO.",
-          status: "active"
-        }
-      ])
+      MonitorSetups.update_cases(
+        scope,
+        result.monitor.id,
+        Map.get(attrs, :cases, [default_case])
+      )
 
     {:ok, completed} = MonitorSetups.complete(scope, result.monitor.id)
     Map.put(completed, :credential, credential)

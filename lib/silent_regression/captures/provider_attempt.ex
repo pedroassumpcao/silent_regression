@@ -27,6 +27,7 @@ defmodule SilentRegression.Captures.ProviderAttempt do
     field :failure_message, :string
     field :latency_ms, :integer
     field :started_at, :utc_datetime_usec
+    field :lease_expires_at, :utc_datetime_usec
     field :finished_at, :utc_datetime_usec
 
     belongs_to :capture_run, CaptureRun
@@ -39,7 +40,7 @@ defmodule SilentRegression.Captures.ProviderAttempt do
 
   def create_changeset(attempt, run, observation, attrs) do
     attempt
-    |> cast(attrs, [:attempt_number, :client_request_id, :started_at])
+    |> cast(attrs, [:attempt_number, :client_request_id, :started_at, :lease_expires_at])
     |> put_change(:status, :started)
     |> put_change(:capture_run_id, run.id)
     |> put_change(:capture_observation_id, observation.id)
@@ -48,6 +49,7 @@ defmodule SilentRegression.Captures.ProviderAttempt do
       :status,
       :client_request_id,
       :started_at,
+      :lease_expires_at,
       :capture_run_id,
       :capture_observation_id
     ])
@@ -86,6 +88,7 @@ defmodule SilentRegression.Captures.ProviderAttempt do
     |> check_constraint(:status, name: :provider_attempts_status_check)
     |> check_constraint(:failure_category, name: :provider_attempts_failure_category_check)
     |> check_constraint(:latency_ms, name: :provider_attempts_latency_check)
+    |> check_constraint(:lease_expires_at, name: :provider_attempts_lease_check)
     |> check_constraint(:status, name: :provider_attempts_lifecycle_check)
   end
 end

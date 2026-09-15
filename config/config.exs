@@ -63,6 +63,12 @@ config :silent_regression, :monitor_domain,
   max_import_bytes: 2_000_000,
   max_output_tokens: 8_192
 
+config :silent_regression, :capture_domain,
+  attempt_lease_seconds: 900,
+  max_calls_per_run: 200,
+  max_retry_limit: 2,
+  max_samples_per_case: 10
+
 # Provider credentials are write-only inputs. Phoenix filters matching keys at
 # every depth before request parameters are logged.
 config :phoenix, :filter_parameters, [

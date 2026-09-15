@@ -7,8 +7,8 @@ defmodule SilentRegression.ContractAuthoringFixtures do
   alias SilentRegression.ContractAuthoring.Templates
   alias SilentRegression.MonitorSetupsFixtures
 
-  def contract_ready_monitor_fixture(scope) do
-    MonitorSetupsFixtures.complete_setup_fixture(scope)
+  def contract_ready_monitor_fixture(scope, attrs \\ %{}) do
+    MonitorSetupsFixtures.complete_setup_fixture(scope, attrs)
   end
 
   def draft_fixture(scope, monitor, attrs \\ %{}) do
@@ -36,8 +36,8 @@ defmodule SilentRegression.ContractAuthoringFixtures do
     fixture
   end
 
-  def approved_contract_fixture(scope) do
-    completed = contract_ready_monitor_fixture(scope)
+  def approved_contract_fixture(scope, attrs \\ %{}) do
+    completed = contract_ready_monitor_fixture(scope, attrs)
     draft = draft_fixture(scope, completed.monitor)
 
     _valid = fixture(scope, completed.monitor)

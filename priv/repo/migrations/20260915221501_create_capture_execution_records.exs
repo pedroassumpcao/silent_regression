@@ -131,7 +131,9 @@ defmodule SilentRegression.Repo.Migrations.CreateCaptureExecutionRecords do
                :capture_run_id,
                :case_version_id,
                :sample_index
-             ], name: :capture_observations_run_case_sample_index)
+             ],
+             name: :capture_observations_run_case_sample_index
+           )
 
     create index(:capture_observations, [:capture_run_id, :status])
     create index(:capture_observations, [:case_version_id])
@@ -281,7 +283,9 @@ defmodule SilentRegression.Repo.Migrations.CreateCaptureExecutionRecords do
                :capture_observation_id,
                :contract_version_id,
                :evaluator_engine_version
-             ], name: :capture_evaluations_observation_contract_engine_index)
+             ],
+             name: :capture_evaluations_observation_contract_engine_index
+           )
 
     create index(:capture_evaluations, [:contract_version_id])
     create index(:capture_evaluations, [:status])
