@@ -53,6 +53,9 @@ defmodule SilentRegression.Contracts.Parser do
           {:error, :duplicate_object_key} ->
             error("", "duplicate_object_key", "Contract JSON contains a duplicate object key")
 
+          {:error, :nesting_too_deep} ->
+            error("", "json_nesting_too_deep", "Contract JSON exceeds the nesting limit")
+
           {:error, :invalid_json} ->
             error("", "invalid_json", "Contract is not valid JSON")
         end

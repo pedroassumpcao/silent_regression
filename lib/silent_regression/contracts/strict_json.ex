@@ -1,19 +1,65 @@
 defmodule SilentRegression.Contracts.StrictJson do
   @moduledoc false
 
-  @type reason :: :invalid_json | :duplicate_object_key | :invalid_utf8
+  alias SilentRegression.Contracts.Limits
+
+  @type reason :: :invalid_json | :duplicate_object_key | :invalid_utf8 | :nesting_too_deep
 
   @spec decode(String.t()) :: {:ok, Jason.decode_value()} | {:error, reason()}
   def decode(encoded) when is_binary(encoded) do
-    if String.valid?(encoded) do
-      case Jason.decode(encoded, objects: :ordered_objects) do
-        {:ok, value} -> normalize(value)
-        {:error, %Jason.DecodeError{}} -> {:error, :invalid_json}
-      end
-    else
-      {:error, :invalid_utf8}
+    cond do
+      not String.valid?(encoded) ->
+        {:error, :invalid_utf8}
+
+      nesting_too_deep?(encoded) ->
+        {:error, :nesting_too_deep}
+
+      true ->
+        case Jason.decode(encoded, objects: :ordered_objects) do
+          {:ok, value} -> normalize(value)
+          {:error, %Jason.DecodeError{}} -> {:error, :invalid_json}
+        end
     end
   end
+
+  defp nesting_too_deep?(encoded) do
+    case scan_depth(encoded, 0, false, false) do
+      :too_deep -> true
+      _depth -> false
+    end
+  end
+
+  defp scan_depth(<<>>, depth, _in_string, _escaped), do: depth
+
+  defp scan_depth(<<_byte, rest::binary>>, depth, true, true),
+    do: scan_depth(rest, depth, true, false)
+
+  defp scan_depth(<<"\\", rest::binary>>, depth, true, false),
+    do: scan_depth(rest, depth, true, true)
+
+  defp scan_depth(<<"\"", rest::binary>>, depth, true, false),
+    do: scan_depth(rest, depth, false, false)
+
+  defp scan_depth(<<_byte, rest::binary>>, depth, true, false),
+    do: scan_depth(rest, depth, true, false)
+
+  defp scan_depth(<<"\"", rest::binary>>, depth, false, false),
+    do: scan_depth(rest, depth, true, false)
+
+  defp scan_depth(<<byte, rest::binary>>, depth, false, false) when byte in [?{, ?[] do
+    depth = depth + 1
+
+    if depth > Limits.json_nesting_depth(),
+      do: :too_deep,
+      else: scan_depth(rest, depth, false, false)
+  end
+
+  defp scan_depth(<<byte, rest::binary>>, depth, false, false) when byte in [?}, ?]] do
+    scan_depth(rest, depth - 1, false, false)
+  end
+
+  defp scan_depth(<<_byte, rest::binary>>, depth, false, false),
+    do: scan_depth(rest, depth, false, false)
 
   defp normalize(%Jason.OrderedObject{values: entries}) do
     keys = Enum.map(entries, &elem(&1, 0))

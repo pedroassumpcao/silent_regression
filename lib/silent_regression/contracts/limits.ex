@@ -9,6 +9,7 @@ defmodule SilentRegression.Contracts.Limits do
   @rule_id_characters 80
   @json_pointer_characters 1_000
   @json_pointer_tokens 32
+  @json_nesting_depth 64
   @alternatives 20
   @alternative_bytes 500
   @source_id_characters 128
@@ -22,6 +23,7 @@ defmodule SilentRegression.Contracts.Limits do
   def rule_id_characters, do: @rule_id_characters
   def json_pointer_characters, do: @json_pointer_characters
   def json_pointer_tokens, do: @json_pointer_tokens
+  def json_nesting_depth, do: @json_nesting_depth
   def alternatives, do: @alternatives
   def alternative_bytes, do: @alternative_bytes
   def source_id_characters, do: @source_id_characters
