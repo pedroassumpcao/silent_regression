@@ -1,0 +1,410 @@
+{
+  "fixture_schema_version": 1,
+  "split": "conformance",
+  "status": "candidate",
+  "contracts": [
+    {
+      "key": "invoice",
+      "contract": {
+        "schema_version": 1,
+        "contract_id": "fixture-contract-invoice",
+        "contract_version": 1,
+        "monitor_id": "fixture-monitor-invoice",
+        "root": {
+          "id": "invoice_contract",
+          "type": "all",
+          "rules": [
+            {"id": "invoice_json", "type": "json_valid"},
+            {"id": "invoice_number", "type": "json_path_exists", "path": "/invoice_number"},
+            {"id": "currency_type", "type": "json_path_type", "path": "/currency", "expected_type": "string"},
+            {"id": "currency_value", "type": "json_path_equals", "path": "/currency", "expected": "USD", "numeric_comparison": "strict"},
+            {"id": "invoice_state", "type": "json_path_allowed_values", "path": "/state", "allowed_values": ["approved", "rejected"], "numeric_comparison": "strict"},
+            {"id": "invoice_total", "type": "json_path_number", "path": "/total", "minimum": 0, "maximum": 10000}
+          ]
+        }
+      }
+    },
+    {
+      "key": "routing",
+      "contract": {
+        "schema_version": 1,
+        "contract_id": "fixture-contract-routing",
+        "contract_version": 1,
+        "monitor_id": "fixture-monitor-routing",
+        "root": {
+          "id": "routing_contract",
+          "type": "all",
+          "rules": [
+            {"id": "routing_label", "type": "classification", "allowed_values": ["approved", "needs review"]},
+            {"id": "label_length", "type": "length", "unit": "words", "minimum": 1, "maximum": 2}
+          ]
+        }
+      }
+    },
+    {
+      "key": "retention",
+      "contract": {
+        "schema_version": 1,
+        "contract_id": "fixture-contract-retention",
+        "contract_version": 1,
+        "monitor_id": "fixture-monitor-retention",
+        "root": {
+          "id": "retention_contract",
+          "type": "all",
+          "rules": [
+            {"id": "retention_term", "type": "required_text", "alternatives": ["retained for 30 days", "30 day retention"]},
+            {"id": "no_indefinite_retention", "type": "forbidden_text", "alternatives": ["retained indefinitely"]},
+            {
+              "id": "consent_required",
+              "type": "not",
+              "rule": {"id": "optional_consent_claim", "type": "required_text", "alternatives": ["customer consent is optional"]}
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "refund_citations",
+      "contract": {
+        "schema_version": 1,
+        "contract_id": "fixture-contract-refund-citations",
+        "contract_version": 1,
+        "monitor_id": "fixture-monitor-refund-citations",
+        "root": {
+          "id": "refund_contract",
+          "type": "all",
+          "rules": [
+            {"id": "ledger_source", "type": "required_source_ids", "source_ids": ["ledger-7"]},
+            {"id": "known_sources", "type": "allowed_source_ids", "source_ids": ["ledger-7", "approval-2"], "require_at_least_one": true},
+            {"id": "approval_source", "type": "fact_citation", "fact_alternatives": ["refund was approved", "approved refund"], "source_ids": ["approval-2"], "max_distance_characters": 80}
+          ]
+        }
+      }
+    },
+    {
+      "key": "shipping_abstention",
+      "contract": {
+        "schema_version": 1,
+        "contract_id": "fixture-contract-shipping-abstention",
+        "contract_version": 1,
+        "monitor_id": "fixture-monitor-shipping-abstention",
+        "root": {
+          "id": "abstention_contract",
+          "type": "all",
+          "rules": [
+            {"id": "shipping_abstention", "type": "required_abstention", "alternatives": ["delivery date is not specified", "cannot determine the delivery date"]},
+            {"id": "no_invented_delivery", "type": "forbidden_text", "alternatives": ["delivery date is friday", "ships to mars"]}
+          ]
+        }
+      }
+    },
+    {
+      "key": "fulfillment",
+      "contract": {
+        "schema_version": 1,
+        "contract_id": "fixture-contract-fulfillment",
+        "contract_version": 1,
+        "monitor_id": "fixture-monitor-fulfillment",
+        "root": {
+          "id": "fulfillment_contract",
+          "type": "any",
+          "rules": [
+            {"id": "delivered", "type": "required_text", "alternatives": ["delivered to customer"]},
+            {"id": "collected", "type": "required_text", "alternatives": ["collected at pickup point"]}
+          ]
+        }
+      }
+    },
+    {
+      "key": "deep_json",
+      "contract": {
+        "schema_version": 1,
+        "contract_id": "fixture-contract-deep-json",
+        "contract_version": 1,
+        "monitor_id": "fixture-monitor-deep-json",
+        "root": {"id": "safe_json_depth", "type": "json_valid"}
+      }
+    }
+  ],
+  "fixtures": [
+    {
+      "id": "invoice-valid-zero-boundary",
+      "domain": "accounts_payable",
+      "category": "boundary",
+      "contract_key": "invoice",
+      "output_text": "{\"invoice_number\":\"INV-42\",\"currency\":\"USD\",\"state\":\"approved\",\"total\":0}",
+      "expected_status": "pass",
+      "expected_rule_statuses": {"invoice_contract": "pass", "invoice_json": "pass", "invoice_number": "pass", "currency_type": "pass", "currency_value": "pass", "invoice_state": "pass", "invoice_total": "pass"}
+    },
+    {
+      "id": "invoice-valid-maximum-boundary",
+      "domain": "accounts_payable",
+      "category": "boundary",
+      "contract_key": "invoice",
+      "output_text": "{\"invoice_number\":\"INV-99\",\"currency\":\"USD\",\"state\":\"rejected\",\"total\":10000}",
+      "expected_status": "pass",
+      "expected_rule_statuses": {"invoice_contract": "pass", "invoice_json": "pass", "invoice_number": "pass", "currency_type": "pass", "currency_value": "pass", "invoice_state": "pass", "invoice_total": "pass"}
+    },
+    {
+      "id": "invoice-malformed-json",
+      "domain": "accounts_payable",
+      "category": "malformed_output",
+      "contract_key": "invoice",
+      "output_text": "{",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"invoice_contract": "fail", "invoice_json": "fail", "invoice_number": "fail", "currency_type": "fail", "currency_value": "fail", "invoice_state": "fail", "invoice_total": "fail"}
+    },
+    {
+      "id": "invoice-duplicate-key",
+      "domain": "accounts_payable",
+      "category": "adversarial",
+      "contract_key": "invoice",
+      "output_text": "{\"invoice_number\":\"INV-42\",\"currency\":\"EUR\",\"currency\":\"USD\",\"state\":\"approved\",\"total\":10}",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"invoice_contract": "fail", "invoice_json": "fail", "invoice_number": "fail", "currency_type": "fail", "currency_value": "fail", "invoice_state": "fail", "invoice_total": "fail"}
+    },
+    {
+      "id": "invoice-missing-number",
+      "domain": "accounts_payable",
+      "category": "negative",
+      "contract_key": "invoice",
+      "output_text": "{\"currency\":\"USD\",\"state\":\"approved\",\"total\":10}",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"invoice_contract": "fail", "invoice_json": "pass", "invoice_number": "fail", "currency_type": "pass", "currency_value": "pass", "invoice_state": "pass", "invoice_total": "pass"}
+    },
+    {
+      "id": "invoice-wrong-currency-type",
+      "domain": "accounts_payable",
+      "category": "negative",
+      "contract_key": "invoice",
+      "output_text": "{\"invoice_number\":\"INV-42\",\"currency\":123,\"state\":\"approved\",\"total\":10}",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"invoice_contract": "fail", "invoice_json": "pass", "invoice_number": "pass", "currency_type": "fail", "currency_value": "fail", "invoice_state": "pass", "invoice_total": "pass"}
+    },
+    {
+      "id": "invoice-unapproved-state",
+      "domain": "accounts_payable",
+      "category": "negative",
+      "contract_key": "invoice",
+      "output_text": "{\"invoice_number\":\"INV-42\",\"currency\":\"USD\",\"state\":\"pending\",\"total\":10}",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"invoice_contract": "fail", "invoice_json": "pass", "invoice_number": "pass", "currency_type": "pass", "currency_value": "pass", "invoice_state": "fail", "invoice_total": "pass"}
+    },
+    {
+      "id": "invoice-below-minimum",
+      "domain": "accounts_payable",
+      "category": "boundary",
+      "contract_key": "invoice",
+      "output_text": "{\"invoice_number\":\"INV-42\",\"currency\":\"USD\",\"state\":\"approved\",\"total\":-0.01}",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"invoice_contract": "fail", "invoice_json": "pass", "invoice_number": "pass", "currency_type": "pass", "currency_value": "pass", "invoice_state": "pass", "invoice_total": "fail"}
+    },
+    {
+      "id": "invoice-above-maximum",
+      "domain": "accounts_payable",
+      "category": "boundary",
+      "contract_key": "invoice",
+      "output_text": "{\"invoice_number\":\"INV-42\",\"currency\":\"USD\",\"state\":\"approved\",\"total\":10000.01}",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"invoice_contract": "fail", "invoice_json": "pass", "invoice_number": "pass", "currency_type": "pass", "currency_value": "pass", "invoice_state": "pass", "invoice_total": "fail"}
+    },
+    {
+      "id": "routing-normalized-label",
+      "domain": "support_routing",
+      "category": "positive",
+      "contract_key": "routing",
+      "output_text": " NEEDS—REVIEW ",
+      "expected_status": "pass",
+      "expected_rule_statuses": {"routing_contract": "pass", "routing_label": "pass", "label_length": "pass"}
+    },
+    {
+      "id": "routing-label-with-extra-word",
+      "domain": "support_routing",
+      "category": "adversarial",
+      "contract_key": "routing",
+      "output_text": "needs review soon",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"routing_contract": "fail", "routing_label": "fail", "label_length": "fail"}
+    },
+    {
+      "id": "routing-one-word-boundary",
+      "domain": "support_routing",
+      "category": "boundary",
+      "contract_key": "routing",
+      "output_text": "approved",
+      "expected_status": "pass",
+      "expected_rule_statuses": {"routing_contract": "pass", "routing_label": "pass", "label_length": "pass"}
+    },
+    {
+      "id": "routing-empty-output",
+      "domain": "support_routing",
+      "category": "malformed_output",
+      "contract_key": "routing",
+      "output_text": "",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"routing_contract": "fail", "routing_label": "fail", "label_length": "fail"}
+    },
+    {
+      "id": "retention-valid",
+      "domain": "data_retention",
+      "category": "positive",
+      "contract_key": "retention",
+      "output_text": "Customer exports are retained for 30 days. Customer consent is required.",
+      "expected_status": "pass",
+      "expected_rule_statuses": {"retention_contract": "pass", "retention_term": "pass", "no_indefinite_retention": "pass", "consent_required": "pass", "optional_consent_claim": "fail"}
+    },
+    {
+      "id": "retention-term-missing",
+      "domain": "data_retention",
+      "category": "negative",
+      "contract_key": "retention",
+      "output_text": "Customer exports are removed later. Customer consent is required.",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"retention_contract": "fail", "retention_term": "fail", "no_indefinite_retention": "pass", "consent_required": "pass", "optional_consent_claim": "fail"}
+    },
+    {
+      "id": "retention-forbidden-claim",
+      "domain": "data_retention",
+      "category": "negative",
+      "contract_key": "retention",
+      "output_text": "Customer exports are retained for 30 days and then retained indefinitely.",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"retention_contract": "fail", "retention_term": "pass", "no_indefinite_retention": "fail", "consent_required": "pass", "optional_consent_claim": "fail"}
+    },
+    {
+      "id": "retention-negated-child-passes",
+      "domain": "data_retention",
+      "category": "negative",
+      "contract_key": "retention",
+      "output_text": "Exports have 30 day retention, and customer consent is optional.",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"retention_contract": "fail", "retention_term": "pass", "no_indefinite_retention": "pass", "consent_required": "fail", "optional_consent_claim": "pass"}
+    },
+    {
+      "id": "retention-partial-number-token",
+      "domain": "data_retention",
+      "category": "adversarial",
+      "contract_key": "retention",
+      "output_text": "Customer exports are retained for 130 days.",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"retention_contract": "fail", "retention_term": "fail", "no_indefinite_retention": "pass", "consent_required": "pass", "optional_consent_claim": "fail"}
+    },
+    {
+      "id": "refund-valid-citations",
+      "domain": "refund_operations",
+      "category": "positive",
+      "contract_key": "refund_citations",
+      "output_text": "The ledger total is $90 [ledger-7]. The refund was approved [approval-2].",
+      "expected_status": "pass",
+      "expected_rule_statuses": {"refund_contract": "pass", "ledger_source": "pass", "known_sources": "pass", "approval_source": "pass"}
+    },
+    {
+      "id": "refund-wrong-fact-source",
+      "domain": "refund_operations",
+      "category": "negative",
+      "contract_key": "refund_citations",
+      "output_text": "The refund was approved [ledger-7]. Separate approval record [approval-2].",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"refund_contract": "fail", "ledger_source": "pass", "known_sources": "pass", "approval_source": "fail"}
+    },
+    {
+      "id": "refund-markdown-links-are-not-citations",
+      "domain": "refund_operations",
+      "category": "adversarial",
+      "contract_key": "refund_citations",
+      "output_text": "Ledger [ledger-7](https://example.test/ledger). The refund was approved [approval-2](https://example.test/approval).",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"refund_contract": "fail", "ledger_source": "fail", "known_sources": "fail", "approval_source": "fail"}
+    },
+    {
+      "id": "refund-citation-after-sentence-boundary",
+      "domain": "refund_operations",
+      "category": "boundary",
+      "contract_key": "refund_citations",
+      "output_text": "The refund was approved. [approval-2] Ledger entry [ledger-7].",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"refund_contract": "fail", "ledger_source": "pass", "known_sources": "pass", "approval_source": "fail"}
+    },
+    {
+      "id": "refund-invented-source",
+      "domain": "refund_operations",
+      "category": "adversarial",
+      "contract_key": "refund_citations",
+      "output_text": "Ledger total [ledger-7]. The refund was approved [approval-2] [invented-9].",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"refund_contract": "fail", "ledger_source": "pass", "known_sources": "fail", "approval_source": "pass"}
+    },
+    {
+      "id": "shipping-valid-abstention",
+      "domain": "shipping_support",
+      "category": "positive",
+      "contract_key": "shipping_abstention",
+      "output_text": "The delivery date is not specified in the order record.",
+      "expected_status": "pass",
+      "expected_rule_statuses": {"abstention_contract": "pass", "shipping_abstention": "pass", "no_invented_delivery": "pass"}
+    },
+    {
+      "id": "shipping-abstention-missing",
+      "domain": "shipping_support",
+      "category": "negative",
+      "contract_key": "shipping_abstention",
+      "output_text": "The order is being prepared in the warehouse.",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"abstention_contract": "fail", "shipping_abstention": "fail", "no_invented_delivery": "pass"}
+    },
+    {
+      "id": "shipping-abstention-with-invented-answer",
+      "domain": "shipping_support",
+      "category": "adversarial",
+      "contract_key": "shipping_abstention",
+      "output_text": "The delivery date is not specified, but the delivery date is Friday.",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"abstention_contract": "fail", "shipping_abstention": "pass", "no_invented_delivery": "fail"}
+    },
+    {
+      "id": "shipping-alternative-normalization",
+      "domain": "shipping_support",
+      "category": "positive",
+      "contract_key": "shipping_abstention",
+      "output_text": "CANNOT—DETERMINE the delivery date.",
+      "expected_status": "pass",
+      "expected_rule_statuses": {"abstention_contract": "pass", "shipping_abstention": "pass", "no_invented_delivery": "pass"}
+    },
+    {
+      "id": "fulfillment-delivered",
+      "domain": "order_fulfillment",
+      "category": "positive",
+      "contract_key": "fulfillment",
+      "output_text": "The parcel was delivered to customer yesterday.",
+      "expected_status": "pass",
+      "expected_rule_statuses": {"fulfillment_contract": "pass", "delivered": "pass", "collected": "fail"}
+    },
+    {
+      "id": "fulfillment-collected",
+      "domain": "order_fulfillment",
+      "category": "positive",
+      "contract_key": "fulfillment",
+      "output_text": "The parcel was collected at pickup point yesterday.",
+      "expected_status": "pass",
+      "expected_rule_statuses": {"fulfillment_contract": "pass", "delivered": "fail", "collected": "pass"}
+    },
+    {
+      "id": "fulfillment-no-terminal-state",
+      "domain": "order_fulfillment",
+      "category": "negative",
+      "contract_key": "fulfillment",
+      "output_text": "The parcel remains in transit.",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"fulfillment_contract": "fail", "delivered": "fail", "collected": "fail"}
+    },
+    {
+      "id": "json-depth-resource-bound",
+      "domain": "structured_telemetry",
+      "category": "adversarial",
+      "contract_key": "deep_json",
+      "output_text": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+      "expected_status": "evaluator_error",
+      "expected_rule_statuses": {"safe_json_depth": "evaluator_error"}
+    }
+  ]
+}

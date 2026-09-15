@@ -1,0 +1,158 @@
+{
+  "fixture_schema_version": 1,
+  "split": "heldout",
+  "status": "candidate",
+  "contracts": [
+    {
+      "key": "manufacturing_measurement",
+      "contract": {
+        "schema_version": 1,
+        "contract_id": "fixture-contract-manufacturing",
+        "contract_version": 1,
+        "monitor_id": "fixture-monitor-manufacturing",
+        "root": {
+          "id": "inspection_contract",
+          "type": "all",
+          "rules": [
+            {"id": "inspection_json", "type": "json_valid"},
+            {"id": "batch_present", "type": "json_path_exists", "path": "/batch_id"},
+            {"id": "inspection_result", "type": "json_path_allowed_values", "path": "/result", "allowed_values": ["passed", "failed"], "numeric_comparison": "strict"},
+            {"id": "diameter_type", "type": "json_path_type", "path": "/diameter_mm", "expected_type": "number"},
+            {"id": "diameter_range", "type": "json_path_number", "path": "/diameter_mm", "minimum": 9.5, "maximum": 10.5}
+          ]
+        }
+      }
+    },
+    {
+      "key": "access_routing",
+      "contract": {
+        "schema_version": 1,
+        "contract_id": "fixture-contract-access-routing",
+        "contract_version": 1,
+        "monitor_id": "fixture-monitor-access-routing",
+        "root": {"id": "access_decision", "type": "classification", "allowed_values": ["grant", "deny", "security review"]}
+      }
+    },
+    {
+      "key": "subscription_cancellation",
+      "contract": {
+        "schema_version": 1,
+        "contract_id": "fixture-contract-cancellation",
+        "contract_version": 1,
+        "monitor_id": "fixture-monitor-cancellation",
+        "root": {
+          "id": "cancellation_contract",
+          "type": "all",
+          "rules": [
+            {"id": "effective_period", "type": "required_text", "alternatives": ["cancellation takes effect at the end of the billing period", "access continues until the billing period ends"]},
+            {"id": "no_refund_guarantee", "type": "forbidden_text", "alternatives": ["immediate refund guaranteed"]},
+            {"id": "terms_source", "type": "required_source_ids", "source_ids": ["terms-4"]},
+            {"id": "cancellation_sources", "type": "allowed_source_ids", "source_ids": ["terms-4", "billing-2"], "require_at_least_one": true},
+            {"id": "period_attribution", "type": "fact_citation", "fact_alternatives": ["cancellation takes effect at the end of the billing period", "access continues until the billing period ends"], "source_ids": ["terms-4"], "max_distance_characters": 100}
+          ]
+        }
+      }
+    }
+  ],
+  "fixtures": [
+    {
+      "id": "inspection-lower-boundary",
+      "domain": "manufacturing_quality",
+      "category": "boundary",
+      "contract_key": "manufacturing_measurement",
+      "output_text": "{\"batch_id\":\"B-17\",\"result\":\"passed\",\"diameter_mm\":9.5}",
+      "expected_status": "pass",
+      "expected_rule_statuses": {"inspection_contract": "pass", "inspection_json": "pass", "batch_present": "pass", "inspection_result": "pass", "diameter_type": "pass", "diameter_range": "pass"}
+    },
+    {
+      "id": "inspection-upper-boundary",
+      "domain": "manufacturing_quality",
+      "category": "boundary",
+      "contract_key": "manufacturing_measurement",
+      "output_text": "{\"batch_id\":\"B-18\",\"result\":\"failed\",\"diameter_mm\":10.5}",
+      "expected_status": "pass",
+      "expected_rule_statuses": {"inspection_contract": "pass", "inspection_json": "pass", "batch_present": "pass", "inspection_result": "pass", "diameter_type": "pass", "diameter_range": "pass"}
+    },
+    {
+      "id": "inspection-label-case-change",
+      "domain": "manufacturing_quality",
+      "category": "adversarial",
+      "contract_key": "manufacturing_measurement",
+      "output_text": "{\"batch_id\":\"B-19\",\"result\":\"PASSED\",\"diameter_mm\":10.0}",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"inspection_contract": "fail", "inspection_json": "pass", "batch_present": "pass", "inspection_result": "fail", "diameter_type": "pass", "diameter_range": "pass"}
+    },
+    {
+      "id": "inspection-string-measurement",
+      "domain": "manufacturing_quality",
+      "category": "negative",
+      "contract_key": "manufacturing_measurement",
+      "output_text": "{\"batch_id\":\"B-20\",\"result\":\"passed\",\"diameter_mm\":\"10.0\"}",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"inspection_contract": "fail", "inspection_json": "pass", "batch_present": "pass", "inspection_result": "pass", "diameter_type": "fail", "diameter_range": "fail"}
+    },
+    {
+      "id": "inspection-missing-batch",
+      "domain": "manufacturing_quality",
+      "category": "negative",
+      "contract_key": "manufacturing_measurement",
+      "output_text": "{\"result\":\"passed\",\"diameter_mm\":10.0}",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"inspection_contract": "fail", "inspection_json": "pass", "batch_present": "fail", "inspection_result": "pass", "diameter_type": "pass", "diameter_range": "pass"}
+    },
+    {
+      "id": "access-routing-normalized",
+      "domain": "identity_access",
+      "category": "positive",
+      "contract_key": "access_routing",
+      "output_text": " SECURITY—REVIEW ",
+      "expected_status": "pass",
+      "expected_rule_statuses": {"access_decision": "pass"}
+    },
+    {
+      "id": "access-routing-extra-word",
+      "domain": "identity_access",
+      "category": "adversarial",
+      "contract_key": "access_routing",
+      "output_text": "security review queue",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"access_decision": "fail"}
+    },
+    {
+      "id": "cancellation-valid",
+      "domain": "subscription_operations",
+      "category": "positive",
+      "contract_key": "subscription_cancellation",
+      "output_text": "Cancellation takes effect at the end of the billing period [terms-4]. The final invoice is available [billing-2].",
+      "expected_status": "pass",
+      "expected_rule_statuses": {"cancellation_contract": "pass", "effective_period": "pass", "no_refund_guarantee": "pass", "terms_source": "pass", "cancellation_sources": "pass", "period_attribution": "pass"}
+    },
+    {
+      "id": "cancellation-forbidden-guarantee",
+      "domain": "subscription_operations",
+      "category": "negative",
+      "contract_key": "subscription_cancellation",
+      "output_text": "Cancellation takes effect at the end of the billing period [terms-4]. Immediate refund guaranteed.",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"cancellation_contract": "fail", "effective_period": "pass", "no_refund_guarantee": "fail", "terms_source": "pass", "cancellation_sources": "pass", "period_attribution": "pass"}
+    },
+    {
+      "id": "cancellation-citation-next-sentence",
+      "domain": "subscription_operations",
+      "category": "boundary",
+      "contract_key": "subscription_cancellation",
+      "output_text": "Cancellation takes effect at the end of the billing period. [terms-4]",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"cancellation_contract": "fail", "effective_period": "pass", "no_refund_guarantee": "pass", "terms_source": "pass", "cancellation_sources": "pass", "period_attribution": "fail"}
+    },
+    {
+      "id": "cancellation-invented-source",
+      "domain": "subscription_operations",
+      "category": "adversarial",
+      "contract_key": "subscription_cancellation",
+      "output_text": "Access continues until the billing period ends [terms-4] [unlisted-8].",
+      "expected_status": "fail",
+      "expected_rule_statuses": {"cancellation_contract": "fail", "effective_period": "pass", "no_refund_guarantee": "pass", "terms_source": "pass", "cancellation_sources": "fail", "period_attribution": "pass"}
+    }
+  ]
+}
