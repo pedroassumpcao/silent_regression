@@ -1,6 +1,6 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 7 complete; Task 8 ready
+> **Status:** Task 8 in progress
 >
 > **Progress:** 7 of 14 tasks complete
 >
@@ -278,7 +278,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 5 | Versioned monitor and case domain | 3 | Complete | `1fda0d5`, `bab97d9` |
 | 6 | Persisted cold-start monitor setup | 4, 5 | Complete | `c3c9ef5`, `6335d29`, `0db2a94`, `b4c7142` |
 | 7 | Generic deterministic contract engine | 5 | Complete | `2d93261`, `7d0dbba`, `b0fd9c4`, `b3ad353`, `7626997`, `3215268`, `d7f9671` |
-| 8 | Contract authoring, fixture validation, and approval | 6, 7 | Not started | — |
+| 8 | Contract authoring, fixture validation, and approval | 6, 7 | In progress | — |
 | 9 | Durable capture execution and provider accounting | 4, 5, 7 | Not started | — |
 | 10 | Baseline capture, inspection, and approval | 8, 9 | Not started | — |
 | 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | Not started | — |
@@ -559,7 +559,7 @@ progress from persisted validity rather than user-controlled completion flags. S
 
 ### Task 8 — Contract authoring, fixture validation, and approval
 
-**Status:** Not started
+**Status:** In progress
 
 **Objective:** Make contract creation understandable enough to test whether customers can define and approve useful expectations.
 
@@ -919,6 +919,7 @@ The product is ready for the first external design partner only when:
 | 2026-09-14 | Use complete append-only monitor snapshots with behavior-based compatibility | Database triggers protect executable and case content; monitor metadata remains editable, while case display-only successors retain the same fingerprint and baseline compatibility. Owners and members may collaborate on monitor definitions | 5 onward |
 | 2026-09-14 | Persist cold-start input outside immutable history and promote only when complete | A mutable workspace-scoped setup draft supports refresh/resume while Task 5 remains append-only; credential identity is operational configuration, so rotation does not silently change the behavior fingerprint | 6, 9–11 |
 | 2026-09-15 | Use a bounded declarative contract DSL with separately versioned pure evaluations | Strict versioned parsing, fixed normalization/citation syntax, RFC 6901 paths, and hard resource limits make deterministic judgments explainable and safe; Task 8 owns approval persistence and Task 9 owns durable execution records | 7–9, 12 |
+| 2026-09-15 | Use workflow templates, a bounded flat rule editor, and fixture-gated owner approval | The alpha needs to test whether customers understand deterministic expectations without making raw DSL authoring the default; exact contract and fixture bytes remain sealed and attributable | 8, 10, 13 |
 
 ## 16. Session log
 
@@ -1140,6 +1141,19 @@ The product is ready for the first external design partner only when:
   final source audit found no fixture-domain facts in product engine code.
 - Implementation commits: `2d93261`, `7d0dbba`, `b0fd9c4`, `b3ad353`, `7626997`, `3215268`, and
   `d7f9671`.
+
+### 2026-09-15 — Task 8 started
+
+- Selected four workflow-shaped starter templates with a bounded flat leaf-rule editor and a
+  validated read-only JSON view. The Task 7 engine remains capable of nested composition, but the
+  alpha UI does not expose a general expression-tree builder.
+- Defined workspace-scoped contract versions and fixtures, exact combined approval fingerprints,
+  owner-only approval, member authoring, successor drafts for approved edits, and database-backed
+  immutability after approval.
+- Approval will require at least one known-valid and one known-invalid fixture, complete per-rule
+  judgments, and exact agreement with local deterministic evaluation. No provider call is involved.
+- Recorded the design, authorization, provenance, UI, safety, and test boundaries in
+  [`docs/contract-authoring/RESEARCH.md`](../docs/contract-authoring/RESEARCH.md).
 
 ## 17. References
 
