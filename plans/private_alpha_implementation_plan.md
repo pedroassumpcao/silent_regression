@@ -1,6 +1,6 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 5 complete; Task 6 ready
+> **Status:** Task 6 in progress; persisted setup boundary selected
 >
 > **Progress:** 5 of 14 tasks complete
 >
@@ -276,7 +276,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 3 | Invite-only accounts, workspaces, memberships, and scope | 1 | Complete | `314e713` |
 | 4 | Encrypted provider credentials and validation | 3 | Complete | `c1f0bbf`, `252bb7e`, `9f5b2f6`, `93353bb`, `43be6f6`, `ee8ceca`, `cfdf2cb`, `dfbe096` |
 | 5 | Versioned monitor and case domain | 3 | Complete | `1fda0d5`, `bab97d9` |
-| 6 | Persisted cold-start monitor setup | 4, 5 | Not started | — |
+| 6 | Persisted cold-start monitor setup | 4, 5 | In progress | — |
 | 7 | Generic deterministic contract engine | 5 | Not started | — |
 | 8 | Contract authoring, fixture validation, and approval | 6, 7 | Not started | — |
 | 9 | Durable capture execution and provider accounting | 4, 5, 7 | Not started | — |
@@ -474,7 +474,13 @@ fallback substitution. See [`docs/monitors/RESEARCH.md`](../docs/monitors/RESEAR
 
 ### Task 6 — Persisted cold-start monitor setup
 
-**Status:** Not started
+**Status:** In progress
+
+**Design decision:** Persist incomplete input in a mutable, workspace-scoped setup draft and promote
+only a complete valid configuration into Task 5's immutable version history. Treat credential
+selection as operational monitor configuration outside the behavior fingerprint. Derive checklist
+progress from persisted validity rather than user-controlled completion flags. See
+[`docs/monitor-setup/RESEARCH.md`](../docs/monitor-setup/RESEARCH.md).
 
 **Objective:** Give an invited design partner a resumable guided path from an empty workspace to a contract-ready monitor.
 
@@ -911,6 +917,7 @@ The product is ready for the first external design partner only when:
 | 2026-09-14 | Make `Workspace` the default Phoenix generator scope | Future tenant-owned contexts should generate `workspace_id` boundaries and `/app/:workspace_slug` routes by default; the user-only scope remains available for identity operations | 3 onward |
 | 2026-09-14 | Encrypt provider credentials with Cloak.Ecto and restrict lifecycle management to owners | AES-256-GCM with a runtime application keyring is the smallest appropriate private-alpha boundary and supports versioned rotation; members may use valid credentials without gaining create, rotate, revoke, or plaintext access | 4, 9, 14 |
 | 2026-09-14 | Use complete append-only monitor snapshots with behavior-based compatibility | Database triggers protect executable and case content; monitor metadata remains editable, while case display-only successors retain the same fingerprint and baseline compatibility. Owners and members may collaborate on monitor definitions | 5 onward |
+| 2026-09-14 | Persist cold-start input outside immutable history and promote only when complete | A mutable workspace-scoped setup draft supports refresh/resume while Task 5 remains append-only; credential identity is operational configuration, so rotation does not silently change the behavior fingerprint | 6, 9–11 |
 
 ## 16. Session log
 
@@ -1067,6 +1074,19 @@ The product is ready for the first external design partner only when:
   successors can remain compatible without mutating history.
 - Verified 18 focused monitor-domain tests and 414 total tests through `mix precommit`.
 - Implementation commits: `1fda0d5` and `bab97d9`.
+
+### 2026-09-14 — Tasks 1–5 audit and Task 6 started
+
+- Rechecked every completed task against its acceptance criteria and the dependencies needed by the
+  cold-start flow. No completed-task criterion needs to be reopened.
+- Reverified frontend type checking, four frontend tests, and the production asset build. The latest
+  backend `mix precommit` remains green with 414 tests.
+- Confirmed the stale foundation dashboard, disabled monitor navigation, pending local Task 5
+  development migration, and absent setup draft/credential association are deliberate Task 6 work,
+  not missed earlier deliverables.
+- Selected a separate mutable setup draft, derived progress, explicit safe product-learning events,
+  and atomic promotion into an immutable monitor version. Recorded the detailed review and design in
+  [`docs/monitor-setup/RESEARCH.md`](../docs/monitor-setup/RESEARCH.md).
 
 ## 17. References
 
