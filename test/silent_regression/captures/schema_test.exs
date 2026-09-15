@@ -14,7 +14,7 @@ defmodule SilentRegression.Captures.SchemaTest do
 
   setup do
     scope = workspace_scope_fixture()
-    fixture = approved_contract_fixture(scope)
+    fixture = baseline_ready_monitor_fixture(scope)
     case_version = hd(fixture.version.cases)
 
     associations = %{

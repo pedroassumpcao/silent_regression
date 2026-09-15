@@ -9,6 +9,7 @@ defmodule SilentRegression.Captures do
   import Ecto.Query
 
   alias SilentRegression.Accounts.{Scope, User}
+  alias SilentRegression.Baselines
 
   alias SilentRegression.Captures.{
     CaptureEvaluation,
@@ -23,7 +24,6 @@ defmodule SilentRegression.Captures do
   alias SilentRegression.ContractAuthoring.ContractVersion
   alias SilentRegression.Contracts
   alias SilentRegression.Monitors.{CaseVersion, Fingerprint, Monitor, MonitorVersion}
-  alias SilentRegression.MonitorSetups.Setup
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Providers
   alias SilentRegression.Providers.{CompletionRequest, CompletionResult, Failure}
@@ -71,24 +71,15 @@ defmodule SilentRegression.Captures do
     with {:ok, run_id} <- Ecto.UUID.cast(run_id) do
       Repo.transaction(fn ->
         case locked_run(workspace_id, run_id) do
+          %CaptureRun{status: :planned, kind: :baseline} = run ->
+            if Baselines.authorized_baseline_run?(run.id) do
+              enqueue_observations!(run)
+            else
+              Repo.rollback(:authorization_required)
+            end
+
           %CaptureRun{status: :planned} = run ->
-            observations = load_observations(run.id)
-
-            Enum.each(observations, fn observation ->
-              case Oban.insert(
-                     ObservationWorker.new(%{
-                       capture_run_id: run.id,
-                       observation_id: observation.id
-                     })
-                   ) do
-                {:ok, _job} -> :ok
-                {:error, reason} -> Repo.rollback(reason)
-              end
-            end)
-
-            run
-            |> CaptureRun.lifecycle_changeset(%{status: :queued})
-            |> Repo.update!()
+            enqueue_observations!(run)
 
           %CaptureRun{} = run ->
             run
@@ -104,6 +95,26 @@ defmodule SilentRegression.Captures do
   end
 
   def enqueue_run(%Scope{}, _run_id), do: {:error, :workspace_required}
+
+  defp enqueue_observations!(run) do
+    observations = load_observations(run.id)
+
+    Enum.each(observations, fn observation ->
+      case Oban.insert(
+             ObservationWorker.new(%{
+               capture_run_id: run.id,
+               observation_id: observation.id
+             })
+           ) do
+        {:ok, _job} -> :ok
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+
+    run
+    |> CaptureRun.lifecycle_changeset(%{status: :queued})
+    |> Repo.update!()
+  end
 
   def get_run(
         %Scope{workspace: %Workspace{id: workspace_id}, membership: %Membership{}},
@@ -162,7 +173,7 @@ defmodule SilentRegression.Captures do
 
   defp planning_resources(workspace_id, monitor_id) do
     with %Monitor{} = monitor <- locked_monitor(workspace_id, monitor_id),
-         %MonitorVersion{} = monitor_version <- completed_monitor_version(monitor),
+         %MonitorVersion{} = monitor_version <- active_monitor_version(monitor),
          %ContractVersion{} = contract_version <-
            approved_contract(monitor.id, monitor_version.id),
          %ProviderCredential{} = credential <- valid_credential(monitor, monitor_version.provider),
@@ -935,22 +946,17 @@ defmodule SilentRegression.Captures do
     )
   end
 
-  defp completed_monitor_version(monitor) do
-    version_id =
-      Setup
-      |> where([setup], setup.monitor_id == ^monitor.id and setup.status == :completed)
-      |> select([setup], setup.completed_monitor_version_id)
-      |> Repo.one()
+  defp active_monitor_version(%Monitor{active_version_id: nil}), do: nil
 
-    if version_id do
-      MonitorVersion
-      |> where(
-        [version],
-        version.id == ^version_id and version.monitor_id == ^monitor.id
-      )
-      |> preload(:cases)
-      |> Repo.one()
-    end
+  defp active_monitor_version(monitor) do
+    MonitorVersion
+    |> where(
+      [version],
+      version.id == ^monitor.active_version_id and version.monitor_id == ^monitor.id and
+        version.status == :active
+    )
+    |> preload(:cases)
+    |> Repo.one()
   end
 
   defp approved_contract(monitor_id, monitor_version_id) do

@@ -80,14 +80,29 @@ defmodule SilentRegression.Providers.FakeOpenAI do
          }}
 
       true ->
+        output_text =
+          if String.contains?(request.context, "[fake:output=maybe]"),
+            do: "maybe",
+            else: "approved"
+
+        returned_model =
+          if String.contains?(request.context, "[fake:model-mismatch]"),
+            do: "#{request.requested_model}-unexpected",
+            else: request.requested_model
+
+        completion_state =
+          if String.contains?(request.context, "[fake:incomplete]"),
+            do: :incomplete,
+            else: :complete
+
         {:ok,
          %CompletionResult{
            provider: provider,
            requested_model: request.requested_model,
-           returned_model: request.requested_model,
-           output_text: "approved",
+           returned_model: returned_model,
+           output_text: output_text,
            request_id: "fake_openai_#{request.client_request_id}",
-           completion_state: :complete,
+           completion_state: completion_state,
            input_tokens: 10,
            output_tokens: 1,
            latency_ms: 1,

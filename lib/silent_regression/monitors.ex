@@ -258,6 +258,50 @@ defmodule SilentRegression.Monitors do
   def transition_monitor(%Scope{}, _monitor_id, _target),
     do: {:error, :workspace_required}
 
+  def prepare_baseline(
+        %Scope{
+          workspace: %Workspace{id: workspace_id},
+          membership: %Membership{role: :owner},
+          user: %User{} = user
+        },
+        monitor_id,
+        version_id
+      ) do
+    with {:ok, monitor_id} <- cast_id(monitor_id),
+         {:ok, version_id} <- cast_id(version_id) do
+      Repo.transaction(fn ->
+        with %Monitor{} = monitor <- locked_monitor(workspace_id, monitor_id),
+             :ok <- ensure_editable(monitor),
+             %MonitorVersion{} = version <- load_monitor_version(monitor.id, version_id),
+             {:ok, monitor, activated?, prepared?} <- prepare_baseline_version(monitor, version) do
+          if activated? do
+            record_version_event!(
+              version,
+              workspace_id,
+              user,
+              "monitor_version.activated"
+            )
+          end
+
+          if prepared? do
+            record_event!(monitor, user, "monitor.baseline_prepared", %{
+              "monitor_version_id" => version.id
+            })
+          end
+
+          Repo.preload(monitor, [:active_version, :draft_version], force: true)
+        else
+          nil -> Repo.rollback(:not_found)
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    else
+      :error -> {:error, :not_found}
+    end
+  end
+
+  def prepare_baseline(%Scope{}, _monitor_id, _version_id), do: {:error, :owner_required}
+
   def ensure_compatible_versions(%Scope{} = scope, reference_id, candidate_id) do
     with {:ok, reference} <- get_version(scope, reference_id),
          {:ok, candidate} <- get_version(scope, candidate_id) do
@@ -266,6 +310,55 @@ defmodule SilentRegression.Monitors do
       |> Provenance.ensure_compatible(Provenance.from_version(candidate))
     end
   end
+
+  defp prepare_baseline_version(
+         %Monitor{active_version_id: version_id, state: :baseline_pending} = monitor,
+         %MonitorVersion{id: version_id, status: :active}
+       ),
+       do: {:ok, monitor, false, false}
+
+  defp prepare_baseline_version(
+         %Monitor{active_version_id: version_id, state: state} = monitor,
+         %MonitorVersion{id: version_id, status: :active}
+       )
+       when state in [:validating, :ready] do
+    with {:ok, monitor} <- advance_to_baseline_pending(monitor) do
+      {:ok, monitor, false, true}
+    end
+  end
+
+  defp prepare_baseline_version(
+         %Monitor{draft_version_id: version_id} = monitor,
+         %MonitorVersion{id: version_id, status: :draft} = version
+       ) do
+    with {:ok, monitor, _version} <- activate_locked_version(monitor, version),
+         {:ok, monitor} <- advance_to_baseline_pending(monitor) do
+      {:ok, monitor, true, true}
+    end
+  end
+
+  defp prepare_baseline_version(%Monitor{}, %MonitorVersion{}),
+    do: {:error, :not_current_configuration}
+
+  defp advance_to_baseline_pending(%Monitor{state: :validating} = monitor) do
+    with {:ok, monitor} <-
+           monitor
+           |> Monitor.transition_changeset(:ready, DateTime.utc_now(:second))
+           |> Repo.update() do
+      advance_to_baseline_pending(monitor)
+    end
+  end
+
+  defp advance_to_baseline_pending(%Monitor{state: :ready} = monitor) do
+    monitor
+    |> Monitor.transition_changeset(:baseline_pending, DateTime.utc_now(:second))
+    |> Repo.update()
+  end
+
+  defp advance_to_baseline_pending(%Monitor{state: :baseline_pending} = monitor),
+    do: {:ok, monitor}
+
+  defp advance_to_baseline_pending(%Monitor{}), do: {:error, :invalid_monitor_state}
 
   defp insert_version(monitor, user, normalized) do
     now = DateTime.utc_now(:second)

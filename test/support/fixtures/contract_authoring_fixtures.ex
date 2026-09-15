@@ -5,7 +5,9 @@ defmodule SilentRegression.ContractAuthoringFixtures do
 
   alias SilentRegression.ContractAuthoring
   alias SilentRegression.ContractAuthoring.Templates
+  alias SilentRegression.Monitors
   alias SilentRegression.MonitorSetupsFixtures
+  alias SilentRegression.ProviderCredentials
 
   def contract_ready_monitor_fixture(scope, attrs \\ %{}) do
     MonitorSetupsFixtures.complete_setup_fixture(scope, attrs)
@@ -53,5 +55,19 @@ defmodule SilentRegression.ContractAuthoringFixtures do
     {:ok, approved} = ContractAuthoring.approve(scope, completed.monitor.id)
 
     Map.merge(completed, %{draft: draft, contract: approved})
+  end
+
+  def baseline_ready_monitor_fixture(scope, attrs \\ %{}) do
+    fixture = approved_contract_fixture(scope, attrs)
+
+    {:ok, _credential} =
+      ProviderCredentials.validate_credential(scope, fixture.credential.id, %{
+        model: fixture.version.requested_model
+      })
+
+    {:ok, monitor} =
+      Monitors.prepare_baseline(scope, fixture.monitor.id, fixture.version.id)
+
+    %{fixture | monitor: monitor}
   end
 end

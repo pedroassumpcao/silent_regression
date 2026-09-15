@@ -18,7 +18,7 @@ defmodule SilentRegression.CapturesTest do
 
   setup do
     scope = workspace_scope_fixture()
-    fixture = approved_contract_fixture(scope)
+    fixture = baseline_ready_monitor_fixture(scope)
 
     %{fixture: fixture, scope: scope}
   end
@@ -28,7 +28,7 @@ defmodule SilentRegression.CapturesTest do
       fixture: fixture,
       scope: scope
     } do
-      attrs = plan_attrs()
+      attrs = plan_attrs(%{kind: :baseline})
 
       assert {:ok, run} = Captures.plan_run(scope, fixture.monitor.id, attrs)
       assert run.status == :planned
@@ -52,7 +52,7 @@ defmodule SilentRegression.CapturesTest do
       assert duplicate.id == run.id
 
       assert {:error, :identity_conflict} =
-               Captures.plan_run(scope, fixture.monitor.id, %{attrs | kind: :manual})
+               Captures.plan_run(scope, fixture.monitor.id, %{attrs | kind: :scheduled})
     end
 
     test "does not expose runs across workspace scopes", %{fixture: fixture, scope: scope} do
@@ -63,11 +63,11 @@ defmodule SilentRegression.CapturesTest do
       assert {:error, :not_found} = Captures.cancel_run(other_scope, run.id)
     end
 
-    test "baseline, manual, and scheduled kinds share the same execution path", %{
+    test "manual and scheduled kinds share the same execution path", %{
       fixture: fixture,
       scope: scope
     } do
-      for kind <- [:baseline, :manual, :scheduled] do
+      for kind <- [:manual, :scheduled] do
         assert {:ok, run} = planned_and_enqueued(scope, fixture, %{kind: kind})
         assert run.kind == kind
         assert :ok = perform_job(ObservationWorker, worker_args(run))
@@ -77,6 +77,17 @@ defmodule SilentRegression.CapturesTest do
   end
 
   describe "enqueue_run/2" do
+    test "refuses baseline execution without a durable authorization", %{
+      fixture: fixture,
+      scope: scope
+    } do
+      assert {:ok, run} =
+               Captures.plan_run(scope, fixture.monitor.id, plan_attrs(%{kind: :baseline}))
+
+      assert {:error, :authorization_required} = Captures.enqueue_run(scope, run.id)
+      assert [] = all_enqueued(worker: ObservationWorker)
+    end
+
     test "enqueues only durable identifiers, never prompt or credential material", %{
       fixture: fixture,
       scope: scope
@@ -143,7 +154,7 @@ defmodule SilentRegression.CapturesTest do
     end
 
     test "retries a known retryable failure within the persisted call budget", %{scope: scope} do
-      fixture = approved_contract_fixture(scope, %{cases: [retry_case()]})
+      fixture = baseline_ready_monitor_fixture(scope, %{cases: [retry_case()]})
 
       assert {:ok, run} = planned_and_enqueued(scope, fixture)
       args = worker_args(run)
@@ -167,7 +178,7 @@ defmodule SilentRegression.CapturesTest do
     end
 
     test "enforces the hard run call cap before scheduling another paid attempt", %{scope: scope} do
-      fixture = approved_contract_fixture(scope, %{cases: [retry_case()]})
+      fixture = baseline_ready_monitor_fixture(scope, %{cases: [retry_case()]})
 
       assert {:ok, run} =
                planned_and_enqueued(scope, fixture, %{maximum_call_count: 1})
@@ -276,7 +287,7 @@ defmodule SilentRegression.CapturesTest do
       scope: scope
     } do
       fixture =
-        approved_contract_fixture(scope, %{
+        baseline_ready_monitor_fixture(scope, %{
           cases: [successful_case(), provider_failure_case()]
         })
 
@@ -329,14 +340,17 @@ defmodule SilentRegression.CapturesTest do
     end
   end
 
-  defp plan_attrs do
-    %{
-      identity_key: "capture-#{System.unique_integer([:positive])}",
-      kind: :baseline,
-      samples_per_case: 1,
-      retry_limit: 1,
-      maximum_call_count: 2
-    }
+  defp plan_attrs(overrides \\ %{}) do
+    Map.merge(
+      %{
+        identity_key: "capture-#{System.unique_integer([:positive])}",
+        kind: :manual,
+        samples_per_case: 1,
+        retry_limit: 1,
+        maximum_call_count: 2
+      },
+      overrides
+    )
   end
 
   defp worker_args(run) do
