@@ -1130,6 +1130,12 @@ The product is ready for the first external design partner only when:
 - Received human approval for all 31 generic conformance judgments and promoted the conformance
   fixture set from candidate to approved. The separate held-out fixture outcomes remain unevaluated
   pending human approval of their labels.
+- Received human approval for all 11 held-out judgments across manufacturing quality, identity and
+  access routing, and subscription operations. Promoted the held-out fixture set to approved before
+  its first outcome evaluation; no evaluator tuning was performed against these cases.
+- The first and only pre-completion held-out run matched all 11 approved judgments. The combined
+  conformance test file passed all three tests without any evaluator or fixture changes after the
+  held-out outcomes were revealed.
 
 ## 17. References
 
