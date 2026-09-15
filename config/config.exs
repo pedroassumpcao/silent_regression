@@ -37,6 +37,12 @@ config :silent_regression,
   ecto_repos: [SilentRegression.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true]
 
+config :silent_regression, Oban,
+  engine: Oban.Engines.Basic,
+  notifier: Oban.Notifiers.Postgres,
+  queues: [capture: 4, scheduler: 1],
+  repo: SilentRegression.Repo
+
 config :silent_regression, :provider_adapters,
   openai: SilentRegression.Providers.OpenAI,
   anthropic: SilentRegression.Providers.Anthropic

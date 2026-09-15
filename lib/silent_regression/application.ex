@@ -10,6 +10,7 @@ defmodule SilentRegression.Application do
     children = [
       SilentRegressionWeb.Telemetry,
       SilentRegression.Repo,
+      {Oban, Application.fetch_env!(:silent_regression, Oban)},
       SilentRegression.Vault,
       {DNSCluster, query: Application.get_env(:silent_regression, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: SilentRegression.PubSub},

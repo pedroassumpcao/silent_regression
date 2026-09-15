@@ -52,6 +52,7 @@ defmodule SilentRegression.MixProject do
       {:lazy_html, ">= 0.1.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.9.1"},
       {:inertia, "~> 2.6.2"},
+      {:oban, "~> 2.24"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.5", runtime: Mix.env() == :dev},
       {:heroicons,
