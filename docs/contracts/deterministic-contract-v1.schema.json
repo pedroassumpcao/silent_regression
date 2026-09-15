@@ -20,7 +20,7 @@
     "jsonPointer": {
       "type": "string",
       "maxLength": 1000,
-      "pattern": "^(|/(?:[^~/]|~[01])*)$"
+      "pattern": "^(?:/(?:[^~/]|~[01])*)*$"
     },
     "numericComparison": {
       "enum": ["strict", "mathematical"]
