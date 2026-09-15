@@ -1,6 +1,6 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 9 complete; Task 10 next
+> **Status:** Task 10 in progress
 >
 > **Progress:** 9 of 14 tasks complete
 >
@@ -630,7 +630,7 @@ progress from persisted validity rather than user-controlled completion flags. S
 
 ### Task 10 — Baseline capture, inspection, and approval
 
-**Status:** Not started
+**Status:** In progress
 
 **Objective:** Make the first live spend explicit and create an immutable compatible reference for the monitor.
 
@@ -921,6 +921,7 @@ The product is ready for the first external design partner only when:
 | 2026-09-15 | Use a bounded declarative contract DSL with separately versioned pure evaluations | Strict versioned parsing, fixed normalization/citation syntax, RFC 6901 paths, and hard resource limits make deterministic judgments explainable and safe; Task 8 owns approval persistence and Task 9 owns durable execution records | 7–9, 12 |
 | 2026-09-15 | Use workflow templates, a bounded flat rule editor, and fixture-gated owner approval | The alpha needs to test whether customers understand deterministic expectations without making raw DSL authoring the default; exact contract and fixture bytes remain sealed and attributable | 8, 10, 13 |
 | 2026-09-15 | Preserve evaluator-owned map keys as JSON strings across the Inertia boundary | Recursive prop camelization is useful for application props but must not rename contract DSL or rule-ID keys; explicit JSON transport preserves exact deterministic bytes and is covered by controller and browser tests | 8–13 |
+| 2026-09-15 | Make baseline authorization and approval owner-only with sealed pending snapshots | The first provider spend and the reference used by later schedules need exact preview provenance, idempotent authorization, immutable observation membership, and stricter operational blockers than exceptional deterministic acceptance | 10 onward |
 
 ## 16. Session log
 
@@ -1212,6 +1213,23 @@ The product is ready for the first external design partner only when:
   evidence, and local evaluation with 14 focused tests. All 495 repository tests passed through
   `mix precommit`.
 - Implementation commits: `36d385b`, `fff370f`, `e81ef85`, `fa169c6`, and `9f3d518`.
+
+### 2026-09-15 — Task 10 started
+
+- Re-audited Tasks 1–9 against their checklists, acceptance criteria, migrations, authorization
+  boundaries, and current verification rather than relying on completion labels. No forgotten or
+  blocking item was found: all ten development and test migrations are applied, frontend type
+  checking and all 15 component tests pass, the production asset build succeeds, and the latest
+  backend gate remains 495 passing tests.
+- Confirmed that legal review, production key/retention/rate-limit/runbook work, Inertia v3, ReqLLM,
+  and main-bundle optimization are explicit later gates rather than Task 10 prerequisites.
+- Selected pending baseline snapshots as the durable authorization record, owner-only spend and
+  approval, one-through-five samples with a default of one, exact request/token ceilings, partial
+  Inertia polling, immutable membership rows, and exceptional approval for deterministic failures
+  only with a required rationale.
+- Recorded the persistence, monitor-activation, compatibility, approval, UI, safety, and phased
+  implementation boundaries in
+  [`docs/baseline-capture/RESEARCH.md`](../docs/baseline-capture/RESEARCH.md).
 
 ## 17. References
 
