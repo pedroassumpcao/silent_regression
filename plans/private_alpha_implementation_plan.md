@@ -1,6 +1,6 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 8 complete; Task 9 ready
+> **Status:** Task 9 in progress
 >
 > **Progress:** 8 of 14 tasks complete
 >
@@ -279,7 +279,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 6 | Persisted cold-start monitor setup | 4, 5 | Complete | `c3c9ef5`, `6335d29`, `0db2a94`, `b4c7142` |
 | 7 | Generic deterministic contract engine | 5 | Complete | `2d93261`, `7d0dbba`, `b0fd9c4`, `b3ad353`, `7626997`, `3215268`, `d7f9671` |
 | 8 | Contract authoring, fixture validation, and approval | 6, 7 | Complete | `e766a02`, `40321b3`, `3798fd5`, `fd14b70` |
-| 9 | Durable capture execution and provider accounting | 4, 5, 7 | Not started | — |
+| 9 | Durable capture execution and provider accounting | 4, 5, 7 | In progress | — |
 | 10 | Baseline capture, inspection, and approval | 8, 9 | Not started | — |
 | 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | Not started | — |
 | 12 | Run results, evidence, alerts, and operational signals | 9, 10 | Not started | — |
@@ -594,7 +594,7 @@ progress from persisted validity rather than user-controlled completion flags. S
 
 ### Task 9 — Durable capture execution and provider accounting
 
-**Status:** Not started
+**Status:** In progress
 
 **Objective:** Replace CLI-only and in-memory capture with one durable execution path shared by baseline, manual, and scheduled runs.
 
@@ -1176,6 +1176,20 @@ The product is ready for the first external design partner only when:
 - Verified frontend type checking and 15 component tests, the production asset build, 20 focused
   lifecycle/controller tests, and all 478 repository tests through `mix precommit`.
 - Implementation commits: `e766a02`, `40321b3`, `3798fd5`, and `fd14b70`.
+
+### 2026-09-15 — Task 9 started
+
+- Selected Oban's PostgreSQL-backed execution model with bounded capture and scheduler queues and
+  manual test mode.
+- Defined database identity as the primary idempotency boundary, with Oban uniqueness as an
+  additional enqueue guard.
+- Selected ledger-first provider accounting: reserve every attempt before network I/O, count known
+  retries against the hard cap, and surface abandoned in-flight attempts as unknown rather than
+  blindly replaying possible billable calls.
+- Kept provider adapters to exactly one Req request per invocation so retry and spend decisions stay
+  visible to the durable worker.
+- Recorded the staged implementation, persistence, cancellation, failure, and recovery boundaries in
+  [`docs/capture-execution/RESEARCH.md`](../docs/capture-execution/RESEARCH.md).
 
 ## 17. References
 
