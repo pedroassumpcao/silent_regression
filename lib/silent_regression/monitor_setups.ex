@@ -384,12 +384,15 @@ defmodule SilentRegression.MonitorSetups do
   defp cast_generation_values(config) do
     with {:ok, max_output_tokens} <- parse_integer(Map.get(config, "max_output_tokens", 512)),
          {:ok, temperature} <- parse_optional_float(Map.get(config, "temperature")),
-         {:ok, top_p} <- parse_optional_float(Map.get(config, "top_p")) do
+         {:ok, top_p} <- parse_optional_float(Map.get(config, "top_p")),
+         {:ok, reasoning_effort} <-
+           parse_optional_string(Map.get(config, "reasoning_effort")) do
       normalized =
         config
         |> Map.put("max_output_tokens", max_output_tokens)
         |> put_optional("temperature", temperature)
         |> put_optional("top_p", top_p)
+        |> put_optional("reasoning_effort", reasoning_effort)
 
       {:ok, normalized}
     end
@@ -418,6 +421,11 @@ defmodule SilentRegression.MonitorSetups do
   end
 
   defp parse_optional_float(_value), do: :error
+
+  defp parse_optional_string(nil), do: {:ok, nil}
+  defp parse_optional_string(""), do: {:ok, nil}
+  defp parse_optional_string(value) when is_binary(value), do: {:ok, value}
+  defp parse_optional_string(_value), do: :error
 
   defp put_optional(map, key, nil), do: Map.delete(map, key)
   defp put_optional(map, key, value), do: Map.put(map, key, value)

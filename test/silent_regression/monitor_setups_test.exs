@@ -165,6 +165,26 @@ defmodule SilentRegression.MonitorSetupsTest do
       assert MonitorSetups.progress(scope, setup).completed.prompt
     end
 
+    test "treats blank optional form settings as provider defaults", %{scope: scope} do
+      %{monitor: monitor} = MonitorSetupsFixtures.setup_fixture(scope)
+
+      assert {:ok, setup} =
+               MonitorSetups.update_prompt(scope, monitor.id, %{
+                 system_prompt: "",
+                 user_prompt_template: "Question: {{question}}",
+                 response_format: %{type: "text"},
+                 generation_config: %{
+                   max_output_tokens: "512",
+                   temperature: "",
+                   top_p: "",
+                   reasoning_effort: ""
+                 }
+               })
+
+      assert setup.generation_config == %{"max_output_tokens" => 512}
+      assert MonitorSetups.progress(scope, setup).completed.prompt
+    end
+
     test "persists normalized manual cases and the same versioned JSON import", %{scope: scope} do
       %{monitor: manual_monitor} = MonitorSetupsFixtures.setup_fixture(scope)
       %{monitor: import_monitor} = MonitorSetupsFixtures.setup_fixture(scope)

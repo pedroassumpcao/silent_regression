@@ -35,5 +35,8 @@ silent_regression-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Local browser-verification artifacts can contain authenticated page state.
+/output/playwright/
+
 # Local LLM drift-spike runs can contain prompts, outputs, and provider metadata.
 /results/drift_spike/

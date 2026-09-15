@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
 
@@ -99,6 +99,26 @@ describe("MonitorSetupView", () => {
     expect(screen.getAllByText(/0 calls during setup/i).length).toBeGreaterThan(0)
   })
 
+  it("keeps only the named review step navigable after immutable completion", () => {
+    render(
+      <MonitorSetupView
+        {...baseProps}
+        errors={{}}
+        flash={{}}
+        setup={{
+          ...baseProps.setup,
+          status: "completed",
+          completedMonitorVersionId: "version-id",
+          completedAt: "2026-09-15T04:00:00Z",
+        }}
+      />,
+    )
+
+    const setupNavigation = within(screen.getByRole("navigation", { name: "Setup steps" }))
+    expect(setupNavigation.getByRole("link", { name: "Review" })).toBeInTheDocument()
+    expect(setupNavigation.queryByRole("link", { name: "Purpose" })).not.toBeInTheDocument()
+  })
+
   it("offers a credential recovery path without allowing an invalid connection to continue", () => {
     render(
       <MonitorSetupView
@@ -131,6 +151,28 @@ describe("MonitorSetupView", () => {
       "href",
       "/app/acme-ai/credentials",
     )
+    expect(screen.getByRole("button", { name: /save and continue/i })).toBeDisabled()
+  })
+
+  it("requires an explicit credential choice even when valid credentials exist", () => {
+    render(
+      <MonitorSetupView
+        {...baseProps}
+        errors={{}}
+        flash={{}}
+        progress={{
+          ...baseProps.progress,
+          completed: { purpose: true, connection: false, prompt: false, cases: false },
+          completedCount: 1,
+          percent: 25,
+          nextStep: "connection",
+          ready: false,
+        }}
+        setup={{ ...baseProps.setup, providerCredentialId: null }}
+        step="connection"
+      />,
+    )
+
     expect(screen.getByRole("button", { name: /save and continue/i })).toBeDisabled()
   })
 

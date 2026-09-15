@@ -249,14 +249,15 @@ function StepNavigation({
   progress: SetupProgress
   setupStatus: Setup["status"]
 }) {
-  const availableThrough = setupStatus === "completed" ? 4 : stepIndex(progress.nextStep)
+  const availableThrough = stepIndex(progress.nextStep)
 
   return (
     <nav aria-label="Setup steps" className="overflow-x-auto rounded-xl border bg-card p-2">
       <ol className="flex min-w-max gap-1">
         {steps.map((item, index) => {
           const completed = item.id === "review" ? setupStatus === "completed" : progress.completed[item.id]
-          const available = index <= availableThrough
+          const available =
+            setupStatus === "completed" ? item.id === "review" : index <= availableThrough
           const active = current === item.id
           const content = (
             <>
@@ -271,7 +272,7 @@ function StepNavigation({
               >
                 {completed ? <Check className="size-3.5" /> : index + 1}
               </span>
-              <span className="hidden sm:inline">{item.shortLabel}</span>
+              <span className="sr-only sm:not-sr-only">{item.shortLabel}</span>
             </>
           )
 
@@ -471,7 +472,10 @@ function ConnectionStep({
 
         <FormActions
           basePath={basePath}
-          disabled={validCredentials.length === 0}
+          disabled={
+            validCredentials.length === 0 ||
+            form.data.connection.provider_credential_id === ""
+          }
           processing={form.processing}
           step="connection"
         />
@@ -707,7 +711,7 @@ function CasesStep({ basePath, errors, limits, setup }: StepProps & { limits: Li
                     id={`case-${index}-key`}
                     name={`cases[${index}][case_key]`}
                     required
-                    pattern="[a-z0-9]+(?:[-_][a-z0-9]+)*"
+                    pattern="[a-z0-9]+(?:(?:_|-)[a-z0-9]+)*"
                     placeholder="citation-required"
                     value={item.case_key}
                     onChange={event => updateCase(index, "case_key", event.target.value)}
