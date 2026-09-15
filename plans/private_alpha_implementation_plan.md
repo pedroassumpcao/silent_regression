@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 7 in progress
+> **Status:** Task 7 complete; Task 8 ready
 >
-> **Progress:** 6 of 14 tasks complete
+> **Progress:** 7 of 14 tasks complete
 >
 > **Last revised:** 2026-09-15
 >
@@ -277,7 +277,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 4 | Encrypted provider credentials and validation | 3 | Complete | `c1f0bbf`, `252bb7e`, `9f5b2f6`, `93353bb`, `43be6f6`, `ee8ceca`, `cfdf2cb`, `dfbe096` |
 | 5 | Versioned monitor and case domain | 3 | Complete | `1fda0d5`, `bab97d9` |
 | 6 | Persisted cold-start monitor setup | 4, 5 | Complete | `c3c9ef5`, `6335d29`, `0db2a94`, `b4c7142` |
-| 7 | Generic deterministic contract engine | 5 | Not started | — |
+| 7 | Generic deterministic contract engine | 5 | Complete | `2d93261`, `7d0dbba`, `b0fd9c4`, `b3ad353`, `7626997`, `3215268`, `d7f9671` |
 | 8 | Contract authoring, fixture validation, and approval | 6, 7 | Not started | — |
 | 9 | Durable capture execution and provider accounting | 4, 5, 7 | Not started | — |
 | 10 | Baseline capture, inspection, and approval | 8, 9 | Not started | — |
@@ -514,7 +514,7 @@ progress from persisted validity rather than user-controlled completion flags. S
 
 ### Task 7 — Generic deterministic contract engine
 
-**Status:** In progress
+**Status:** Complete
 
 **Objective:** Convert the spike's proven deterministic concept into versioned, monitor-specific, explainable product primitives.
 
@@ -532,17 +532,17 @@ progress from persisted validity rather than user-controlled completion flags. S
 
 **Checklist:**
 
-- [ ] Define a versioned machine-readable rule schema with stable rule IDs.
-- [ ] Add strict parsing and validation with no atom creation from customer input.
-- [ ] Exclude arbitrary executable code and unbounded regular expressions.
-- [ ] Port or rewrite only generic spike logic; remove fixture-specific facts and phrases.
-- [ ] Return pass, fail, and evaluator-error separately.
-- [ ] Produce a concise human explanation and bounded structured evidence for each result.
-- [ ] Version the evaluator engine independently from the contract.
-- [ ] Separate observations from evaluations so stored outputs can be rescored.
-- [ ] Add positive, negative, malformed, boundary, and adversarial fixtures for every primitive.
-- [ ] Add held-out cases from domains beyond the original RAG fixtures.
-- [ ] Confirm the engine contains no lexical or semantic drift claims.
+- [x] Define a versioned machine-readable rule schema with stable rule IDs.
+- [x] Add strict parsing and validation with no atom creation from customer input.
+- [x] Exclude arbitrary executable code and unbounded regular expressions.
+- [x] Port or rewrite only generic spike logic; remove fixture-specific facts and phrases.
+- [x] Return pass, fail, and evaluator-error separately.
+- [x] Produce a concise human explanation and bounded structured evidence for each result.
+- [x] Version the evaluator engine independently from the contract.
+- [x] Separate observations from evaluations so stored outputs can be rescored.
+- [x] Add positive, negative, malformed, boundary, and adversarial fixtures for every primitive.
+- [x] Add held-out cases from domains beyond the original RAG fixtures.
+- [x] Confirm the engine contains no lexical or semantic drift claims.
 
 **Acceptance criteria:**
 
@@ -1133,9 +1133,13 @@ The product is ready for the first external design partner only when:
 - Received human approval for all 11 held-out judgments across manufacturing quality, identity and
   access routing, and subscription operations. Promoted the held-out fixture set to approved before
   its first outcome evaluation; no evaluator tuning was performed against these cases.
-- The first and only pre-completion held-out run matched all 11 approved judgments. The combined
-  conformance test file passed all three tests without any evaluator or fixture changes after the
-  held-out outcomes were revealed.
+- The first held-out run matched all 11 approved judgments. Subsequent completion-verification
+  reruns remained green, with no evaluator or fixture changes after the held-out outcomes were
+  revealed.
+- Completed Task 7 after 33 focused contract-engine tests and all 465 repository tests passed. The
+  final source audit found no fixture-domain facts in product engine code.
+- Implementation commits: `2d93261`, `7d0dbba`, `b0fd9c4`, `b3ad353`, `7626997`, `3215268`, and
+  `d7f9671`.
 
 ## 17. References
 
