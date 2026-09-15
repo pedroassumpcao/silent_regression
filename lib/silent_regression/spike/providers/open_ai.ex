@@ -27,6 +27,7 @@ defmodule SilentRegression.Spike.Providers.OpenAI do
   @retryable_transport_reasons [:timeout, :econnrefused, :closed]
   @allowed_options [
     :api_key,
+    :client_request_id,
     :max_output_tokens,
     :max_retries,
     :model,
@@ -157,7 +158,8 @@ defmodule SilentRegression.Spike.Providers.OpenAI do
          text: text,
          max_retries: max_retries,
          retry_delay_ms: retry_delay_ms,
-         req_options: req_options
+         req_options: req_options,
+         client_request_id: optional_client_request_id(options)
        }}
     end
   end
@@ -370,6 +372,13 @@ defmodule SilentRegression.Spike.Providers.OpenAI do
   defp put_optional(map, _key, nil), do: map
   defp put_optional(map, key, value), do: Map.put(map, key, value)
 
+  defp optional_client_request_id(options) do
+    case Keyword.get(options, :client_request_id) do
+      value when is_binary(value) and byte_size(value) > 0 and byte_size(value) <= 512 -> value
+      _value -> nil
+    end
+  end
+
   defp request(payload, config), do: request(payload, config, 1)
 
   defp request(payload, config, attempt) do
@@ -379,7 +388,7 @@ defmodule SilentRegression.Spike.Providers.OpenAI do
       |> Keyword.put(:url, @endpoint)
       |> Keyword.put(:json, payload)
       |> Keyword.put(:auth, {:bearer, config.api_key})
-      |> Keyword.put(:headers, [{"accept", "application/json"}])
+      |> Keyword.put(:headers, request_headers(config.client_request_id))
       |> Keyword.put(:retry, false)
 
     result = safe_request(request_options)
@@ -396,6 +405,12 @@ defmodule SilentRegression.Spike.Providers.OpenAI do
           {:error, request_error(exception, attempt, config.max_retries)}
       end
     end
+  end
+
+  defp request_headers(nil), do: [{"accept", "application/json"}]
+
+  defp request_headers(client_request_id) do
+    [{"accept", "application/json"}, {"x-client-request-id", client_request_id}]
   end
 
   defp safe_request(request_options) do

@@ -6,7 +6,12 @@ defmodule SilentRegression.Providers do
   or a provider-specific response shape.
   """
 
-  alias SilentRegression.Providers.{CredentialValidation, Failure}
+  alias SilentRegression.Providers.{
+    CompletionRequest,
+    CompletionResult,
+    CredentialValidation,
+    Failure
+  }
 
   def request_provenance(provider) when provider in [:openai, :anthropic] do
     with {:ok, adapter} <- adapter_for(provider) do
@@ -36,6 +41,26 @@ defmodule SilentRegression.Providers do
      }}
   end
 
+  def complete_once(provider, secret, request, options \\ [])
+
+  def complete_once(provider, secret, %CompletionRequest{} = request, options)
+      when provider in [:openai, :anthropic] and is_binary(secret) and is_list(options) do
+    with {:ok, adapter} <- adapter_for(provider) do
+      adapter
+      |> safe_complete(secret, request, options)
+      |> normalize_completion_result(provider)
+    end
+  end
+
+  def complete_once(_provider, _secret, _request, _options) do
+    {:error,
+     %Failure{
+       category: :invalid_request,
+       message: "The provider completion request is invalid.",
+       attempts: 1
+     }}
+  end
+
   defp safe_validate(adapter, secret, options) do
     adapter.validate_credential(secret, options)
   rescue
@@ -44,6 +69,19 @@ defmodule SilentRegression.Providers do
        %Failure{
          category: :provider,
          message: "The provider adapter could not validate the credential.",
+         attempts: 1
+       }}
+  end
+
+  defp safe_complete(adapter, secret, request, options) do
+    adapter.complete_once(secret, request, options)
+  rescue
+    _error ->
+      {:error,
+       %Failure{
+         category: :provider_unavailable,
+         message: "The provider adapter could not complete the request.",
+         requested_model: request.requested_model,
          attempts: 1
        }}
   end
@@ -62,6 +100,24 @@ defmodule SilentRegression.Providers do
      %Failure{
        category: :malformed_response,
        message: "The provider adapter returned an invalid validation result.",
+       attempts: 1
+     }}
+  end
+
+  defp normalize_completion_result(
+         {:ok, %CompletionResult{provider: provider} = result},
+         provider
+       ),
+       do: {:ok, result}
+
+  defp normalize_completion_result({:error, %Failure{} = failure}, _provider),
+    do: {:error, failure}
+
+  defp normalize_completion_result(_result, _provider) do
+    {:error,
+     %Failure{
+       category: :malformed_response,
+       message: "The provider adapter returned an invalid completion result.",
        attempts: 1
      }}
   end

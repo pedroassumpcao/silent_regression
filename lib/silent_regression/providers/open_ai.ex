@@ -8,7 +8,7 @@ defmodule SilentRegression.Providers.OpenAI do
 
   @behaviour SilentRegression.Providers.Adapter
 
-  alias SilentRegression.Providers.ModelValidation
+  alias SilentRegression.Providers.{CompletionAdapter, CompletionRequest, ModelValidation}
 
   @endpoint "https://api.openai.com/v1/models"
 
@@ -34,6 +34,17 @@ defmodule SilentRegression.Providers.OpenAI do
 
   def validate_credential(_secret, _options),
     do: ModelValidation.request_exception(:openai, nil)
+
+  @impl true
+  def complete_once(secret, %CompletionRequest{} = request, options) do
+    CompletionAdapter.complete_once(
+      :openai,
+      SilentRegression.Spike.Providers.OpenAI,
+      secret,
+      request,
+      options
+    )
+  end
 
   defp safe_request(request_options) do
     Req.request(request_options)

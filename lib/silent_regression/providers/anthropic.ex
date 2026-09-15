@@ -8,7 +8,7 @@ defmodule SilentRegression.Providers.Anthropic do
 
   @behaviour SilentRegression.Providers.Adapter
 
-  alias SilentRegression.Providers.ModelValidation
+  alias SilentRegression.Providers.{CompletionAdapter, CompletionRequest, ModelValidation}
 
   @endpoint "https://api.anthropic.com/v1/models"
   @api_version "2023-06-01"
@@ -34,6 +34,17 @@ defmodule SilentRegression.Providers.Anthropic do
 
   def validate_credential(_secret, _options),
     do: ModelValidation.request_exception(:anthropic, nil)
+
+  @impl true
+  def complete_once(secret, %CompletionRequest{} = request, options) do
+    CompletionAdapter.complete_once(
+      :anthropic,
+      SilentRegression.Spike.Providers.Anthropic,
+      secret,
+      request,
+      options
+    )
+  end
 
   defp request_headers(secret) do
     [

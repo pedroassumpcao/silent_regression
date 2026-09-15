@@ -6,7 +6,12 @@ defmodule SilentRegression.Providers.Adapter do
   provider response bodies, request headers, or submitted credentials.
   """
 
-  alias SilentRegression.Providers.{CredentialValidation, Failure}
+  alias SilentRegression.Providers.{
+    CompletionRequest,
+    CompletionResult,
+    CredentialValidation,
+    Failure
+  }
 
   @callback request_provenance() :: %{
               required(:api_endpoint) => String.t(),
@@ -16,4 +21,7 @@ defmodule SilentRegression.Providers.Adapter do
 
   @callback validate_credential(String.t(), keyword()) ::
               {:ok, CredentialValidation.t()} | {:error, Failure.t()}
+
+  @callback complete_once(String.t(), CompletionRequest.t(), keyword()) ::
+              {:ok, CompletionResult.t()} | {:error, Failure.t()}
 end
