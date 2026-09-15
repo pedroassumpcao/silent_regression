@@ -74,4 +74,34 @@ describe("DashboardView", () => {
       "/app/acme-ai/monitors/monitor-id/setup",
     )
   })
+
+  it("takes a completed setup directly into contract authoring", () => {
+    render(
+      <DashboardView
+        releaseStage="Private alpha"
+        currentSection="monitors"
+        monitors={[
+          {
+            id: "monitor-id",
+            name: "Citation guard",
+            description: "Keep source citations attached to supported answers.",
+            state: "draft",
+            setupStatus: "completed",
+            completedSteps: 4,
+            totalSteps: 4,
+            progressPercent: 100,
+            nextStep: "review",
+            updatedAt: "2026-09-15T03:00:00Z",
+          },
+        ]}
+        workspace={{ name: "Acme AI", slug: "acme-ai" }}
+        auth={auth}
+      />,
+    )
+
+    expect(screen.getByRole("link", { name: /define contract/i })).toHaveAttribute(
+      "href",
+      "/app/acme-ai/monitors/monitor-id/contract",
+    )
+  })
 })

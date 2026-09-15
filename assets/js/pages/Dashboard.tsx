@@ -183,7 +183,9 @@ function Metric({ label, value }: { label: string; value: number }) {
 
 function MonitorCard({ monitor, workspaceSlug }: { monitor: MonitorSummary; workspaceSlug: string }) {
   const complete = monitor.setupStatus === "completed"
-  const setupPath = `/app/${workspaceSlug}/monitors/${monitor.id}/setup`
+  const nextPath = complete
+    ? `/app/${workspaceSlug}/monitors/${monitor.id}/contract`
+    : `/app/${workspaceSlug}/monitors/${monitor.id}/setup`
 
   return (
     <Card id={`monitor-${monitor.id}`} className="group transition-shadow hover:shadow-md">
@@ -221,8 +223,8 @@ function MonitorCard({ monitor, workspaceSlug }: { monitor: MonitorSummary; work
             {complete ? "Ready for contract authoring" : `Next: ${stepLabel(monitor.nextStep)}`}
           </span>
           <Button asChild variant={complete ? "outline" : "default"} size="sm">
-            <Link href={setupPath}>
-              {complete ? "Review setup" : "Resume setup"} <ArrowRight />
+            <Link href={nextPath}>
+              {complete ? "Define contract" : "Resume setup"} <ArrowRight />
             </Link>
           </Button>
         </div>

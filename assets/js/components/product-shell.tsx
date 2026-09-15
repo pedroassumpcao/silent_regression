@@ -91,7 +91,7 @@ export function ProductShell({
                 <span className="size-2.5 rounded-full bg-current" />
               </span>
               <span>
-                <span className="block text-sm font-semibold tracking-tight">
+                <span className="block text-sm font-semibold tracking-tight text-sidebar-foreground">
                   Silent Regression
                 </span>
                 <span className="block text-xs text-sidebar-foreground/60">
@@ -151,7 +151,7 @@ export function ProductShell({
             </nav>
 
             <div className="mt-8 rounded-xl border border-sidebar-border bg-sidebar-accent/60 p-4">
-              <div className="flex items-center gap-2 text-sm font-medium">
+              <div className="flex items-center gap-2 text-sm font-medium text-sidebar-foreground">
                 <ShieldCheck className="size-4 text-primary" />
                 Private by design
               </div>
@@ -168,12 +168,12 @@ export function ProductShell({
                 {membershipRole}
               </p>
               <div className="mt-3 grid gap-1">
-                <Button asChild variant="ghost" className="h-9 justify-start px-2">
+                <Button asChild variant="ghost" className="h-9 justify-start px-2 text-sidebar-foreground">
                   <Link href="/users/settings">
                     <Settings2 /> Account settings
                   </Link>
                 </Button>
-                <Button asChild variant="ghost" className="h-9 justify-start px-2">
+                <Button asChild variant="ghost" className="h-9 justify-start px-2 text-sidebar-foreground">
                   <Link href="/users/log-out" method="delete" as="button">
                     <LogOut /> Log out
                   </Link>

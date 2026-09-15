@@ -80,7 +80,7 @@ defmodule SilentRegressionWeb.MonitorSetupController do
         conn
         |> put_flash(
           :info,
-          "Workflow setup complete. Define its deterministic contract in the next product step."
+          "Workflow setup complete. Define and prove its deterministic contract next."
         )
         |> redirect(to: setup_path(conn, monitor.id, :review))
 

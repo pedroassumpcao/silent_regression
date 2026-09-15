@@ -181,7 +181,7 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
       },
       readiness: readiness_prop(state.readiness),
       release_stage: "Private alpha",
-      templates: ContractAuthoring.templates()
+      templates: Enum.map(ContractAuthoring.templates(), &template_prop/1)
     })
   end
 
@@ -192,7 +192,7 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
       assistance_mode: contract_version.assistance_mode,
       contract_fingerprint: contract_version.contract_fingerprint,
       fixture_set_fingerprint: contract_version.fixture_set_fingerprint,
-      root: contract_version.root,
+      root_json: Jason.encode!(contract_version.root),
       template_key: contract_version.template_key,
       template_usage: contract_version.template_usage
     })
@@ -212,6 +212,17 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
     }
   end
 
+  defp template_prop(template) do
+    %{
+      key: template["key"],
+      title: template["title"],
+      description: template["description"],
+      best_for: template["best_for"],
+      limitation: template["limitation"],
+      root_json: Jason.encode!(template["root"])
+    }
+  end
+
   defp fixture_props(results) do
     Enum.map(results, fn result ->
       fixture = result.fixture
@@ -223,7 +234,7 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
             %{"id" => result.evaluation.root_rule_id},
             fixture.expected_rule_statuses
           ),
-        expected_rule_statuses: fixture.expected_rule_statuses,
+        expected_rule_statuses_json: Jason.encode!(fixture.expected_rule_statuses),
         expected_status: fixture.expected_status,
         fingerprint: fixture.fingerprint,
         id: fixture.id,

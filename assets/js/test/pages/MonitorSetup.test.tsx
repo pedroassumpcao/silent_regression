@@ -117,6 +117,10 @@ describe("MonitorSetupView", () => {
     const setupNavigation = within(screen.getByRole("navigation", { name: "Setup steps" }))
     expect(setupNavigation.getByRole("link", { name: "Review" })).toBeInTheDocument()
     expect(setupNavigation.queryByRole("link", { name: "Purpose" })).not.toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /define deterministic contract/i })).toHaveAttribute(
+      "href",
+      "/app/acme-ai/monitors/monitor-id/contract",
+    )
   })
 
   it("offers a credential recovery path without allowing an invalid connection to continue", () => {

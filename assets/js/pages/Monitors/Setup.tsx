@@ -220,6 +220,7 @@ export function MonitorSetupView({
               basePath={basePath}
               credential={props.credentials.find(item => item.id === props.setup.providerCredentialId)}
               setup={props.setup}
+              workspaceSlug={workspace.slug}
             />
           )}
         </div>
@@ -816,11 +817,13 @@ function ReviewStep({
   basePath,
   credential,
   setup,
+  workspaceSlug,
 }: {
   activeCaseCount: number
   basePath: string
   credential?: Credential
   setup: Setup
+  workspaceSlug: string
 }) {
   const form = useForm({})
   const complete = setup.status === "completed"
@@ -871,13 +874,22 @@ function ReviewStep({
           </Alert>
 
           {complete ? (
-            <Alert id="setup-complete-state" className="border-success/25 bg-success/5">
-              <CheckCircle2 />
-              <AlertTitle>Configuration ready for contract authoring</AlertTitle>
-              <AlertDescription>
-                The next product task will let you define and validate the deterministic rules this monitor must enforce.
-              </AlertDescription>
-            </Alert>
+            <div className="space-y-4">
+              <Alert id="setup-complete-state" className="border-success/25 bg-success/5">
+                <CheckCircle2 />
+                <AlertTitle>Configuration ready for contract authoring</AlertTitle>
+                <AlertDescription>
+                  Define and validate the deterministic rules this exact monitor version must enforce. Authoring and fixture evaluation make zero provider calls.
+                </AlertDescription>
+              </Alert>
+              <div className="flex justify-end">
+                <Button id="start-contract-authoring" asChild>
+                  <Link href={`/app/${workspaceSlug}/monitors/${setup.monitor.id}/contract`}>
+                    Define deterministic contract <ArrowRight />
+                  </Link>
+                </Button>
+              </div>
+            </div>
           ) : (
             <form id="complete-monitor-setup-form" onSubmit={submit}>
               <div className="flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">

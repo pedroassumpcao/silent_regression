@@ -68,6 +68,7 @@ defmodule SilentRegressionWeb.ContractAuthoringControllerTest do
       assert inertia_component(page) == "Monitors/Contract"
       assert inertia_props(page).contract == nil
       assert length(inertia_props(page).templates) == 4
+      assert Jason.decode!(hd(inertia_props(page).templates).rootJson)["rules"]
       assert inertia_props(page).canApprove
 
       invalid =
@@ -139,6 +140,8 @@ defmodule SilentRegressionWeb.ContractAuthoringControllerTest do
       refute second.matches
       assert second.actual.status == :pass
 
+      assert Jason.decode!(second.expectedRuleStatusesJson)["allowed_label"] == "fail"
+
       assert Enum.any?(inertia_props(contradiction_page).readiness.blockers, fn blocker ->
                blocker.code == "fixture_mismatch"
              end)
@@ -170,6 +173,9 @@ defmodule SilentRegressionWeb.ContractAuthoringControllerTest do
       assert inertia_props(sealed_page).contract.status == :approved
       assert inertia_props(sealed_page).contract.approvedByUserId == user.id
       assert inertia_props(sealed_page).contract.fingerprint =~ ~r/^[0-9a-f]{64}$/
+
+      assert %{"rules" => [%{"allowed_values" => _values} | _rest]} =
+               Jason.decode!(inertia_props(sealed_page).contract.rootJson)
     end
 
     test "members can author but receive an owner-only approval response", %{
