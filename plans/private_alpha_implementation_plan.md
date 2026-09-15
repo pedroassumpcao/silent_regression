@@ -1,10 +1,10 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 6 in progress; persisted setup boundary selected
+> **Status:** Task 6 complete; Task 7 is next
 >
-> **Progress:** 5 of 14 tasks complete
+> **Progress:** 6 of 14 tasks complete
 >
-> **Last revised:** 2026-09-14
+> **Last revised:** 2026-09-15
 >
 > **Release target:** Invite-only design-partner alpha
 >
@@ -276,7 +276,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 3 | Invite-only accounts, workspaces, memberships, and scope | 1 | Complete | `314e713` |
 | 4 | Encrypted provider credentials and validation | 3 | Complete | `c1f0bbf`, `252bb7e`, `9f5b2f6`, `93353bb`, `43be6f6`, `ee8ceca`, `cfdf2cb`, `dfbe096` |
 | 5 | Versioned monitor and case domain | 3 | Complete | `1fda0d5`, `bab97d9` |
-| 6 | Persisted cold-start monitor setup | 4, 5 | In progress | — |
+| 6 | Persisted cold-start monitor setup | 4, 5 | Complete | `c3c9ef5`, `6335d29`, `0db2a94`, `b4c7142` |
 | 7 | Generic deterministic contract engine | 5 | Not started | — |
 | 8 | Contract authoring, fixture validation, and approval | 6, 7 | Not started | — |
 | 9 | Durable capture execution and provider accounting | 4, 5, 7 | Not started | — |
@@ -474,7 +474,7 @@ fallback substitution. See [`docs/monitors/RESEARCH.md`](../docs/monitors/RESEAR
 
 ### Task 6 — Persisted cold-start monitor setup
 
-**Status:** In progress
+**Status:** Complete
 
 **Design decision:** Persist incomplete input in a mutable, workspace-scoped setup draft and promote
 only a complete valid configuration into Task 5's immutable version history. Treat credential
@@ -486,17 +486,17 @@ progress from persisted validity rather than user-controlled completion flags. S
 
 **Checklist:**
 
-- [ ] Build the product shell with workspace switcher, monitors navigation, alerts navigation, and account menu.
-- [ ] Build an empty dashboard with one primary `Create your first monitor` action.
-- [ ] Implement persisted setup steps for purpose, credential/model, prompt/configuration, and cases.
-- [ ] Use Inertia form submissions and server changesets as the source of validation truth.
-- [ ] Preserve drafts and allow the user to leave and resume safely.
-- [ ] Derive progress from persisted domain state.
-- [ ] Show what data is stored and what will be sent to the selected provider.
-- [ ] Show case counts, payload limits, and estimated calls before any live execution.
-- [ ] Add loading, empty, validation, provider-error, and recovery states.
-- [ ] Ensure accessible keyboard flow and responsive layouts.
-- [ ] Record setup-step completion and abandonment as allowlisted product events.
+- [x] Build the product shell with workspace switcher, monitors navigation, alerts navigation, and account menu.
+- [x] Build an empty dashboard with one primary `Create your first monitor` action.
+- [x] Implement persisted setup steps for purpose, credential/model, prompt/configuration, and cases.
+- [x] Use Inertia form submissions and server changesets as the source of validation truth.
+- [x] Preserve drafts and allow the user to leave and resume safely.
+- [x] Derive progress from persisted domain state.
+- [x] Show what data is stored and what will be sent to the selected provider.
+- [x] Show case counts, payload limits, and estimated calls before any live execution.
+- [x] Add loading, empty, validation, provider-error, and recovery states.
+- [x] Ensure accessible keyboard flow and responsive layouts.
+- [x] Record setup-step completion and abandonment as allowlisted product events.
 
 **Acceptance criteria:**
 
@@ -1087,6 +1087,33 @@ The product is ready for the first external design partner only when:
 - Selected a separate mutable setup draft, derived progress, explicit safe product-learning events,
   and atomic promotion into an immutable monitor version. Recorded the detailed review and design in
   [`docs/monitor-setup/RESEARCH.md`](../docs/monitor-setup/RESEARCH.md).
+
+### 2026-09-15 — Task 6 complete
+
+- Added a workspace-scoped mutable setup draft for incomplete input, an operational credential
+  association outside the behavior fingerprint, derived step progress, and an atomic completion
+  transaction that promotes only valid content into Task 5's immutable monitor-version history.
+- Added allowlisted, content-free product events for setup start, first completion of each valid
+  step, save-and-exit, and final completion. Prompt, context, variables, import content, and outputs
+  are filtered from Phoenix request logs.
+- Added the authenticated monitor dashboard and cold-start flow for purpose, exact credential/model,
+  prompt/generation configuration, manual or versioned-JSON cases, and final review. Every route is
+  inside `/app/:workspace_slug` with the authenticated and verified-workspace pipelines so tenant
+  membership is resolved before a setup controller runs and cross-workspace records remain 404.
+- Added desktop and mobile workspace/account navigation, persisted draft recovery, server-backed
+  validation, provider-credential recovery, explicit stored-versus-sent explanations, payload and
+  case limits, and a provider-call preview that states setup makes zero calls.
+- A real browser pass covered login, empty-state creation, save-and-exit, full refresh, resume to the
+  derived next step, completion, immutable review, and a 390-pixel mobile viewport. It exposed and
+  fixed generic empty optional-setting normalization, an HTML Unicode-Sets pattern incompatibility,
+  premature connection submission, and unnamed compact step navigation. The final browser console
+  had no errors or warnings.
+- Applied the pending Task 5 and Task 6 development migrations, completed the full flow with an
+  existing validated Anthropic credential without making a provider call, and removed the disposable
+  monitor and its seven setup events after verification.
+- Verified 18 focused setup tests, 10 frontend tests with TypeScript checking, the production asset
+  build, and 432 total Elixir tests through `mix precommit`.
+- Implementation commits: `c3c9ef5`, `6335d29`, `0db2a94`, and `b4c7142`.
 
 ## 17. References
 
