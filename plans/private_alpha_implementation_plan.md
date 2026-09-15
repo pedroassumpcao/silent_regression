@@ -280,7 +280,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 7 | Generic deterministic contract engine | 5 | Complete | `2d93261`, `7d0dbba`, `b0fd9c4`, `b3ad353`, `7626997`, `3215268`, `d7f9671` |
 | 8 | Contract authoring, fixture validation, and approval | 6, 7 | Complete | `e766a02`, `40321b3`, `3798fd5`, `fd14b70` |
 | 9 | Durable capture execution and provider accounting | 4, 5, 7 | Complete | `36d385b`, `fff370f`, `e81ef85`, `fa169c6`, `9f3d518` |
-| 10 | Baseline capture, inspection, and approval | 8, 9 | Not started | — |
+| 10 | Baseline capture, inspection, and approval | 8, 9 | In progress | `76f748e`, `bd060be`, `a632f92` |
 | 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | Not started | — |
 | 12 | Run results, evidence, alerts, and operational signals | 9, 10 | Not started | — |
 | 13 | Structured review and versioned correction loop | 8, 12 | Not started | — |
@@ -636,16 +636,20 @@ progress from persisted validity rather than user-controlled completion flags. S
 
 **Checklist:**
 
-- [ ] Add a preflight that validates credential state, model access, monitor readiness, contract approval, cases, and call caps.
-- [ ] Show exact case count, samples per case, maximum requests, retry policy, and available usage estimate.
-- [ ] Require explicit user authorization before enqueueing the baseline.
-- [ ] Support a bounded alpha sample count with a conservative default.
-- [ ] Stream or poll durable progress without relying on an in-memory browser process.
-- [ ] Display successful, incomplete, failed, and unknown completions separately.
-- [ ] Surface returned-model mismatches as operational anomalies even when calls succeed.
-- [ ] Require all zero-tolerance contract conditions before normal approval; exceptional acceptance requires an explicit recorded rationale.
-- [ ] Seal approved baseline membership and provenance.
-- [ ] Invalidate compatibility when behavior-affecting configuration changes.
+- [x] Add a preflight that validates credential state, model access, monitor readiness, contract approval, cases, and call caps.
+- [x] Show exact case count, samples per case, maximum requests, retry policy, and available usage estimate.
+- [x] Require explicit user authorization before enqueueing the baseline.
+- [x] Support a bounded alpha sample count with a conservative default.
+- [x] Stream or poll durable progress without relying on an in-memory browser process.
+- [x] Display successful, incomplete, failed, and unknown completions separately.
+- [x] Surface returned-model mismatches as operational anomalies even when calls succeed.
+- [x] Require all zero-tolerance contract conditions before normal approval; exceptional acceptance requires an explicit recorded rationale.
+- [x] Seal approved baseline membership and provenance.
+- [x] Invalidate compatibility when behavior-affecting configuration changes.
+
+**Remaining gate:** One live-provider capture must be run only after presenting its exact preflight
+and receiving explicit authorization. The implementation and fake-provider browser flow are
+complete; Task 10 remains in progress until that smoke test passes.
 
 **Acceptance criteria:**
 
@@ -802,6 +806,12 @@ progress from persisted validity rather than user-controlled completion flags. S
 - [ ] Conduct separate manually authorized OpenAI and Anthropic smoke tests.
 - [ ] Record pilot limits and known limitations in customer-visible alpha documentation.
 - [ ] Produce a deployment-readiness checklist without creating Fly.io resources.
+
+Known deletion prerequisite discovered during Task 10 browser-test cleanup: the customer-deletion
+workflow must remove sealed baseline membership/snapshots before their capture observations, and
+capture evidence before contract versions/workspace rows. Current foreign-key retention correctly
+prevents an unordered workspace cascade from silently discarding evidence; Task 14 must turn that
+ordering into a documented, tested product operation.
 
 **Acceptance criteria:**
 
@@ -1230,6 +1240,35 @@ The product is ready for the first external design partner only when:
 - Recorded the persistence, monitor-activation, compatibility, approval, UI, safety, and phased
   implementation boundaries in
   [`docs/baseline-capture/RESEARCH.md`](../docs/baseline-capture/RESEARCH.md).
+
+### 2026-09-15 — Task 10 implementation and fake-provider verification
+
+- Added durable baseline authorization snapshots and immutable approved membership rows, including
+  exact monitor/contract/provider/model fingerprints, owner attribution, call bounds, lifecycle
+  constraints, and database history guards.
+- Made baseline-kind capture enqueueing require a pending authorization record. Authorization
+  atomically activates the exact contract-approved configuration, moves the monitor to
+  `baseline_pending`, rejects stale previews, and remains idempotent under duplicate submissions.
+- Added normal approval for fully passing deterministic evidence and exceptional approval only for
+  deterministic failures with a 20–2,000 character rationale. Provider failures, incomplete or
+  unknown completions, evaluator errors, missing evidence, and returned-model mismatches remain
+  non-overridable blockers.
+- Added the authenticated workspace-scoped `Monitors/Baseline` Inertia workflow. Owners can verify
+  exact-model access, preview one-through-five samples and worst-case call/token ceilings,
+  explicitly authorize spend, watch two-second partial polling of durable state, inspect every
+  output/rule/model/usage result, and approve or reject. Members receive the same safe inspection
+  view without spend or approval controls.
+- Kept all baseline routes inside `[:browser, :authenticated, :workspace_scope]` because captured
+  prompts/outputs and provider evidence are private tenant data. Added sealed-contract and
+  `baseline_pending` dashboard handoffs into the workflow.
+- Verified 9 baseline context tests, 4 controller tests, 5 baseline component tests, related
+  capture/contract/dashboard regression tests, TypeScript type checking, all 21 frontend tests,
+  the production asset build, and a headed fake-provider browser journey from invitation through
+  one sealed baseline observation. The browser console had no errors or warnings.
+- `mix precommit` passes with 509 tests. Implementation commits: `bd060be` and `a632f92`; design
+  research commit: `76f748e`.
+- The remaining Task 10 gate is one explicitly authorized live-provider smoke capture. No live
+  completion call was made automatically.
 
 ## 17. References
 
