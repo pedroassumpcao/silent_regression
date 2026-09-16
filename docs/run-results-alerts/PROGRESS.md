@@ -1,6 +1,6 @@
 # Run Results and Alerts Progress
 
-## Status: Phase 2 - In Progress
+## Status: Phase 3 - In Progress
 
 ## Quick Reference
 
@@ -38,11 +38,17 @@
 
 ### Phase 2: Alert Domain and Policy
 
-**Status:** In Progress
+**Status:** Completed
 
 #### Tasks Completed
 
-- None.
+- Added immutable alert evidence with open, acknowledged, and resolved database-enforced states.
+- Added idempotent terminal-run synchronization through database uniqueness and the observation
+  worker retry path.
+- Implemented deterministic content findings, grouped provider/model/completion/evaluator findings,
+  and conservative baseline-relative latency/usage warnings.
+- Added member acknowledgement, owner-only resolution, actor timestamps, and audit events.
+- Verified cross-workspace isolation, immutable evidence, forward-only lifecycle, and retry safety.
 
 #### Decisions Made
 
@@ -55,7 +61,7 @@
 
 ### Phase 3: Result Queries and Presenters
 
-**Status:** Not Started
+**Status:** In Progress
 
 #### Tasks Completed
 
@@ -113,6 +119,7 @@
 - Kept mechanical acknowledgement/resolution in Task 12 and append-only human judgment in Task 13.
 - Completed Phase 1 severity and baseline-provenance implementation with focused parser, evaluator,
   capture-schema, capture-execution, and monitor-operation tests.
+- Completed Phase 2 with 33 focused alert-policy, lifecycle, capture, and scheduling tests passing.
 
 ## Files Changed
 
@@ -128,6 +135,14 @@
 - `lib/silent_regression/captures/capture_run.ex`
 - `lib/silent_regression/captures/capture_rule_result.ex`
 - `priv/repo/migrations/20260916180310_add_result_alert_foundations.exs`
+- `lib/silent_regression/run_results.ex`
+- `lib/silent_regression/run_results/alert.ex`
+- `lib/silent_regression/run_results/policy.ex`
+- `lib/silent_regression/run_results/provenance.ex`
+- `lib/silent_regression/captures/workers/observation_worker.ex`
+- `priv/repo/migrations/20260916180822_create_result_alerts.exs`
+- `test/silent_regression/run_results_test.exs`
+- `test/silent_regression/run_results/policy_test.exs`
 
 ## Architectural Decisions
 

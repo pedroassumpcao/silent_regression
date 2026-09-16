@@ -55,7 +55,7 @@ defmodule SilentRegression.Providers.FakeOpenAI do
      }}
   end
 
-  defp fake_completion(provider, _secret, request) do
+  defp fake_completion(provider, secret, request) do
     cond do
       String.contains?(request.context, "[fake:retry-once]") and request.attempt_number == 1 ->
         {:error,
@@ -86,9 +86,10 @@ defmodule SilentRegression.Providers.FakeOpenAI do
 
       true ->
         output_text =
-          if String.contains?(request.context, "[fake:output=maybe]"),
-            do: "maybe",
-            else: "approved"
+          if secret == "sk-test-output-maybe" or
+               String.contains?(request.context, "[fake:output=maybe]"),
+             do: "maybe",
+             else: "approved"
 
         returned_model =
           if String.contains?(request.context, "[fake:model-mismatch]"),
