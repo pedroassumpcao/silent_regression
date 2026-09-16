@@ -1,6 +1,6 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 13 complete; Task 14 next
+> **Status:** Task 14 in progress; decision gates pending
 >
 > **Progress:** 13 of 14 tasks complete
 >
@@ -790,7 +790,7 @@ instead of inventing a temporary alert lifecycle.
 
 ### Task 14 — Onboarding telemetry, notifications, security, and pilot readiness
 
-**Status:** Not started
+**Status:** In progress
 
 **Decision gates before external data:**
 
