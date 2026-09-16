@@ -17,6 +17,7 @@ defmodule SilentRegression.RunResults.Presenter do
       opened_at: alert.opened_at,
       acknowledged_at: alert.acknowledged_at,
       resolved_at: alert.resolved_at,
+      resolution_review_decision_id: alert.resolution_review_decision_id,
       acknowledged_by: association_email(alert.acknowledged_by_user),
       resolved_by: association_email(alert.resolved_by_user),
       monitor: association_monitor(alert.monitor),

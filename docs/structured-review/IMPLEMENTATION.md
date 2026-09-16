@@ -30,11 +30,11 @@ the UI can resolve alerts or activate corrected contracts.
 
 ## Phase 4: Inertia review experience
 
-- [ ] Present review evidence and non-accuracy summary counts on run detail.
-- [ ] Add alert review and supersession dialogs.
-- [ ] Add observation-level missed-regression entry points.
-- [ ] Add direct contract-revision flow and approval rescore evidence.
-- [ ] Add safe empty, stale, permission, and validation states.
+- [x] Present review evidence and non-accuracy summary counts on run detail.
+- [x] Add alert review and supersession dialogs.
+- [x] Add observation-level missed-regression entry points.
+- [x] Add direct contract-revision flow and approval rescore evidence.
+- [x] Add safe empty, stale, permission, and validation states.
 
 ## Phase 5: Verification and handoff
 

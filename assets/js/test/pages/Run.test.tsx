@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
 
 import { RunView, type RunProps } from "@/pages/Monitors/Run"
@@ -79,6 +80,14 @@ const props: RunProps = {
       usageMinimumDeltaTokens: 100,
     },
     alerts: [alert],
+    reviews: [],
+    reviewSummary: {
+      currentCount: 0,
+      classificationCounts: {},
+      actionCounts: {},
+      changedJudgmentCount: 0,
+      supersededCount: 0,
+    },
     observations: [{
       id: "observation-id",
       sampleIndex: 0,
@@ -158,6 +167,60 @@ describe("RunView", () => {
 
     expect(screen.getByRole("button", { name: "Acknowledge" })).toBeEnabled()
     expect(screen.queryByRole("button", { name: "Resolve" })).not.toBeInTheDocument()
+  })
+
+  it("opens structured review for alerts and exposes missed-regression review on observations", async () => {
+    const user = userEvent.setup()
+    render(<RunView {...props} flash={{}} />)
+
+    expect(screen.getByRole("button", { name: /report missed regression/i })).toBeEnabled()
+    await user.click(screen.getByRole("button", { name: /^record judgment$/i }))
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Record structured judgment" })).toBeInTheDocument()
+    expect(screen.getByText("The alert identifies a real output regression.")).toBeInTheDocument()
+    expect(screen.getByLabelText(/rationale/i)).toHaveAttribute("maxlength", "2000")
+  })
+
+  it("requires a current judgment before owner resolution", () => {
+    render(<RunView {...props} flash={{}} result={{
+      ...props.result,
+      alerts: [{ ...alert, status: "acknowledged", acknowledgedAt: "2026-09-16T18:05:00Z" }],
+    }} />)
+
+    expect(screen.getByRole("button", { name: "Resolve" })).toBeDisabled()
+    expect(screen.getByText("Review required to resolve")).toBeInTheDocument()
+  })
+
+  it("shows the current append-only judgment and enables governed owner resolution", () => {
+    render(<RunView {...props} flash={{}} result={{
+      ...props.result,
+      alerts: [{ ...alert, status: "acknowledged", acknowledgedAt: "2026-09-16T18:05:00Z" }],
+      reviews: [{
+        id: "review-id",
+        reviewKey: "alert:alert-id",
+        subjectKind: "alert",
+        classification: "acceptable_variation",
+        action: "contract_revision",
+        rationale: { text: "The contract is too narrow.", truncated: false, originalBytes: 27 },
+        reviewedAt: "2026-09-16T18:06:00Z",
+        reviewedBy: "reviewer@acme.example",
+        current: true,
+        supersedesId: null,
+        captureRunId: "run-id",
+        resultAlertId: "alert-id",
+        captureObservationId: null,
+        captureEvaluationId: "evaluation-id",
+        captureRuleResultId: null,
+        contractVersionId: "contract-version-id",
+        baselineSnapshotId: "baseline-id",
+      }],
+      reviewSummary: { currentCount: 1, classificationCounts: { acceptable_variation: 1 }, actionCounts: { contract_revision: 1 }, changedJudgmentCount: 0, supersededCount: 0 },
+    }} />)
+
+    expect(screen.getByText("The contract is too narrow.")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Resolve" })).toBeEnabled()
+    expect(screen.getByRole("button", { name: /start contract revision/i })).toBeEnabled()
   })
 
   it("blocks relative interpretation when provenance differs", () => {

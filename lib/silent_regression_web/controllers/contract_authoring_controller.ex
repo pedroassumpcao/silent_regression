@@ -6,6 +6,7 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
   alias SilentRegression.ContractAuthoring
   alias SilentRegression.ContractAuthoring.{ContractVersion, FixtureJudgment}
   alias SilentRegression.Contracts.Limits
+  alias SilentRegression.Reviews
 
   def show(conn, %{"monitor_id" => monitor_id}) do
     case ContractAuthoring.get_state(conn.assigns.current_scope, monitor_id) do
@@ -181,6 +182,8 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
       },
       readiness: readiness_prop(state.readiness),
       release_stage: "Private alpha",
+      rescore_summary: rescore_summary_prop(state.rescore_summary),
+      revision_origins: revision_origin_props(state.contract_version),
       templates: Enum.map(ContractAuthoring.templates(), &template_prop/1)
     })
   end
@@ -252,6 +255,37 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
       ready: readiness.ready?,
       blockers: readiness.blockers
     }
+  end
+
+  defp rescore_summary_prop(nil), do: nil
+
+  defp rescore_summary_prop(summary) do
+    %{
+      observation_count: summary.observation_count,
+      pass_count: summary.pass_count,
+      fail_count: summary.fail_count,
+      evaluator_error_count: summary.evaluator_error_count,
+      interpretation_changed: summary.interpretation_changed,
+      rescored_at: summary.rescored_at,
+      predecessor_contract_version_id: summary.predecessor_contract_version_id
+    }
+  end
+
+  defp revision_origin_props(nil), do: []
+
+  defp revision_origin_props(contract_version) do
+    contract_version.id
+    |> Reviews.list_contract_revision_origins()
+    |> Enum.map(fn origin ->
+      %{
+        id: origin.id,
+        review_decision_id: origin.review_decision_id,
+        classification: origin.review_decision.classification,
+        action: origin.review_decision.action,
+        actor: origin.actor_user.email,
+        inserted_at: origin.inserted_at
+      }
+    end)
   end
 
   defp redirect_to_setup(conn, monitor_id) do

@@ -90,6 +90,12 @@ defmodule SilentRegressionWeb.Router do
     get "/monitors/:monitor_id/results", RunResultController, :index
     get "/monitors/:monitor_id/runs/:run_id", RunResultController, :show
     get "/monitors/:monitor_id/runs/:run_id/diagnostic", RunResultController, :diagnostic
+    post "/monitors/:monitor_id/runs/:run_id/reviews", ReviewController, :create
+
+    post "/monitors/:monitor_id/runs/:run_id/reviews/:review_id/contract-revision",
+         ReviewController,
+         :start_contract_revision
+
     get "/alerts", ResultAlertController, :index
     post "/alerts/:alert_id/acknowledge", ResultAlertController, :acknowledge
     post "/alerts/:alert_id/resolve", ResultAlertController, :resolve

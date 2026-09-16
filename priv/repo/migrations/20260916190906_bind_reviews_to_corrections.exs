@@ -34,6 +34,22 @@ defmodule SilentRegression.Repo.Migrations.BindReviewsToCorrections do
     CREATE FUNCTION protect_review_contract_revision_origin()
     RETURNS trigger AS $$
     BEGIN
+      IF TG_OP = 'INSERT' THEN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM review_decisions AS decision
+          JOIN contract_versions AS contract
+            ON contract.id = NEW.contract_version_id
+          WHERE decision.id = NEW.review_decision_id
+            AND decision.workspace_id = contract.workspace_id
+            AND decision.monitor_id = contract.monitor_id
+        ) THEN
+          RAISE EXCEPTION 'review and contract revision provenance must match' USING ERRCODE = '23514';
+        END IF;
+
+        RETURN NEW;
+      END IF;
+
       RAISE EXCEPTION 'review contract revision origins are immutable' USING ERRCODE = '23514';
     END;
     $$ LANGUAGE plpgsql;
@@ -41,7 +57,7 @@ defmodule SilentRegression.Repo.Migrations.BindReviewsToCorrections do
 
     execute("""
     CREATE TRIGGER review_contract_revision_origins_guard
-    BEFORE UPDATE OR DELETE ON review_contract_revision_origins
+    BEFORE INSERT OR UPDATE OR DELETE ON review_contract_revision_origins
     FOR EACH ROW EXECUTE FUNCTION protect_review_contract_revision_origin();
     """)
 
@@ -72,6 +88,16 @@ defmodule SilentRegression.Repo.Migrations.BindReviewsToCorrections do
       IF OLD.status <> 'resolved' AND NEW.status = 'resolved' AND
          NEW.resolution_review_decision_id IS NULL THEN
         RAISE EXCEPTION 'review decision is required for resolution' USING ERRCODE = '23514';
+      END IF;
+
+      IF OLD.status <> 'resolved' AND NEW.status = 'resolved' AND NOT EXISTS (
+        SELECT 1
+        FROM review_decisions AS decision
+        WHERE decision.id = NEW.resolution_review_decision_id
+          AND decision.workspace_id = NEW.workspace_id
+          AND decision.result_alert_id = NEW.id
+      ) THEN
+        RAISE EXCEPTION 'resolution review decision does not belong to alert' USING ERRCODE = '23514';
       END IF;
 
       IF OLD.status = 'resolved' AND

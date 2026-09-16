@@ -123,6 +123,8 @@ const baseProps: ContractAuthoringProps = {
     blockers: [{ code: "contract_missing", message: "Save a valid contract draft first.", fixtureId: null }],
   },
   releaseStage: "Private alpha",
+  rescoreSummary: null,
+  revisionOrigins: [],
   templates,
 }
 
@@ -185,6 +187,7 @@ describe("ContractAuthoringView", () => {
         {...baseProps}
         canApprove
         contract={{ ...contract, status: "approved", approvedAt: "2026-09-15T18:00:00Z", approvedByUserId: "owner-id" }}
+        rescoreSummary={{ observationCount: 12, passCount: 10, failCount: 2, evaluatorErrorCount: 0, interpretationChanged: true, rescoredAt: "2026-09-16T18:00:00Z", predecessorContractVersionId: "previous-contract-id" }}
         errors={{}}
         fixtures={fixtures}
         flash={{}}
@@ -199,5 +202,7 @@ describe("ContractAuthoringView", () => {
       "/app/acme-ai/monitors/monitor-id/baseline",
     )
     expect(screen.getByText("Contract version 1 is sealed")).toBeInTheDocument()
+    expect(screen.getByText("Historical outputs rescored before activation")).toBeInTheDocument()
+    expect(screen.getByText("New baseline required")).toBeInTheDocument()
   })
 })

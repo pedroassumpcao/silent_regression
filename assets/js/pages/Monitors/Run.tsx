@@ -11,8 +11,11 @@ import {
   FileCheck2,
   Fingerprint,
   Gauge,
+  GitBranch,
+  History,
   LoaderCircle,
   LockKeyhole,
+  MessageSquare,
   ShieldAlert,
 } from "lucide-react"
 
@@ -43,8 +46,48 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import type { SharedPageProps } from "@/types/page"
-import type { Evaluation, Observation, Provenance, ResultAlert, ResultMonitor, RunDetail } from "@/types/results"
+import type {
+  Evaluation,
+  Observation,
+  Provenance,
+  ResultAlert,
+  ResultMonitor,
+  ReviewAction,
+  ReviewClassification,
+  ReviewDecision,
+  RunDetail,
+} from "@/types/results"
+
+type ReviewSubject = {
+  kind: "alert" | "observation"
+  id: string
+  title: string
+  current: ReviewDecision | null
+}
+
+const classifications: Array<{ value: ReviewClassification; label: string; description: string }> = [
+  { value: "correct_pass", label: "Correct pass", description: "The output passed and that judgment is correct." },
+  { value: "confirmed_regression", label: "Confirmed regression", description: "The alert identifies a real output regression." },
+  { value: "acceptable_variation", label: "Acceptable variation / false alert", description: "The output is acceptable; the alert is too strict." },
+  { value: "contract_needs_revision", label: "Contract needs revision", description: "The rules do not express the intended requirement." },
+  { value: "test_case_or_baseline_problem", label: "Test case or baseline problem", description: "The comparison evidence needs correction." },
+  { value: "passed_but_should_have_failed", label: "Passed but should have failed", description: "A missed regression was not caught by the contract." },
+  { value: "unsure", label: "Unsure / requires review", description: "More domain judgment is required." },
+  { value: "operational_anomaly", label: "Operational / provider anomaly", description: "This concerns execution, not output quality." },
+]
+
+const actions: Array<{ value: ReviewAction; label: string }> = [
+  { value: "none", label: "No follow-up yet" },
+  { value: "prompt_change", label: "Prompt change" },
+  { value: "case_change", label: "Test case change" },
+  { value: "contract_revision", label: "Contract revision" },
+  { value: "provider_change", label: "Provider or model change" },
+  { value: "operational_follow_up", label: "Operational follow-up" },
+]
 
 export type RunProps = {
   auth: SharedPageProps["auth"]
@@ -58,6 +101,11 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
   const workspace = auth.workspace
   const [processingAlert, setProcessingAlert] = useState<string | null>(null)
   const [resolveAlert, setResolveAlert] = useState<ResultAlert | null>(null)
+  const [reviewSubject, setReviewSubject] = useState<ReviewSubject | null>(null)
+  const [reviewClassification, setReviewClassification] = useState<ReviewClassification>("unsure")
+  const [reviewAction, setReviewAction] = useState<ReviewAction>("none")
+  const [reviewRationale, setReviewRationale] = useState("")
+  const [processingReview, setProcessingReview] = useState(false)
   if (!workspace) return null
 
   const summary = result.summary
@@ -74,6 +122,43 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
       preserveScroll: true,
       onSuccess: () => setResolveAlert(null),
       onFinish: () => setProcessingAlert(null),
+    })
+  }
+
+  const currentReview = (kind: ReviewSubject["kind"], id: string) =>
+    result.reviews.find(review => review.current && (kind === "alert" ? review.resultAlertId === id : review.captureObservationId === id)) || null
+
+  const openReview = (kind: ReviewSubject["kind"], id: string, title: string, fallback: ReviewClassification) => {
+    const current = currentReview(kind, id)
+    setReviewSubject({ kind, id, title, current })
+    setReviewClassification(current?.classification || fallback)
+    setReviewAction(current?.action || "none")
+    setReviewRationale(current?.rationale?.text || "")
+  }
+
+  const submitReview = () => {
+    if (!reviewSubject) return
+    setProcessingReview(true)
+    router.post(`${runPath}/reviews`, {
+      review: {
+        subject_kind: reviewSubject.kind,
+        subject_id: reviewSubject.id,
+        expected_current_id: reviewSubject.current?.id || "",
+        classification: reviewClassification,
+        action: reviewAction,
+        rationale: reviewRationale,
+      },
+    }, {
+      preserveScroll: true,
+      onSuccess: () => setReviewSubject(null),
+      onFinish: () => setProcessingReview(false),
+    })
+  }
+
+  const startContractRevision = (review: ReviewDecision) => {
+    setProcessingReview(true)
+    router.post(`${runPath}/reviews/${review.id}/contract-revision`, {}, {
+      onFinish: () => setProcessingReview(false),
     })
   }
 
@@ -109,8 +194,8 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
           </div>
         </header>
 
-        {flash.info && <Alert id="run-success" className="border-success/25 bg-success/5"><CheckCircle2 /><AlertTitle>Alert lifecycle updated</AlertTitle><AlertDescription>{flash.info}</AlertDescription></Alert>}
-        {flash.error && <Alert id="run-error" variant="destructive"><AlertTriangle /><AlertTitle>Alert lifecycle unchanged</AlertTitle><AlertDescription>{flash.error}</AlertDescription></Alert>}
+        {flash.info && <Alert id="run-success" className="border-success/25 bg-success/5"><CheckCircle2 /><AlertTitle>Evidence workflow updated</AlertTitle><AlertDescription>{flash.info}</AlertDescription></Alert>}
+        {flash.error && <Alert id="run-error" variant="destructive"><AlertTriangle /><AlertTitle>Evidence workflow unchanged</AlertTitle><AlertDescription>{flash.error}</AlertDescription></Alert>}
 
         {!terminal && (
           <Alert id="run-in-progress">
@@ -137,6 +222,22 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
           <Metric label="Run alerts" value={summary.criticalAlertCount + summary.warningAlertCount} detail={`${summary.criticalAlertCount} critical · ${summary.warningAlertCount} warning`} tone={summary.criticalAlertCount > 0 ? "danger" : summary.warningAlertCount > 0 ? "warning" : "success"} />
         </section>
 
+        <Card id="review-evidence" className="border-primary/20 bg-primary/5">
+          <CardHeader className="gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2"><MessageSquare className="size-5 text-primary" /> Human review evidence</CardTitle>
+              <CardDescription className="mt-2 max-w-3xl leading-6">These are attributable design-partner judgments, not model-accuracy statistics. Revised judgments remain visible as append-only history.</CardDescription>
+            </div>
+            <Badge variant="outline">{result.reviewSummary.currentCount} current judgment{result.reviewSummary.currentCount === 1 ? "" : "s"}</Badge>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Fact label="Reviewed subjects" value={formatNumber(result.reviewSummary.currentCount)} />
+            <Fact label="Revised judgments" value={formatNumber(result.reviewSummary.changedJudgmentCount)} />
+            <Fact label="Superseded decisions" value={formatNumber(result.reviewSummary.supersededCount)} />
+            <Fact label="Awaiting more review" value={formatNumber(result.reviewSummary.classificationCounts.unsure || 0)} />
+          </CardContent>
+        </Card>
+
         <section id="run-alerts" className="space-y-4" aria-labelledby="run-alerts-heading">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div><p className="text-sm font-medium text-primary">Action queue</p><h2 id="run-alerts-heading" className="mt-1 text-2xl font-semibold tracking-tight">Alerts from this run</h2></div>
@@ -147,7 +248,10 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
             <Card id="run-alerts-empty" className="border-success/20 bg-success/5"><CardContent className="flex gap-3 py-6"><CheckCircle2 className="mt-0.5 size-5 text-success" /><div><p className="font-medium">No alerts derived from this run</p><p className="mt-1 text-sm leading-6 text-muted-foreground">The absence of alerts does not hide the underlying output and rule-level evidence below.</p></div></CardContent></Card>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
-              {result.alerts.map(alert => (
+              {result.alerts.map(alert => {
+                const review = currentReview("alert", alert.id)
+                const history = result.reviews.filter(item => item.reviewKey === `alert:${alert.id}`)
+                return (
                 <Card key={alert.id} id={`run-alert-${alert.id}`} className={alert.status === "resolved" ? "opacity-75" : alert.severity === "critical" ? "border-destructive/30" : "border-amber-500/30"}>
                   <CardHeader>
                     <div className="flex flex-wrap gap-2"><SeverityBadge severity={alert.severity} /><CategoryBadge category={alert.category} /><AlertStatusBadge status={alert.status} /></div>
@@ -159,17 +263,21 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
                       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium">Derived evidence <ChevronDown className="size-4 transition-transform group-open:rotate-180" /></summary>
                       <div className="mt-4"><StructuredEvidence value={alert.evidence} /></div>
                     </details>
+                    <ReviewStatus decision={review} history={history} />
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="text-xs text-muted-foreground">{alert.status === "resolved" ? `Resolved ${formatUtc(alert.resolvedAt)}` : alert.status === "acknowledged" ? `Acknowledged ${formatUtc(alert.acknowledgedAt)}` : `Opened ${formatUtc(alert.openedAt)}`}</p>
                       <div className="flex flex-wrap gap-2">
+                        <Button id={`review-alert-${alert.id}`} size="sm" variant="outline" disabled={processingReview} onClick={() => openReview("alert", alert.id, alert.title, alert.category === "operational_anomaly" ? "operational_anomaly" : "confirmed_regression")}><MessageSquare /> {review ? "Revise judgment" : "Record judgment"}</Button>
+                        {review?.action === "contract_revision" && <Button id={`start-contract-revision-${review.id}`} size="sm" variant="outline" disabled={processingReview} onClick={() => startContractRevision(review)}><GitBranch /> Start contract revision</Button>}
                         {alert.status === "open" && <Button id={`acknowledge-alert-${alert.id}`} size="sm" disabled={processingAlert !== null} onClick={() => mutateAlert(alert, "acknowledge")}>{processingAlert === alert.id ? <LoaderCircle className="animate-spin" /> : <FileCheck2 />} Acknowledge</Button>}
-                        {alert.status === "acknowledged" && canResolve && <Button id={`resolve-alert-${alert.id}`} size="sm" disabled={processingAlert !== null} onClick={() => setResolveAlert(alert)}><LockKeyhole /> Resolve</Button>}
+                        {alert.status === "acknowledged" && canResolve && <Button id={`resolve-alert-${alert.id}`} size="sm" disabled={processingAlert !== null || !review} onClick={() => setResolveAlert(alert)}><LockKeyhole /> Resolve</Button>}
                         {alert.status === "acknowledged" && !canResolve && <Badge variant="outline">Owner resolution required</Badge>}
+                        {alert.status === "acknowledged" && canResolve && !review && <Badge variant="outline">Review required to resolve</Badge>}
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )})}
             </div>
           )}
         </section>
@@ -202,7 +310,10 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
           <div><p className="text-sm font-medium text-primary">Captured samples</p><h2 id="observation-heading" className="mt-1 text-2xl font-semibold tracking-tight">Observation and rule-level evidence</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Each response is shown as inert text, never interpreted as HTML. Provider attempts and deterministic evaluations remain attributable to the individual case.</p></div>
           {result.observations.length === 0 ? (
             <Card id="observations-empty"><CardContent className="py-8 text-center text-sm text-muted-foreground">No observations have been captured yet.</CardContent></Card>
-          ) : result.observations.map(observation => <ObservationCard key={observation.id} observation={observation} />)}
+          ) : result.observations.map(observation => {
+            const review = currentReview("observation", observation.id)
+            return <ObservationCard key={observation.id} observation={observation} review={review} history={result.reviews.filter(item => item.reviewKey === `observation:${observation.id}`)} onReview={() => openReview("observation", observation.id, `${observation.case.name} · sample ${observation.sampleIndex + 1}`, "passed_but_should_have_failed")} onStartContractRevision={startContractRevision} processingReview={processingReview} />
+          })}
         </section>
 
         <div className="rounded-2xl border bg-muted/20 p-4 text-xs leading-6 text-muted-foreground">
@@ -212,9 +323,44 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
 
       <Dialog open={Boolean(resolveAlert)} onOpenChange={open => !open && setResolveAlert(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Resolve this acknowledged alert?</DialogTitle><DialogDescription>Resolution records an owner decision. The alert, timestamps, derived evidence, and underlying run evidence remain stored and visible.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Resolve this reviewed alert?</DialogTitle><DialogDescription>Resolution pins the current structured judgment as its owner-approved basis. The alert, review history, and underlying evidence remain stored and visible.</DialogDescription></DialogHeader>
           {resolveAlert && <Alert><ShieldAlert /><AlertTitle>{resolveAlert.title}</AlertTitle><AlertDescription>{resolveAlert.explanation}</AlertDescription></Alert>}
           <DialogFooter><DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose><Button id="confirm-resolve-alert" disabled={!resolveAlert || processingAlert !== null} onClick={() => resolveAlert && mutateAlert(resolveAlert, "resolve")}>{processingAlert ? <LoaderCircle className="animate-spin" /> : <LockKeyhole />} Record resolution</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(reviewSubject)} onOpenChange={open => !open && setReviewSubject(null)}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{reviewSubject?.current ? "Revise structured judgment" : "Record structured judgment"}</DialogTitle>
+            <DialogDescription>{reviewSubject?.title}. A revision appends a new decision; it never edits the earlier judgment or captured evidence.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="review-classification">Classification</Label>
+              <Select value={reviewClassification} onValueChange={value => setReviewClassification(value as ReviewClassification)}>
+                <SelectTrigger id="review-classification" className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>{classifications.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <p className="text-xs leading-5 text-muted-foreground">{classifications.find(option => option.value === reviewClassification)?.description}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="review-action">Resulting action</Label>
+              <Select value={reviewAction} onValueChange={value => setReviewAction(value as ReviewAction)}>
+                <SelectTrigger id="review-action" className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>{actions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="review-rationale">Rationale <span className="font-normal text-muted-foreground">(optional)</span></Label>
+              <Textarea id="review-rationale" className="min-h-28" maxLength={2000} value={reviewRationale} onChange={event => setReviewRationale(event.target.value)} placeholder="What did you observe, and why did you choose this classification?" />
+              <p className="text-right text-xs text-muted-foreground">{reviewRationale.length}/2,000</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+            <Button id="submit-review-decision" disabled={!reviewSubject || processingReview} onClick={submitReview}>{processingReview ? <LoaderCircle className="animate-spin" /> : <MessageSquare />} {reviewSubject?.current ? "Append revised judgment" : "Record judgment"}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </ProductShell>
@@ -258,7 +404,14 @@ function FingerprintRow({ name, value }: { name: string; value: string }) {
   return <div className="grid gap-1 sm:grid-cols-[7rem_1fr]"><dt className="text-muted-foreground">{name}</dt><dd className="break-all font-mono text-foreground" title={value}>{value.length > 40 ? shortId(value) : value}</dd></div>
 }
 
-function ObservationCard({ observation }: { observation: Observation }) {
+function ObservationCard({ observation, review, history, onReview, onStartContractRevision, processingReview }: {
+  observation: Observation
+  review: ReviewDecision | null
+  history: ReviewDecision[]
+  onReview: () => void
+  onStartContractRevision: (review: ReviewDecision) => void
+  processingReview: boolean
+}) {
   const failures = observation.evaluations.flatMap(evaluation => evaluation.ruleResults).filter(result => result.status !== "pass").length
   return (
     <Card id={`observation-${observation.id}`}>
@@ -289,6 +442,14 @@ function ObservationCard({ observation }: { observation: Observation }) {
           {observation.evaluations.length === 0 ? <p className="text-sm text-muted-foreground">No evaluation was recorded.</p> : observation.evaluations.map(evaluation => <EvaluationBlock key={evaluation.id} evaluation={evaluation} />)}
         </div>
 
+        <div className="space-y-3 rounded-xl border border-primary/15 bg-primary/5 p-4">
+          <ReviewStatus decision={review} history={history} />
+          <div className="flex flex-wrap gap-2">
+            <Button id={`review-observation-${observation.id}`} type="button" size="sm" variant="outline" disabled={processingReview} onClick={onReview}><MessageSquare /> {review ? "Revise judgment" : "Report missed regression"}</Button>
+            {review?.action === "contract_revision" && <Button id={`start-contract-revision-${review.id}`} type="button" size="sm" variant="outline" disabled={processingReview} onClick={() => onStartContractRevision(review)}><GitBranch /> Start contract revision</Button>}
+          </div>
+        </div>
+
         <details className="group rounded-xl border bg-muted/20 p-4">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium">Provider attempts and allowlisted metadata <ChevronDown className="size-4 transition-transform group-open:rotate-180" /></summary>
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -298,6 +459,32 @@ function ObservationCard({ observation }: { observation: Observation }) {
         </details>
       </CardContent>
     </Card>
+  )
+}
+
+function ReviewStatus({ decision, history }: { decision: ReviewDecision | null; history: ReviewDecision[] }) {
+  if (!decision) {
+    return <div className="flex items-start gap-3 rounded-lg border border-dashed p-3"><MessageSquare className="mt-0.5 size-4 text-muted-foreground" /><div><p className="text-sm font-medium">No structured judgment yet</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Recording one adds attributable review evidence without changing the run.</p></div></div>
+  }
+
+  return (
+    <div className="rounded-lg border bg-background/80 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="secondary">{label(decision.classification)}</Badge>
+        <Badge variant="outline">Action: {label(decision.action)}</Badge>
+        {history.length > 1 && <Badge variant="outline"><History /> {history.length} decisions</Badge>}
+      </div>
+      {decision.rationale && <div className="mt-3"><BoundedTextBlock value={decision.rationale} /></div>}
+      <p className="mt-2 text-xs text-muted-foreground">Current judgment by {decision.reviewedBy || "workspace reviewer"} · {formatUtc(decision.reviewedAt)}</p>
+      {history.length > 1 && (
+        <details className="group mt-3 border-t pt-3">
+          <summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-medium text-primary"><History className="size-3.5" /> Inspect append-only judgment history</summary>
+          <ol className="mt-3 space-y-2">
+            {history.map(item => <li key={item.id} className="rounded-md bg-muted/40 p-3 text-xs"><div className="flex flex-wrap gap-2"><span className="font-medium">{label(item.classification)}</span><span className="text-muted-foreground">{label(item.action)}</span>{item.current && <span className="text-primary">Current</span>}</div><p className="mt-1 text-muted-foreground">{item.reviewedBy || "Workspace reviewer"} · {formatUtc(item.reviewedAt)}</p>{item.rationale && <p className="mt-2 whitespace-pre-wrap break-words leading-5">{item.rationale.text}</p>}</li>)}
+          </ol>
+        </details>
+      )}
+    </div>
   )
 }
 

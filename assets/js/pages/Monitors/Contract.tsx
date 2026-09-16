@@ -9,6 +9,7 @@ import {
   CircleDashed,
   Code2,
   FlaskConical,
+  GitBranch,
   Info,
   LoaderCircle,
   LockKeyhole,
@@ -130,6 +131,23 @@ type Fixture = {
 }
 
 type Blocker = { code: string; message: string; fixtureId: string | null }
+type RescoreSummary = {
+  observationCount: number
+  passCount: number
+  failCount: number
+  evaluatorErrorCount: number
+  interpretationChanged: boolean
+  rescoredAt: string
+  predecessorContractVersionId: string | null
+}
+type RevisionOrigin = {
+  id: string
+  reviewDecisionId: string
+  classification: string
+  action: string
+  actor: string
+  insertedAt: string
+}
 
 export type ContractAuthoringProps = {
   approvedContract: Pick<ContractVersion, "id" | "version" | "status" | "fingerprint" | "approvedAt"> | null
@@ -141,6 +159,8 @@ export type ContractAuthoringProps = {
   monitor: { id: string; name: string; description: string; state: string; version: number }
   readiness: { ready: boolean; blockers: Blocker[] }
   releaseStage: string
+  rescoreSummary: RescoreSummary | null
+  revisionOrigins: RevisionOrigin[]
   templates: Template[]
 }
 
@@ -244,6 +264,14 @@ export function ContractAuthoringView({ errors, flash, ...props }: ContractAutho
           </Alert>
         )}
 
+        {props.revisionOrigins.length > 0 && (
+          <Alert id="review-origin" className="border-primary/20 bg-primary/5">
+            <GitBranch />
+            <AlertTitle>This correction started from structured review</AlertTitle>
+            <AlertDescription>{props.revisionOrigins.length} current or historical review decision{props.revisionOrigins.length === 1 ? "" : "s"} link to this successor draft. The captured runs and judgments remain unchanged.</AlertDescription>
+          </Alert>
+        )}
+
         {!sealed && (
           <ContractEditor
             contract={props.contract}
@@ -270,6 +298,7 @@ export function ContractAuthoringView({ errors, flash, ...props }: ContractAutho
               fixtureCount={props.fixtures.length}
               path={path}
               readiness={props.readiness}
+              rescoreSummary={props.rescoreSummary}
             />
           </>
         )}
@@ -681,7 +710,7 @@ function FixtureCard({ contract, fixture, path, readOnly }: { contract: Contract
   )
 }
 
-function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness }: { canApprove: boolean; contract: ContractVersion; fixtureCount: number; path: string; readiness: ContractAuthoringProps["readiness"] }) {
+function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness, rescoreSummary }: { canApprove: boolean; contract: ContractVersion; fixtureCount: number; path: string; readiness: ContractAuthoringProps["readiness"]; rescoreSummary: RescoreSummary | null }) {
   const form = useForm({})
   const approved = contract.status === "approved"
   const baselinePath = path.replace(/\/contract$/, "/baseline")
@@ -703,6 +732,21 @@ function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness }: 
             <ProofMetric label="Fixtures" value={String(fixtureCount)} />
             <ProofMetric label="Combined fingerprint" value={contract.fingerprint.slice(0, 12)} mono />
           </div>
+
+          {approved && rescoreSummary && (
+            <div id="contract-rescore-summary" className="rounded-xl border bg-background/80 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div><p className="font-medium">Historical outputs rescored before activation</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Local deterministic evaluation only · 0 provider calls · {formatDate(rescoreSummary.rescoredAt)}</p></div>
+                <Badge variant="outline">{rescoreSummary.interpretationChanged ? "New baseline required" : "Baseline semantics unchanged"}</Badge>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                <ProofMetric label="Stored outputs" value={String(rescoreSummary.observationCount)} />
+                <ProofMetric label="Passed" value={String(rescoreSummary.passCount)} />
+                <ProofMetric label="Failed" value={String(rescoreSummary.failCount)} />
+                <ProofMetric label="Evaluator errors" value={String(rescoreSummary.evaluatorErrorCount)} />
+              </div>
+            </div>
+          )}
 
           {!approved && !readiness.ready && (
             <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4">

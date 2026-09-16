@@ -11,7 +11,6 @@ defmodule SilentRegressionWeb.RunResultControllerTest do
   alias SilentRegression.MonitorOperations
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
-  alias SilentRegression.Reviews
   alias SilentRegression.RunResults.Alert
   alias SilentRegression.WorkspacesFixtures
 
@@ -99,13 +98,28 @@ defmodule SilentRegressionWeb.RunResultControllerTest do
     assert {:ok, member_alert} = SilentRegression.RunResults.get_alert(member_scope, alert.id)
     assert member_alert.status == :acknowledged
 
-    assert {:ok, _review} =
-             Reviews.submit_review(member_scope, %{
-               subject_kind: :alert,
-               subject_id: alert.id,
-               classification: :confirmed_regression,
-               action: :prompt_change
-             })
+    review_path =
+      ~p"/app/#{workspace.slug}/monitors/#{alert.monitor_id}/runs/#{alert.capture_run_id}/reviews"
+
+    reviewed =
+      post(recycle(acknowledged), review_path, %{
+        "review" => %{
+          "subject_kind" => "alert",
+          "subject_id" => alert.id,
+          "classification" => "confirmed_regression",
+          "action" => "prompt_change",
+          "rationale" => "This is a real regression."
+        }
+      })
+
+    assert redirected_to(reviewed) =~ "/runs/"
+    assert Phoenix.Flash.get(reviewed.assigns.flash, :info) =~ "judgment recorded"
+
+    reviewed_page = reviewed |> recycle() |> get(redirected_to(reviewed))
+    assert inertia_props(reviewed_page).result.reviewSummary.currentCount == 1
+    assert [review] = inertia_props(reviewed_page).result.reviews
+    assert review.current
+    assert review.resultAlertId == alert.id
 
     resolved =
       alert_page
@@ -115,6 +129,55 @@ defmodule SilentRegressionWeb.RunResultControllerTest do
     assert redirected_to(resolved) =~ "/runs/"
     assert Phoenix.Flash.get(resolved.assigns.flash, :info) =~ "resolved"
     assert Repo.get!(Alert, alert.id).status == :resolved
+  end
+
+  test "captures a missed regression and starts a linked contract revision from the run", %{
+    conn: conn,
+    scope: scope,
+    workspace: workspace
+  } do
+    fixture = operational_monitor_fixture(scope)
+    replace_secret(fixture.credential.id, "sk-test-output-approved")
+    assert {:ok, run} = MonitorOperations.run_now(scope, fixture.monitor.id)
+    [job] = jobs_for_run(run.id)
+    assert :ok = perform_job(ObservationWorker, job.args)
+
+    run =
+      Repo.get!(SilentRegression.Captures.CaptureRun, run.id)
+      |> Repo.preload(:observations)
+
+    [observation] = run.observations
+    run_path = ~p"/app/#{workspace.slug}/monitors/#{fixture.monitor.id}/runs/#{run.id}"
+    review_path = run_path <> "/reviews"
+
+    reviewed =
+      post(conn, review_path, %{
+        "review" => %{
+          "subject_kind" => "observation",
+          "subject_id" => observation.id,
+          "classification" => "passed_but_should_have_failed",
+          "action" => "contract_revision",
+          "rationale" => "The current rules missed a prohibited response."
+        }
+      })
+
+    reviewed_page = reviewed |> recycle() |> get(run_path)
+    assert [decision] = inertia_props(reviewed_page).result.reviews
+    assert decision.captureObservationId == observation.id
+    assert decision.classification == :passed_but_should_have_failed
+
+    revision =
+      reviewed_page
+      |> recycle()
+      |> post(review_path <> "/#{decision.id}/contract-revision")
+
+    assert redirected_to(revision) ==
+             ~p"/app/#{workspace.slug}/monitors/#{fixture.monitor.id}/contract"
+
+    contract_page = revision |> recycle() |> get(redirected_to(revision))
+    assert [origin] = inertia_props(contract_page).revisionOrigins
+    assert origin.reviewDecisionId == decision.id
+    assert inertia_props(contract_page).contract.status == :draft
   end
 
   test "malformed and foreign monitor, run, and alert identifiers stay hidden", %{

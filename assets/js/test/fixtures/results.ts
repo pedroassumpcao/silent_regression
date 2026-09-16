@@ -14,6 +14,7 @@ export const alert: ResultAlert = {
   resolvedAt: null,
   acknowledgedBy: null,
   resolvedBy: null,
+  resolutionReviewDecisionId: null,
   monitor: { id: "monitor-id", name: "Billing answer guard" },
   run: { id: "run-id", kind: "manual", status: "needs_review", completedAt: "2026-09-16T18:00:00Z" },
 }

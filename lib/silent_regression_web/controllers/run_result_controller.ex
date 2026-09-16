@@ -3,6 +3,7 @@ defmodule SilentRegressionWeb.RunResultController do
 
   alias SilentRegression.RunResults
   alias SilentRegression.RunResults.Presenter
+  alias SilentRegression.Reviews.Presenter, as: ReviewPresenter
 
   def index(conn, %{"monitor_id" => monitor_id}) do
     case RunResults.get_monitor_overview(conn.assigns.current_scope, monitor_id) do
@@ -37,7 +38,13 @@ defmodule SilentRegressionWeb.RunResultController do
           can_resolve: state.can_resolve?,
           monitor: monitor_prop(state.monitor),
           release_stage: "Private alpha",
-          result: Presenter.run_detail(state.run, state.alerts)
+          result:
+            state.run
+            |> Presenter.run_detail(state.alerts)
+            |> Map.merge(%{
+              reviews: Enum.map(state.reviews, &ReviewPresenter.decision/1),
+              review_summary: ReviewPresenter.summary(state.review_summary)
+            })
         })
 
       {:error, :not_found} ->

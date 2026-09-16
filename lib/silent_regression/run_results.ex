@@ -87,19 +87,22 @@ defmodule SilentRegression.RunResults do
         %Scope{
           workspace: %Workspace{id: workspace_id},
           membership: %Membership{} = membership
-        },
+        } = scope,
         monitor_id,
         run_id
       ) do
     with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id),
          {:ok, run_id} <- Ecto.UUID.cast(run_id),
          %Monitor{} = monitor <- load_monitor(workspace_id, monitor_id),
-         %CaptureRun{} = run <- load_detail_run(workspace_id, monitor.id, run_id) do
+         %CaptureRun{} = run <- load_detail_run(workspace_id, monitor.id, run_id),
+         {:ok, review_state} <- Reviews.list_run_reviews(scope, run.id) do
       {:ok,
        %{
          monitor: monitor,
          run: run,
          alerts: run_alerts(workspace_id, run.id),
+         reviews: review_state.decisions,
+         review_summary: review_state.summary,
          can_resolve?: membership.role == :owner
        }}
     else

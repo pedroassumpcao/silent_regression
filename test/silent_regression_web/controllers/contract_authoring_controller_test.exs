@@ -173,6 +173,8 @@ defmodule SilentRegressionWeb.ContractAuthoringControllerTest do
       assert inertia_props(sealed_page).contract.status == :approved
       assert inertia_props(sealed_page).contract.approvedByUserId == user.id
       assert inertia_props(sealed_page).contract.fingerprint =~ ~r/^[0-9a-f]{64}$/
+      assert inertia_props(sealed_page).rescoreSummary.observationCount == 0
+      assert inertia_props(sealed_page).rescoreSummary.evaluatorErrorCount == 0
 
       assert %{"rules" => [%{"allowed_values" => _values} | _rest]} =
                Jason.decode!(inertia_props(sealed_page).contract.rootJson)

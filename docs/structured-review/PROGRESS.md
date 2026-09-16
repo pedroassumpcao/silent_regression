@@ -54,11 +54,22 @@
 
 ### Phase 4: Inertia review experience
 
-**Status:** In progress
+**Status:** Completed
+
+- Added run-level review counts explicitly labeled as human evidence rather than model accuracy.
+- Added structured alert and observation review dialogs using the existing shadcn select, textarea,
+  dialog, badge, button, card, and alert primitives.
+- Added current judgment, append-only history, attribution, rationale, resulting action, stale-write
+  feedback, and missed-regression entry points.
+- Disabled owner resolution until a current judgment exists and exposed direct contract-revision
+  handoff only for decisions that recorded that action.
+- Added review-origin evidence and transactional rescore results to contract authoring.
+- Kept review mutations inside the authenticated workspace-scoped route pipeline because their
+  rationales and referenced outputs are private tenant data.
 
 ### Phase 5: Verification and handoff
 
-**Status:** Not started
+**Status:** In progress
 
 ## Session Log
 
@@ -77,6 +88,8 @@
   tests passing.
 - Completed transactional historical rescoring and semantic baseline compatibility with 42 focused
   contract, baseline, capture, policy, and presenter tests passing.
+- Completed the structured-review Inertia slice with 27 focused backend tests, TypeScript checking,
+  and all 40 frontend tests passing.
 
 ## Blockers
 

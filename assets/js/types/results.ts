@@ -1,6 +1,22 @@
 export type AlertCategory = "contract_failure" | "operational_anomaly"
 export type AlertSeverity = "critical" | "warning"
 export type AlertStatus = "open" | "acknowledged" | "resolved"
+export type ReviewClassification =
+  | "correct_pass"
+  | "confirmed_regression"
+  | "acceptable_variation"
+  | "contract_needs_revision"
+  | "test_case_or_baseline_problem"
+  | "passed_but_should_have_failed"
+  | "unsure"
+  | "operational_anomaly"
+export type ReviewAction =
+  | "none"
+  | "prompt_change"
+  | "case_change"
+  | "contract_revision"
+  | "provider_change"
+  | "operational_follow_up"
 
 export type BoundedText = {
   text: string
@@ -22,6 +38,7 @@ export type ResultAlert = {
   resolvedAt: string | null
   acknowledgedBy: string | null
   resolvedBy: string | null
+  resolutionReviewDecisionId: string | null
   monitor: { id: string; name: string } | null
   run: {
     id: string
@@ -151,6 +168,36 @@ export type RunDetail = {
   }
   alerts: ResultAlert[]
   observations: Observation[]
+  reviews: ReviewDecision[]
+  reviewSummary: ReviewSummary
+}
+
+export type ReviewDecision = {
+  id: string
+  reviewKey: string
+  subjectKind: "alert" | "observation"
+  classification: ReviewClassification
+  action: ReviewAction
+  rationale: BoundedText | null
+  reviewedAt: string
+  reviewedBy: string | null
+  current: boolean
+  supersedesId: string | null
+  captureRunId: string
+  resultAlertId: string | null
+  captureObservationId: string | null
+  captureEvaluationId: string | null
+  captureRuleResultId: string | null
+  contractVersionId: string
+  baselineSnapshotId: string | null
+}
+
+export type ReviewSummary = {
+  currentCount: number
+  classificationCounts: Partial<Record<ReviewClassification, number>>
+  actionCounts: Partial<Record<ReviewAction, number>>
+  changedJudgmentCount: number
+  supersededCount: number
 }
 
 export type Provenance = {
