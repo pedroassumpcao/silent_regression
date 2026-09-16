@@ -713,7 +713,7 @@ instead of inventing a temporary alert lifecycle.
 
 ### Task 12 — Run results, evidence, alerts, and operational signals
 
-**Status:** Not started
+**Status:** In progress
 
 **Objective:** Let users understand exactly what happened and why a result is actionable.
 
