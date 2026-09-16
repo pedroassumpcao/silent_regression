@@ -1,6 +1,6 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 10 complete; Task 11 next
+> **Status:** Task 11 in progress
 >
 > **Progress:** 10 of 14 tasks complete
 >
@@ -281,7 +281,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 8 | Contract authoring, fixture validation, and approval | 6, 7 | Complete | `e766a02`, `40321b3`, `3798fd5`, `fd14b70` |
 | 9 | Durable capture execution and provider accounting | 4, 5, 7 | Complete | `36d385b`, `fff370f`, `e81ef85`, `fa169c6`, `9f3d518` |
 | 10 | Baseline capture, inspection, and approval | 8, 9 | Complete | `76f748e`, `bd060be`, `a632f92`, `6769b25`, `4a4112f` |
-| 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | Not started | — |
+| 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | In progress | — |
 | 12 | Run results, evidence, alerts, and operational signals | 9, 10 | Not started | — |
 | 13 | Structured review and versioned correction loop | 8, 12 | Not started | — |
 | 14 | Onboarding telemetry, notifications, security, and pilot readiness | 2–13 | Not started | — |
@@ -670,7 +670,7 @@ approval with immutable membership and provenance.
 
 ### Task 11 — Manual/daily/weekly scheduling and monitor operations
 
-**Status:** Not started
+**Status:** In progress
 
 **Objective:** Deliver the continuous part of the wedge with a deliberately small scheduling surface.
 
@@ -1431,6 +1431,14 @@ The product is ready for the first external design partner only when:
 - The monitor remains `baseline_pending` intentionally until Task 11 adds approved-baseline-gated
   manual and scheduled operations. No provider request was made during baseline approval.
 - Final `mix precommit` passes with 515 tests. Task 10 is complete; Task 11 is next.
+
+### 2026-09-16 — Task 11 started
+
+- Began the manual/daily/weekly scheduling and monitor-operations work after verifying the approved
+  Billing baseline is compatible and Task 10 is complete.
+- The implementation will retain the existing durable capture path, add database-backed scheduling
+  and atomic claims around it, and keep all provider spend behind explicit manual action or an
+  owner-configured active schedule.
 
 ## 17. References
 
