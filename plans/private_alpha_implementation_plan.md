@@ -1270,6 +1270,20 @@ The product is ready for the first external design partner only when:
 - The remaining Task 10 gate is one explicitly authorized live-provider smoke capture. No live
   completion call was made automatically.
 
+### 2026-09-15 — Task 10 live smoke halted at credential verification
+
+- Received explicit authorization for one OpenAI model-access verification request followed by one
+  planned `gpt-5.6-luna` completion, with at most one retry and 32 output tokens per attempt.
+- The model-access request failed once with the normalized `authentication` category and provider
+  request ID `df15cc9d-00dd-4a03-9ef5-5c307ebdde1f`. The failure was non-retryable, and no baseline
+  completion was authorized, enqueued, or executed.
+- Confirmed through safe credential metadata that the monitor was linked to the intentionally fake
+  browser fixture credential ending in `cret`, which is now marked `invalid`. The workspace's
+  separately stored OpenAI credential ending in `nJgA` remains `valid` but was not selected or used.
+- Task 10 remains in progress. A fresh smoke attempt requires deliberately linking the monitor to
+  the valid credential, presenting the refreshed exact preflight, and obtaining new explicit
+  authorization before another provider request.
+
 ## 17. References
 
 - [Feasibility spike implementation plan](implementation_plan.md)
