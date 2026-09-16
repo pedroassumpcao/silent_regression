@@ -280,7 +280,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 7 | Generic deterministic contract engine | 5 | Complete | `2d93261`, `7d0dbba`, `b0fd9c4`, `b3ad353`, `7626997`, `3215268`, `d7f9671` |
 | 8 | Contract authoring, fixture validation, and approval | 6, 7 | Complete | `e766a02`, `40321b3`, `3798fd5`, `fd14b70` |
 | 9 | Durable capture execution and provider accounting | 4, 5, 7 | Complete | `36d385b`, `fff370f`, `e81ef85`, `fa169c6`, `9f3d518` |
-| 10 | Baseline capture, inspection, and approval | 8, 9 | In progress | `76f748e`, `bd060be`, `a632f92` |
+| 10 | Baseline capture, inspection, and approval | 8, 9 | In progress | `76f748e`, `bd060be`, `a632f92`, `6769b25`, `4a4112f` |
 | 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | Not started | — |
 | 12 | Run results, evidence, alerts, and operational signals | 9, 10 | Not started | — |
 | 13 | Structured review and versioned correction loop | 8, 12 | Not started | — |
@@ -457,6 +457,7 @@ fallback substitution. See [`docs/monitors/RESEARCH.md`](../docs/monitors/RESEAR
 - [x] Add manual case entry and a documented versioned JSON import schema.
 - [x] Enforce initial alpha caps of 1–20 active cases per monitor and bounded payload sizes through configuration.
 - [x] Add provider/model allowlists without silently substituting models.
+- [x] Validate generation settings against an explicit capability profile for every allowlisted provider/model pair.
 - [x] Reject comparisons and baselines with incompatible fingerprints or provenance.
 - [x] Add audit events for monitor version activation, pausing, and archival.
 
@@ -636,12 +637,13 @@ progress from persisted validity rather than user-controlled completion flags. S
 
 **Checklist:**
 
-- [x] Add a preflight that validates credential state, model access, monitor readiness, contract approval, cases, and call caps.
+- [x] Add a preflight that validates credential state, model access, generation compatibility, monitor readiness, contract approval, cases, and call caps.
 - [x] Show exact case count, samples per case, maximum requests, retry policy, and available usage estimate.
 - [x] Require explicit user authorization before enqueueing the baseline.
 - [x] Support a bounded alpha sample count with a conservative default.
 - [x] Stream or poll durable progress without relying on an in-memory browser process.
 - [x] Display successful, incomplete, failed, and unknown completions separately.
+- [x] Preserve and display only bounded, allowlisted, non-secret provider failure diagnostics.
 - [x] Surface returned-model mismatches as operational anomalies even when calls succeed.
 - [x] Require all zero-tolerance contract conditions before normal approval; exceptional acceptance requires an explicit recorded rationale.
 - [x] Seal approved baseline membership and provenance.
@@ -1311,6 +1313,39 @@ The product is ready for the first external design partner only when:
 - The existing failed observation predates this change, so its upstream code and parameter cannot
   be recovered locally. Task 10 still requires a newly authorized diagnostic capture before the
   live gate can pass.
+
+### 2026-09-15 — Task 10 diagnostic retry confirmed model-parameter incompatibility
+
+- Received explicit authorization to reject the first failed pending snapshot while preserving its
+  evidence and repeat the same exact `gpt-5.6-luna` envelope: one case, one sample, one planned
+  completion, one retry maximum, and 32 output tokens per attempt. No new model-access request was
+  made.
+- Rejected snapshot `54094899-b8e3-4c22-8083-eaac04efbaa8`, preserved its failed run, and created
+  pending snapshot `78df9235-c3d8-4ffc-92e3-c20b44c106ba` with capture run
+  `0a6575b7-8f31-418f-bd8b-41f8271327d5` under the unchanged preflight fingerprint.
+- OpenAI rejected the completion once as non-retryable HTTP 400. The new bounded diagnostics
+  conclusively identify `temperature` as the rejected parameter and `invalid_request_error` as the
+  provider type. Provider request ID: `req_cc3193122a2a44b9976b71264557d0b2`. No retry occurred.
+- Replaced the permissive generation form with an explicit provider/model capability matrix. New
+  versions reject unsupported parameters and reasoning efforts, the setup UI renders only supported
+  controls, baseline preflight blocks incompatible historical versions, and the provider adapter
+  supplies a final pre-HTTP guard. The private-alpha OpenAI profiles use provider-default sampling
+  and expose only the documented reasoning efforts; Anthropic profiles retain their implemented
+  sampling controls and do not expose an ignored reasoning setting.
+- Confirmed locally that the historical smoke version now produces the
+  `generation_config_unsupported` preflight blocker and cannot authorize another provider call.
+  Commit `4a4112f`; verification passes with 515 backend tests, 23 frontend tests, TypeScript
+  checking, and a production asset build.
+- Task 10 still requires a corrected immutable monitor version, a compatible approved contract, and
+  one newly authorized successful live capture. No further provider request was made after the
+  confirmed diagnostic failure.
+- Prepared a separate corrected smoke candidate without mutating the historical version: monitor
+  `cdad3447-ea78-4742-bc63-24793dbe24c9`, monitor version
+  `a4336256-941a-43ab-abc2-7fdb15bb446a`, and draft contract
+  `e69bb14a-dfd2-4ec9-8056-29493796ee32`. Its generation configuration contains only the 32-token
+  limit. The unchanged known-valid and known-invalid fixtures both match local evaluation, and the
+  draft reports no approval blockers. It remains deliberately unapproved pending owner review; no
+  provider call was made while preparing it.
 
 ## 17. References
 

@@ -229,6 +229,20 @@ Select a durable job mechanism during product architecture work; do not add a de
 
 Keep a normalized provider contract independent of Req, ReqLLM, or any provider SDK. Evaluate ReqLLM after the spike using the criteria already listed in optional Task 14: API coverage, exact provenance access, retry/call accounting, testability, returned-model fidelity, streaming needs, and maintenance cost. Adopt it only if it reduces adapter complexity without weakening those guarantees.
 
+### 8.4 Provider/model capability lifecycle
+
+Treat generation parameters as capabilities of an exact provider/model request profile, not as a universal form. A parameter accepted by a provider endpoint may still be rejected by a particular model or reasoning mode. The private alpha can use a deliberately small, tested capability matrix, but a broader product needs:
+
+- a versioned capability record for every selectable provider/model pair;
+- documented sources and live contract tests for supported reasoning efforts, sampling controls, structured output, token limits, and endpoint choice;
+- server-side validation during version creation, preflight validation for historical versions, and a final pre-HTTP adapter guard;
+- UI controls derived from the same server-owned capability data rather than a separate frontend list;
+- an explicit policy for provider aliases, dated model snapshots, deprecations, and capability changes;
+- immutable historical configurations that become incompatible rather than being silently rewritten or having unsupported fields dropped; and
+- bounded allowlisted failure diagnostics—such as HTTP status, provider error code, and rejected parameter—without retaining raw provider error bodies or messages.
+
+Refreshing capability data must be an auditable release operation. It must never silently change the effective request configuration of an existing baseline.
+
 ## 9. Privacy, security, and governance
 
 Before accepting customer data, define and test:
