@@ -32,11 +32,11 @@ encryption-key operations, or pilot spending remains gated by the decisions reco
 
 ## Phase 4: Closure, retention, and deletion
 
-- [ ] Add owner-governed closure with immediate execution shutdown and credential revocation.
-- [ ] Add deletion requests and content-free deletion receipts.
-- [ ] Implement and test the complete restrictive-FK-aware purge order.
-- [ ] Add operator commands for closure recovery and due deletion execution.
-- [ ] Document active, closed, deleted, and backup retention behavior.
+- [x] Add owner-governed closure with immediate execution shutdown and credential revocation.
+- [x] Add deletion requests and content-free deletion receipts.
+- [x] Implement and test the complete restrictive-FK-aware purge order.
+- [x] Add operator commands for closure recovery and due deletion execution.
+- [x] Document active, closed, deleted, and backup retention behavior.
 
 ## Phase 5: Security and operator readiness
 

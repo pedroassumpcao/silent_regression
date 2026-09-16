@@ -28,6 +28,8 @@ defmodule SilentRegression.Monitors.Monitor do
     :incompatible_configuration,
     :repeated_authentication_failures,
     :workspace_call_limit,
+    :workspace_run_limit,
+    :workspace_closed,
     :schedule_owner_unavailable
   ]
 

@@ -18,9 +18,13 @@ defmodule SilentRegression.Workspaces.Workspace do
     field :status, Ecto.Enum, values: @statuses, default: :active
     field :timezone, :string, default: "Etc/UTC"
     field :alpha_access, :boolean, default: true
+    field :closed_at, :utc_datetime
+    field :deletion_requested_at, :utc_datetime
+    field :purge_after, :utc_datetime
 
     has_many :memberships, SilentRegression.Workspaces.Membership
     has_many :invitations, SilentRegression.Workspaces.Invitation
+    belongs_to :closed_by_user, SilentRegression.Accounts.User
 
     timestamps(type: :utc_datetime)
   end
@@ -45,4 +49,34 @@ defmodule SilentRegression.Workspaces.Workspace do
   end
 
   def statuses, do: @statuses
+
+  def close_changeset(workspace, user, mode, at, purge_after)
+      when mode in [:closure_retention, :explicit_request] do
+    deletion_requested_at = if mode == :explicit_request, do: at
+
+    workspace
+    |> change(
+      status: :closed,
+      closed_at: at,
+      deletion_requested_at: deletion_requested_at,
+      purge_after: purge_after,
+      closed_by_user_id: user.id
+    )
+    |> check_constraint(:status, name: :workspaces_status_check)
+    |> check_constraint(:status, name: :workspaces_retention_lifecycle_check)
+    |> foreign_key_constraint(:closed_by_user_id)
+  end
+
+  def reopen_changeset(workspace) do
+    workspace
+    |> change(
+      status: :active,
+      closed_at: nil,
+      deletion_requested_at: nil,
+      purge_after: nil,
+      closed_by_user_id: nil
+    )
+    |> check_constraint(:status, name: :workspaces_status_check)
+    |> check_constraint(:status, name: :workspaces_retention_lifecycle_check)
+  end
 end

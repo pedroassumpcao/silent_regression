@@ -1,6 +1,6 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 14 in progress; decision gates pending
+> **Status:** Task 14 in progress; decision gates approved, phases 1–4 complete
 >
 > **Progress:** 13 of 14 tasks complete
 >
@@ -803,13 +803,13 @@ instead of inventing a temporary alert lifecycle.
 
 **Checklist:**
 
-- [ ] Add a derived onboarding checklist for credential, workflow, cases, contract, baseline, and schedule.
-- [ ] Add allowlisted product events for time-to-first-monitor, step abandonment, founder assistance, baseline approval, schedule activation, alert review, and action taken.
-- [ ] Keep product events free of prompts, contexts, outputs, credentials, and arbitrary user text.
-- [ ] Add one actionable-alert email path with deduplication and preference control.
-- [ ] Use the local Swoosh adapter until a transactional provider is selected.
-- [ ] Add workspace-level run and call caps with clear errors.
-- [ ] Add retention, customer deletion, credential revocation, and workspace closure workflows.
+- [x] Add a derived onboarding checklist for credential, workflow, cases, contract, baseline, and schedule.
+- [x] Add allowlisted product events for time-to-first-monitor, step abandonment, founder assistance, baseline approval, schedule activation, alert review, and action taken.
+- [x] Keep product events free of prompts, contexts, outputs, credentials, and arbitrary user text.
+- [x] Add one actionable-alert email path with deduplication and preference control.
+- [x] Use the local Swoosh adapter until a transactional provider is selected.
+- [x] Add workspace-level run and call caps with clear errors.
+- [x] Add retention, customer deletion, credential revocation, and workspace closure workflows.
 - [ ] Verify logs, telemetry, exceptions, job arguments, and audit events against a sensitive-data allowlist.
 - [ ] Add rate limiting for login, invitations, credential validation, and run authorization.
 - [ ] Add backup/restore and encryption-key rotation notes for eventual Fly.io deployment.

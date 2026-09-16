@@ -87,6 +87,12 @@ config :silent_regression, :rate_limits,
 # Development-only default. Production must replace this in runtime configuration before launch.
 config :silent_regression, :rate_limit_hmac_key, "silent-regression-development-rate-limit-key"
 
+# Development-only default. Production must replace this before launch. It is
+# used only to make non-reversible, content-free workspace deletion receipts.
+config :silent_regression,
+       :deletion_receipt_hmac_key,
+       "silent-regression-development-deletion-receipt-key"
+
 # Provider credentials are write-only inputs. Phoenix filters matching keys at
 # every depth before request parameters are logged.
 config :phoenix, :filter_parameters, [

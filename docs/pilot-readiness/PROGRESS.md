@@ -1,6 +1,6 @@
 # Pilot Readiness Progress
 
-## Status: Phases 1–3 complete; Phase 4 next
+## Status: Phases 1–4 complete; Phase 5 next
 
 ## Quick Reference
 
@@ -24,7 +24,7 @@
 
 ### Phase 4: Closure, retention, and deletion
 
-**Status:** Not started
+**Status:** Complete
 
 ### Phase 5: Security and operator readiness
 
@@ -86,6 +86,18 @@
   validation, schedule activation/resumption, baseline authorization, and Run now.
 - Stored only HMAC digests for rate-limit subjects and returned generic HTTP 429 responses with a
   `Retry-After` boundary. Focused tests verified raw emails and IPs never enter limiter rows.
+- Added owner-only close and deletion-request controls with exact workspace-slug confirmation inside
+  the authenticated workspace route scope.
+- Closure now cancels active capture work and notification jobs, pauses active monitors, revokes
+  provider credentials and pending invitations, and immediately removes tenant access.
+- Added a 30-day recoverable closure path, an irreversible deletion-request path due immediately,
+  and content-free HMAC-fingerprinted deletion receipts without workspace foreign keys.
+- Added narrowly transaction-scoped purge support to the database's immutable-history triggers and
+  verified the restrictive evidence graph can be deleted without weakening ordinary immutability.
+- Added guarded operator commands for dry-run purge preview, due purge execution, and owner-verified
+  recovery. Shared accounts survive when they retain another workspace membership.
+- Documented active, closed, deleted, and disaster-recovery backup behavior in
+  `docs/pilot-readiness/DATA_RETENTION.md`.
 
 ## Blockers
 

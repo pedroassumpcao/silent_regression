@@ -10,6 +10,7 @@ import {
   LogOut,
   LayoutDashboard,
   Mail,
+  Database,
   Settings2,
   ShieldCheck,
   UserRound,
@@ -33,7 +34,7 @@ import {
 import { cn } from "@/lib/utils"
 
 type ProductShellProps = PropsWithChildren<{
-  currentSection?: "overview" | "credentials" | "monitors" | "alerts" | "notifications"
+  currentSection?: "overview" | "credentials" | "monitors" | "alerts" | "notifications" | "data"
   releaseStage: string
   userEmail: string
   workspace: { name: string; slug: string }
@@ -86,6 +87,12 @@ export function ProductShell({
       icon: Mail,
       href: `/app/${workspace.slug}/settings/notifications`,
       current: currentSection === "notifications",
+    },
+    {
+      label: "Data & retention",
+      icon: Database,
+      href: `/app/${workspace.slug}/settings/data`,
+      current: currentSection === "data",
     },
   ]
 
