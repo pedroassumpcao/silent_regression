@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 11 complete; Task 12 next
+> **Status:** Task 12 complete; Task 13 next
 >
-> **Progress:** 11 of 14 tasks complete
+> **Progress:** 12 of 14 tasks complete
 >
 > **Last revised:** 2026-09-16
 >
@@ -282,7 +282,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 9 | Durable capture execution and provider accounting | 4, 5, 7 | Complete | `36d385b`, `fff370f`, `e81ef85`, `fa169c6`, `9f3d518` |
 | 10 | Baseline capture, inspection, and approval | 8, 9 | Complete | `76f748e`, `bd060be`, `a632f92`, `6769b25`, `4a4112f` |
 | 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | Complete | `bafadc1`, `dd1c29a`, `03dc23f`, `e8ef6b2` |
-| 12 | Run results, evidence, alerts, and operational signals | 9, 10 | In progress | `da75863` |
+| 12 | Run results, evidence, alerts, and operational signals | 9, 10 | Complete | `da75863`, `9ae5017`, `8ae1a9f`, `7214c24`, `b883257`, `1da2310`, `a883245` |
 | 13 | Structured review and versioned correction loop | 8, 12 | Not started | — |
 | 14 | Onboarding telemetry, notifications, security, and pilot readiness | 2–13 | Not started | — |
 
@@ -713,23 +713,23 @@ instead of inventing a temporary alert lifecycle.
 
 ### Task 12 — Run results, evidence, alerts, and operational signals
 
-**Status:** In progress
+**Status:** Complete
 
 **Objective:** Let users understand exactly what happened and why a result is actionable.
 
 **Checklist:**
 
-- [ ] Build monitor overview and run-history pages.
-- [ ] Build a run detail page with planned/actual calls, completion counts, latency, tokens, and provider failures.
-- [ ] Show each case, observation, evaluation, and rule result with bounded evidence.
-- [ ] Clearly separate contract failures from provider/latency/usage/model anomalies.
-- [ ] Support critical and warning rule severities plus a small explicit alert policy.
-- [ ] Create alerts idempotently from actionable run outcomes.
-- [ ] Add open, acknowledged, and resolved alert states.
-- [ ] Show baseline and current provenance together and reject incompatible comparisons.
-- [ ] Avoid unexplained aggregate quality scores.
-- [ ] Add safe empty, loading, partial failure, stale configuration, and no-alert states.
-- [ ] Ensure long prompts, contexts, and outputs cannot break layout or inject executable content.
+- [x] Build monitor overview and run-history pages.
+- [x] Build a run detail page with planned/actual calls, completion counts, latency, tokens, and provider failures.
+- [x] Show each case, observation, evaluation, and rule result with bounded evidence.
+- [x] Clearly separate contract failures from provider/latency/usage/model anomalies.
+- [x] Support critical and warning rule severities plus a small explicit alert policy.
+- [x] Create alerts idempotently from actionable run outcomes.
+- [x] Add open, acknowledged, and resolved alert states.
+- [x] Show baseline and current provenance together and reject incompatible comparisons.
+- [x] Avoid unexplained aggregate quality scores.
+- [x] Add safe empty, loading, partial failure, stale configuration, and no-alert states.
+- [x] Ensure long prompts, contexts, and outputs cannot break layout or inject executable content.
 
 **Acceptance criteria:**
 
@@ -904,7 +904,7 @@ The product is ready for the first external design partner only when:
 - [ ] OpenAI and Anthropic smoke tests pass under explicit call caps.
 - [ ] Every behavior-affecting edit produces a compatible new version or invalidates the baseline.
 - [ ] Scheduled work is durable, bounded, unique, and recoverable.
-- [ ] Alerts show deterministic evidence and do not claim semantic understanding.
+- [x] Alerts show deterministic evidence and do not claim semantic understanding.
 - [ ] Result feedback records false alerts and missed regressions.
 - [ ] Customer-visible data use, retention, limitations, and deletion behavior are documented.
 - [ ] The operator runbook and deployment-readiness checklist are complete.
@@ -944,6 +944,7 @@ The product is ready for the first external design partner only when:
 | 2026-09-15 | Use workflow templates, a bounded flat rule editor, and fixture-gated owner approval | The alpha needs to test whether customers understand deterministic expectations without making raw DSL authoring the default; exact contract and fixture bytes remain sealed and attributable | 8, 10, 13 |
 | 2026-09-15 | Preserve evaluator-owned map keys as JSON strings across the Inertia boundary | Recursive prop camelization is useful for application props but must not rename contract DSL or rule-ID keys; explicit JSON transport preserves exact deterministic bytes and is covered by controller and browser tests | 8–13 |
 | 2026-09-15 | Make baseline authorization and approval owner-only with sealed pending snapshots | The first provider spend and the reference used by later schedules need exact preview provenance, idempotent authorization, immutable observation membership, and stricter operational blockers than exceptional deterministic acceptance | 10 onward |
+| 2026-09-16 | Keep content findings, operational anomalies, and human judgment as separate layers | Deterministic failures can be decisive now; provider/model/usage/latency facts need explicit provenance-aware policy, while append-only customer judgment belongs to Task 13 | 12–14 |
 
 ## 16. Session log
 
@@ -1473,6 +1474,28 @@ The product is ready for the first external design partner only when:
   TypeScript checking, all 29 frontend tests, the production asset build, and `mix precommit` with
   536 Elixir tests.
 - Task 11 commits: `bafadc1`, `dd1c29a`, `03dc23f`, and `e8ef6b2`. Task 12 is next.
+
+### 2026-09-16 — Task 12 complete
+
+- Added optional critical/warning rule severity, persisted it on immutable evaluation evidence, and
+  pinned each new managed run to its exact compatible baseline snapshot. Existing compatible runs
+  were conservatively backfilled, while missing or mismatched provenance blocks relative metrics.
+- Added database-enforced alert identity and immutable evidence, idempotent terminal-run
+  synchronization, separate contract/operational categories, explicit conservative latency and
+  usage thresholds, and a forward-only open → acknowledged → resolved lifecycle. Members may
+  acknowledge; owners alone may resolve after acknowledgement; both actions are audited.
+- Added bounded/redacted presenters, workspace alert and monitor history queries, exact run detail,
+  and a diagnostic export that omits prompts, case inputs/context, outputs, and rule evidence.
+- Added the authenticated Alerts inbox, monitor Results history, and complete Run evidence screens.
+  Active dashboard cards and monitor operations link directly into results; UI language never
+  converts provider/model/metric anomalies into content-degradation claims or a composite score.
+- A headed fake-provider browser journey created a deterministic contract failure, navigated from
+  results to exact evidence, acknowledged it, resolved it as an owner, and verified the retained
+  resolved record in the workspace inbox. The browser console remained error-free and both Results
+  and Alerts measured exactly 390 px at a 390 px viewport after correcting the shared mobile header.
+- Verification passes with 37 frontend tests, a production asset build, and `mix precommit` with
+  555 Elixir tests. No live provider call was made. Task 12 commits: `da75863`, `9ae5017`,
+  `8ae1a9f`, `7214c24`, `b883257`, `1da2310`, and `a883245`. Task 13 is next.
 
 ## 17. References
 

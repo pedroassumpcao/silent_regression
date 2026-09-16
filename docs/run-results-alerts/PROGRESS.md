@@ -1,6 +1,6 @@
 # Run Results and Alerts Progress
 
-## Status: Phase 4 - Completed
+## Status: Task Complete
 
 ## Quick Reference
 
@@ -116,15 +116,24 @@
 
 ### Phase 5: Verification and Handoff
 
-**Status:** Not Started
+**Status:** Completed
 
 #### Tasks Completed
 
-- None.
+- Completed the headed fake-provider journey from deterministic failure through evidence inspection,
+  acknowledgement, owner resolution, and retained workspace alert history with no live call.
+- Verified desktop and 390 px layouts, fixed a shared mobile-shell overflow, and confirmed no
+  browser console errors.
+- Passed all 37 frontend tests, the production asset build, and `mix precommit` with 555 Elixir
+  tests after removing the isolated browser fixture from the test database.
+- Reconciled Task 12 and the private-alpha readiness checklist; Task 13 now owns append-only human
+  review judgments and correction.
 
 #### Decisions Made
 
 - Browser verification uses the fake provider and makes zero live provider calls.
+- Test-only browser fixtures must be removed before the full suite because several foundational
+  tests deliberately assert global empty-state counts.
 
 #### Blockers
 
@@ -145,6 +154,8 @@
 - Completed Phase 2 with 33 focused alert-policy, lifecycle, capture, and scheduling tests passing.
 - Completed Phase 3 with focused presenter, redaction, provenance, history, and workspace-scope tests.
 - Completed Phase 4 with the full results/alerts Inertia slice and focused backend/frontend tests.
+- Completed Phase 5 with the fake-provider browser lifecycle, exact 390 px overflow check, 37
+  frontend tests, a production asset build, and 555 passing Elixir tests.
 
 ## Files Changed
 

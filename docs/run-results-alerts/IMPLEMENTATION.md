@@ -118,9 +118,9 @@ Prove the Task 12 acceptance criteria and record the implementation boundary for
 
 - [x] Add policy, lifecycle, provenance, presenter, controller, and cross-tenant tests.
 - [x] Add frontend evidence, lifecycle, empty-state, and responsive-class tests.
-- [ ] Run a browser journey from a fake completed run through alert inspection and resolution.
-- [ ] Run frontend checks, asset build, and `mix precommit`.
-- [ ] Complete the private-alpha plan and progress records.
+- [x] Run a browser journey from a fake completed run through alert inspection and resolution.
+- [x] Run frontend checks, asset build, and `mix precommit`.
+- [x] Complete the private-alpha plan and progress records.
 
 ### Success Criteria
 
