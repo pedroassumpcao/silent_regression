@@ -75,9 +75,17 @@ config :silent_regression, :capture_domain,
   max_samples_per_case: 10
 
 config :silent_regression, :monitor_operations,
-  daily_workspace_call_limit: 200,
   repeated_authentication_failure_limit: 2,
   dispatcher_batch_size: 100
+
+config :silent_regression, :rate_limits,
+  login: [limit: 10, window_seconds: 900],
+  invitation_acceptance: [limit: 10, window_seconds: 3600],
+  credential_validation: [limit: 20, window_seconds: 3600],
+  run_authorization: [limit: 60, window_seconds: 3600]
+
+# Development-only default. Production must replace this in runtime configuration before launch.
+config :silent_regression, :rate_limit_hmac_key, "silent-regression-development-rate-limit-key"
 
 # Provider credentials are write-only inputs. Phoenix filters matching keys at
 # every depth before request parameters are logged.

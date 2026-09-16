@@ -2,6 +2,7 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
   use SilentRegressionWeb, :controller
 
   alias SilentRegression.MonitorOperations
+  alias SilentRegressionWeb.RateLimit
 
   def show(conn, %{"monitor_id" => monitor_id}) do
     case MonitorOperations.get_state(conn.assigns.current_scope, monitor_id) do
@@ -17,33 +18,47 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
   end
 
   def configure(conn, %{"monitor_id" => monitor_id} = params) do
-    case MonitorOperations.configure(
-           conn.assigns.current_scope,
-           monitor_id,
-           Map.get(params, "schedule", %{})
-         ) do
-      {:ok, monitor} ->
-        action =
-          if monitor.state == :active, do: "Monitoring schedule saved.", else: "Schedule saved."
+    case RateLimit.check(conn, :run_authorization, rate_subject(conn, monitor_id)) do
+      :ok ->
+        case MonitorOperations.configure(
+               conn.assigns.current_scope,
+               monitor_id,
+               Map.get(params, "schedule", %{})
+             ) do
+          {:ok, monitor} ->
+            action =
+              if monitor.state == :active,
+                do: "Monitoring schedule saved.",
+                else: "Schedule saved."
 
-        conn
-        |> put_flash(:info, action)
-        |> redirect(to: operations_path(conn, monitor_id))
+            conn
+            |> put_flash(:info, action)
+            |> redirect(to: operations_path(conn, monitor_id))
 
-      {:error, reason} ->
-        handle_operation_error(conn, monitor_id, reason)
+          {:error, reason} ->
+            handle_operation_error(conn, monitor_id, reason)
+        end
+
+      {:error, state} ->
+        RateLimit.reject(conn, state)
     end
   end
 
   def run_now(conn, %{"monitor_id" => monitor_id}) do
-    case MonitorOperations.run_now(conn.assigns.current_scope, monitor_id) do
-      {:ok, _run} ->
-        conn
-        |> put_flash(:info, "Run queued with the displayed provider-call limit.")
-        |> redirect(to: operations_path(conn, monitor_id))
+    case RateLimit.check(conn, :run_authorization, rate_subject(conn, monitor_id)) do
+      :ok ->
+        case MonitorOperations.run_now(conn.assigns.current_scope, monitor_id) do
+          {:ok, _run} ->
+            conn
+            |> put_flash(:info, "Run queued with the displayed provider-call limit.")
+            |> redirect(to: operations_path(conn, monitor_id))
 
-      {:error, reason} ->
-        handle_operation_error(conn, monitor_id, reason)
+          {:error, reason} ->
+            handle_operation_error(conn, monitor_id, reason)
+        end
+
+      {:error, state} ->
+        RateLimit.reject(conn, state)
     end
   end
 
@@ -60,20 +75,27 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
   end
 
   def resume(conn, %{"monitor_id" => monitor_id}) do
-    case MonitorOperations.resume(conn.assigns.current_scope, monitor_id) do
-      {:ok, _monitor} ->
-        conn
-        |> put_flash(:info, "Monitor resumed from a fresh schedule anchor.")
-        |> redirect(to: operations_path(conn, monitor_id))
+    case RateLimit.check(conn, :run_authorization, rate_subject(conn, monitor_id)) do
+      :ok ->
+        case MonitorOperations.resume(conn.assigns.current_scope, monitor_id) do
+          {:ok, _monitor} ->
+            conn
+            |> put_flash(:info, "Monitor resumed from a fresh schedule anchor.")
+            |> redirect(to: operations_path(conn, monitor_id))
 
-      {:error, reason} ->
-        handle_operation_error(conn, monitor_id, reason)
+          {:error, reason} ->
+            handle_operation_error(conn, monitor_id, reason)
+        end
+
+      {:error, state} ->
+        RateLimit.reject(conn, state)
     end
   end
 
   defp render_operations(conn, state) do
     monitor = state.monitor
     version = monitor.active_version
+    usage = state.pilot_usage
 
     conn
     |> assign(:page_title, "Monitor operations · #{monitor.name}")
@@ -102,10 +124,14 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
       spend: %{
         case_count: div(state.maximum_call_count, 2),
         maximum_call_count: state.maximum_call_count,
-        workspace_call_limit: state.workspace_call_limit,
-        workspace_committed_calls_today: state.workspace_committed_calls_today,
-        workspace_remaining_calls_today:
-          max(state.workspace_call_limit - state.workspace_committed_calls_today, 0)
+        per_run_call_limit: usage.per_run_call_limit,
+        workspace_call_limit: usage.daily_call_limit,
+        workspace_committed_calls_today: usage.committed_calls_today,
+        workspace_remaining_calls_today: usage.remaining_calls_today,
+        workspace_run_limit: usage.daily_run_limit,
+        workspace_runs_today: usage.runs_today,
+        workspace_remaining_runs_today: usage.remaining_runs_today,
+        resets_at: usage.resets_at
       }
     })
   end
@@ -165,6 +191,22 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
     )
   end
 
+  defp handle_operation_error(conn, monitor_id, :workspace_run_limit) do
+    operation_failed(
+      conn,
+      monitor_id,
+      "The workspace authorized-run limit is exhausted for today."
+    )
+  end
+
+  defp handle_operation_error(conn, monitor_id, :per_run_call_limit) do
+    operation_failed(
+      conn,
+      monitor_id,
+      "This run would exceed the workspace per-run provider-call limit."
+    )
+  end
+
   defp handle_operation_error(conn, monitor_id, :run_in_progress) do
     operation_failed(conn, monitor_id, "This monitor already has an unfinished run.")
   end
@@ -189,5 +231,10 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
 
   defp operations_path(conn, monitor_id) do
     ~p"/app/#{conn.assigns.current_scope.workspace.slug}/monitors/#{monitor_id}/operations"
+  end
+
+  defp rate_subject(conn, monitor_id) do
+    scope = conn.assigns.current_scope
+    [scope.workspace.id, scope.user.id, monitor_id]
   end
 end

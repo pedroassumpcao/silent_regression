@@ -24,6 +24,7 @@ defmodule SilentRegression.Captures do
   alias SilentRegression.Captures.Workers.ObservationWorker
   alias SilentRegression.ContractAuthoring.ContractVersion
   alias SilentRegression.Monitors.{CaseVersion, Fingerprint, Monitor, MonitorVersion}
+  alias SilentRegression.PilotPolicies
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Providers
   alias SilentRegression.Providers.{CompletionRequest, CompletionResult, Failure}
@@ -261,9 +262,15 @@ defmodule SilentRegression.Captures do
           else: {:error, :identity_conflict}
 
       nil ->
-        case active_run_for_monitor(resources.monitor.id) do
-          nil -> insert_run(resources, user, plan)
-          %CaptureRun{} -> {:error, :run_in_progress}
+        with :ok <-
+               PilotPolicies.authorize_new_run(
+                 resources.workspace_id,
+                 plan.maximum_call_count
+               ) do
+          case active_run_for_monitor(resources.monitor.id) do
+            nil -> insert_run(resources, user, plan)
+            %CaptureRun{} -> {:error, :run_in_progress}
+          end
         end
     end
   end

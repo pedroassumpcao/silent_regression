@@ -2,7 +2,7 @@ defmodule SilentRegressionWeb.WorkspaceInvitationController do
   use SilentRegressionWeb, :controller
 
   alias SilentRegression.Workspaces
-  alias SilentRegressionWeb.UserAuth
+  alias SilentRegressionWeb.{RateLimit, UserAuth}
 
   def show(conn, %{"token" => token}) do
     with {:ok, invitation} <- Workspaces.get_invitation_by_token(token),
@@ -36,22 +36,28 @@ defmodule SilentRegressionWeb.WorkspaceInvitationController do
   end
 
   def accept(conn, %{"token" => token}) do
-    with {:ok, invitation} <- Workspaces.get_invitation_by_token(token),
-         :ok <- ensure_authenticated_email_matches(conn, invitation.email),
-         {:ok, result} <- Workspaces.accept_invitation(token) do
-      conn
-      |> put_flash(:info, "Welcome to #{result.workspace.name}.")
-      |> UserAuth.log_in_user(result.user, %{}, "invitation")
-    else
-      {:error, :email_mismatch} ->
-        conn
-        |> put_flash(:error, "Sign out before accepting an invitation for another email.")
-        |> redirect(to: ~p"/")
+    case RateLimit.check(conn, :invitation_acceptance, [token]) do
+      :ok ->
+        with {:ok, invitation} <- Workspaces.get_invitation_by_token(token),
+             :ok <- ensure_authenticated_email_matches(conn, invitation.email),
+             {:ok, result} <- Workspaces.accept_invitation(token) do
+          conn
+          |> put_flash(:info, "Welcome to #{result.workspace.name}.")
+          |> UserAuth.log_in_user(result.user, %{}, "invitation")
+        else
+          {:error, :email_mismatch} ->
+            conn
+            |> put_flash(:error, "Sign out before accepting an invitation for another email.")
+            |> redirect(to: ~p"/")
 
-      {:error, _reason} ->
-        conn
-        |> put_flash(:error, "This invitation is no longer available.")
-        |> redirect(to: ~p"/users/log-in")
+          {:error, _reason} ->
+            conn
+            |> put_flash(:error, "This invitation is no longer available.")
+            |> redirect(to: ~p"/users/log-in")
+        end
+
+      {:error, state} ->
+        RateLimit.reject(conn, state)
     end
   end
 

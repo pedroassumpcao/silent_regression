@@ -24,11 +24,11 @@ encryption-key operations, or pilot spending remains gated by the decisions reco
 
 ## Phase 3: Pilot limits and rate limiting
 
-- [ ] Add explicit workspace run/call policies and usage presentation.
-- [ ] Enforce run and call caps before planning or dispatch.
-- [ ] Add hashed PostgreSQL fixed-window rate-limit buckets.
-- [ ] Protect login, invitation acceptance, credential validation, and run authorization.
-- [ ] Return clear retry and capacity errors without leaking account existence.
+- [x] Add explicit workspace run/call policies and usage presentation.
+- [x] Enforce run and call caps before planning or dispatch.
+- [x] Add hashed PostgreSQL fixed-window rate-limit buckets.
+- [x] Protect login, invitation acceptance, credential validation, and run authorization.
+- [x] Return clear retry and capacity errors without leaking account existence.
 
 ## Phase 4: Closure, retention, and deletion
 

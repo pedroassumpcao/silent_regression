@@ -1,6 +1,6 @@
 # Pilot Readiness Progress
 
-## Status: Phases 1–2 complete; Phase 3 next
+## Status: Phases 1–3 complete; Phase 4 next
 
 ## Quick Reference
 
@@ -20,7 +20,7 @@
 
 ### Phase 3: Pilot limits and rate limiting
 
-**Status:** Not started
+**Status:** Complete
 
 ### Phase 4: Closure, retention, and deletion
 
@@ -76,6 +76,16 @@
   workspace scope. The Local adapter remains active until deployment configuration is supplied.
 - Verified outbox deduplication, preference suppression, retry idempotency, delivery state, safe
   email content, workspace authorization, and the complete frontend suite.
+- Persisted the approved 20-run/day, 200-call/day, and 200-call/run policy per workspace, while
+  retaining the existing two-model OpenAI and two-model Anthropic allowlists.
+- Centralized atomic pre-insert capacity enforcement in capture planning so baseline, manual, and
+  scheduled runs cannot bypass limits through a lower-level entry point.
+- Added current UTC usage, remaining run/call capacity, per-run limit, and reset time to monitor
+  operations.
+- Added atomic PostgreSQL fixed-window limits for login, invitation acceptance, credential/model
+  validation, schedule activation/resumption, baseline authorization, and Run now.
+- Stored only HMAC digests for rate-limit subjects and returned generic HTTP 429 responses with a
+  `Retry-After` boundary. Focused tests verified raw emails and IPs never enter limiter rows.
 
 ## Blockers
 

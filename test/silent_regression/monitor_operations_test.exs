@@ -15,6 +15,7 @@ defmodule SilentRegression.MonitorOperationsTest do
   alias SilentRegression.MonitorOperations.Workers.DispatcherWorker
   alias SilentRegression.Monitors
   alias SilentRegression.Monitors.Monitor
+  alias SilentRegression.PilotPolicies
   alias SilentRegression.ProviderCredentials
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
@@ -275,15 +276,11 @@ defmodule SilentRegression.MonitorOperationsTest do
       fixture: fixture,
       scope: scope
     } do
-      previous = Application.fetch_env!(:silent_regression, :monitor_operations)
-
-      Application.put_env(
-        :silent_regression,
-        :monitor_operations,
-        Keyword.put(previous, :daily_workspace_call_limit, 4)
-      )
-
-      on_exit(fn -> Application.put_env(:silent_regression, :monitor_operations, previous) end)
+      PilotPolicies.update_limits!(scope.workspace.id, %{
+        daily_run_limit: 20,
+        daily_call_limit: 4,
+        per_run_call_limit: 4
+      })
 
       assert {:ok, _monitor} =
                MonitorOperations.configure(scope, fixture.monitor.id, %{cadence: :manual})

@@ -74,9 +74,14 @@ export type OperationsProps = {
   spend: {
     caseCount: number
     maximumCallCount: number
+    perRunCallLimit: number
     workspaceCallLimit: number
     workspaceCommittedCallsToday: number
     workspaceRemainingCallsToday: number
+    workspaceRunLimit: number
+    workspaceRunsToday: number
+    workspaceRemainingRunsToday: number
+    resetsAt: string
   }
 }
 
@@ -309,7 +314,7 @@ export function OperationsView({
                     <Alert>
                       <Gauge />
                       <AlertTitle>Workspace guardrail</AlertTitle>
-                      <AlertDescription>{spend.workspaceRemainingCallsToday} of {spend.workspaceCallLimit} authorized calls remain in today&apos;s UTC envelope.</AlertDescription>
+                      <AlertDescription>{spend.workspaceRemainingRunsToday} of {spend.workspaceRunLimit} runs and {spend.workspaceRemainingCallsToday} of {spend.workspaceCallLimit} calls remain in today&apos;s UTC envelope.</AlertDescription>
                     </Alert>
                     <DialogFooter>
                       <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
@@ -329,9 +334,11 @@ export function OperationsView({
                 <CardDescription>Conservative maximum calls committed in UTC, including retry capacity.</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="mb-2 flex items-center justify-between text-sm"><span>{spend.workspaceCommittedCallsToday} committed</span><span className="text-muted-foreground">{spend.workspaceCallLimit} limit</span></div>
+                <div className="mb-2 flex items-center justify-between text-sm"><span>{spend.workspaceCommittedCallsToday} calls committed</span><span className="text-muted-foreground">{spend.workspaceCallLimit} limit</span></div>
                 <Progress value={Math.min((spend.workspaceCommittedCallsToday / spend.workspaceCallLimit) * 100, 100)} aria-label="Workspace provider-call envelope" />
-                <p className="mt-3 text-xs leading-5 text-muted-foreground">A monitor auto-pauses before a new run could exceed this envelope. Credential problems can be resolved from <Link className="font-medium text-foreground underline underline-offset-4" href={credentialsPath}>Provider credentials</Link>.</p>
+                <div className="mt-4 flex items-center justify-between border-t pt-4 text-sm"><span>{spend.workspaceRunsToday} runs authorized</span><span className="text-muted-foreground">{spend.workspaceRunLimit} limit</span></div>
+                <Progress value={Math.min((spend.workspaceRunsToday / spend.workspaceRunLimit) * 100, 100)} aria-label="Workspace authorized-run envelope" className="mt-2" />
+                <p className="mt-3 text-xs leading-5 text-muted-foreground">Each run is capped at {spend.perRunCallLimit} calls. Limits reset {formatUtc(spend.resetsAt)}. A monitor auto-pauses before a new run could exceed this envelope. Credential problems can be resolved from <Link className="font-medium text-foreground underline underline-offset-4" href={credentialsPath}>Provider credentials</Link>.</p>
               </CardContent>
             </Card>
           </div>

@@ -44,9 +44,14 @@ const baseProps: OperationsProps = {
   spend: {
     caseCount: 1,
     maximumCallCount: 2,
+    perRunCallLimit: 200,
     workspaceCallLimit: 200,
     workspaceCommittedCallsToday: 2,
     workspaceRemainingCallsToday: 198,
+    workspaceRunLimit: 20,
+    workspaceRunsToday: 1,
+    workspaceRemainingRunsToday: 19,
+    resetsAt: "2026-09-17T00:00:00Z",
   },
 }
 
@@ -73,12 +78,13 @@ describe("OperationsView", () => {
       />,
     )
 
+    expect(screen.getByRole("progressbar", { name: "Workspace authorized-run envelope" })).toHaveAttribute("aria-valuenow", "5")
     await user.click(screen.getByRole("button", { name: "Run now" }))
 
     expect(screen.getByRole("dialog")).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: "Authorize this bounded provider run?" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Authorize up to 2 calls" })).toBeEnabled()
-    expect(screen.getByText(/198 of 200 authorized calls remain/i)).toBeInTheDocument()
+    expect(screen.getByText(/19 of 20 runs and 198 of 200 calls remain/i)).toBeInTheDocument()
   })
 
   it("keeps members read-only while preserving operational visibility", () => {

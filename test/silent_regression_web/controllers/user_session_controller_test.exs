@@ -102,6 +102,26 @@ defmodule SilentRegressionWeb.UserSessionControllerTest do
       assert Repo.get_by!(Accounts.UserToken, user_id: user.id).context == "login"
     end
 
+    test "throttling is generic and includes a retry boundary", %{conn: conn} do
+      email = "rate-limit@example.com"
+
+      conn =
+        Enum.reduce(1..10, conn, fn _attempt, conn ->
+          response =
+            post(recycle(conn), ~p"/users/log-in", %{"user" => %{"email" => email}})
+
+          assert redirected_to(response) == ~p"/users/log-in"
+          response
+        end)
+
+      limited = post(recycle(conn), ~p"/users/log-in", %{"user" => %{"email" => email}})
+
+      assert response(limited, 429) == "Too many attempts. Try again later."
+      assert [retry_after] = get_resp_header(limited, "retry-after")
+      assert String.to_integer(retry_after) > 0
+      refute response(limited, 429) =~ email
+    end
+
     test "renders a confirmation and consumes a valid token once", %{conn: conn} do
       accepted = accepted_workspace_fixture(%{workspace_slug: "magic-workspace"})
       {token, _hashed_token} = generate_user_magic_link_token(accepted.user)

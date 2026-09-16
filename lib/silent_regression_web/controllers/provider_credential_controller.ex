@@ -5,6 +5,7 @@ defmodule SilentRegressionWeb.ProviderCredentialController do
 
   alias SilentRegression.ProviderCredentials
   alias SilentRegression.Providers.Failure
+  alias SilentRegressionWeb.RateLimit
 
   def index(conn, _params) do
     scope = conn.assigns.current_scope
@@ -38,19 +39,25 @@ defmodule SilentRegressionWeb.ProviderCredentialController do
   end
 
   def validate(conn, %{"id" => credential_id}) do
-    case ProviderCredentials.validate_credential(conn.assigns.current_scope, credential_id) do
-      {:ok, _credential} ->
-        conn
-        |> put_flash(:info, "Credential validated successfully.")
-        |> redirect(to: credentials_path(conn))
+    case RateLimit.check(conn, :credential_validation, rate_subject(conn, credential_id)) do
+      :ok ->
+        case ProviderCredentials.validate_credential(conn.assigns.current_scope, credential_id) do
+          {:ok, _credential} ->
+            conn
+            |> put_flash(:info, "Credential validated successfully.")
+            |> redirect(to: credentials_path(conn))
 
-      {:error, %Failure{} = failure} ->
-        conn
-        |> put_flash(:error, failure.message)
-        |> redirect(to: credentials_path(conn))
+          {:error, %Failure{} = failure} ->
+            conn
+            |> put_flash(:error, failure.message)
+            |> redirect(to: credentials_path(conn))
 
-      {:error, reason} ->
-        lifecycle_error(conn, reason)
+          {:error, reason} ->
+            lifecycle_error(conn, reason)
+        end
+
+      {:error, state} ->
+        RateLimit.reject(conn, state)
     end
   end
 
@@ -125,5 +132,10 @@ defmodule SilentRegressionWeb.ProviderCredentialController do
 
   defp credentials_path(conn) do
     ~p"/app/#{conn.assigns.current_scope.workspace.slug}/credentials"
+  end
+
+  defp rate_subject(conn, credential_id) do
+    scope = conn.assigns.current_scope
+    [scope.workspace.id, scope.user.id, credential_id]
   end
 end

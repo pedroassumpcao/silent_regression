@@ -9,7 +9,7 @@ defmodule SilentRegression.MonitorOperations do
   import Ecto.Query
 
   alias SilentRegression.Accounts.{Scope, User}
-  alias SilentRegression.{Audit, Baselines, Captures, ProductAnalytics}
+  alias SilentRegression.{Audit, Baselines, Captures, PilotPolicies, ProductAnalytics}
   alias SilentRegression.Captures.{CaptureObservation, CaptureRun}
   alias SilentRegression.MonitorOperations.Schedule
   alias SilentRegression.Monitors.{CaseVersion, Monitor, MonitorVersion}
@@ -29,6 +29,7 @@ defmodule SilentRegression.MonitorOperations do
          %Monitor{} = monitor <- load_monitor(workspace_id, monitor_id) do
       monitor = Repo.preload(monitor, [:active_version, :schedule_updated_by_user])
       last_run = last_run(workspace_id, monitor.id)
+      usage = PilotPolicies.usage(scope)
 
       {:ok,
        %{
@@ -37,9 +38,7 @@ defmodule SilentRegression.MonitorOperations do
          unresolved_alerts: unresolved_alert_count(scope, monitor.id),
          approved_baseline?: Baselines.compatible_approved?(scope, monitor.id),
          maximum_call_count: maximum_call_count(monitor),
-         workspace_call_limit: operations_config(:daily_workspace_call_limit),
-         workspace_committed_calls_today:
-           workspace_committed_calls_today(workspace_id, DateTime.utc_now()),
+         pilot_usage: usage,
          can_manage?: scope.membership.role == :owner
        }}
     else
@@ -398,7 +397,7 @@ defmodule SilentRegression.MonitorOperations do
          %MonitorVersion{} = version <- Repo.get(MonitorVersion, monitor.active_version_id),
          :ok <- ensure_credential(monitor, version),
          false <- repeated_authentication_failures?(monitor.id),
-         :ok <- ensure_workspace_capacity(monitor.workspace_id, maximum_calls, at) do
+         :ok <- PilotPolicies.check_capacity(monitor.workspace_id, maximum_calls, at) do
       :ok
     else
       nil -> {:error, :incompatible_baseline}
@@ -427,28 +426,6 @@ defmodule SilentRegression.MonitorOperations do
       _credential ->
         {:error, :credential_unavailable}
     end
-  end
-
-  defp ensure_workspace_capacity(workspace_id, maximum_calls, at) do
-    committed = workspace_committed_calls_today(workspace_id, at)
-
-    if committed + maximum_calls <= operations_config(:daily_workspace_call_limit),
-      do: :ok,
-      else: {:error, :workspace_call_limit}
-  end
-
-  defp workspace_committed_calls_today(workspace_id, at) do
-    day_start = DateTime.new!(DateTime.to_date(at), ~T[00:00:00], "Etc/UTC")
-
-    CaptureRun
-    |> where(
-      [run],
-      run.workspace_id == ^workspace_id and
-        (run.inserted_at >= ^day_start or run.status in ^@active_run_statuses or
-           run.completed_at >= ^day_start)
-    )
-    |> select([run], coalesce(sum(run.maximum_call_count), 0))
-    |> Repo.one()
   end
 
   defp repeated_authentication_failures?(monitor_id) do

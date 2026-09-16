@@ -4,6 +4,7 @@ defmodule SilentRegressionWeb.BaselineController do
   import Inertia.Controller, only: [assign_errors: 2]
 
   alias SilentRegression.Baselines
+  alias SilentRegressionWeb.RateLimit
 
   @terminal_run_statuses [:succeeded, :partial_failed, :failed, :cancelled, :needs_review]
 
@@ -20,24 +21,37 @@ defmodule SilentRegressionWeb.BaselineController do
   end
 
   def validate_model(conn, %{"monitor_id" => monitor_id}) do
-    case Baselines.validate_model_access(conn.assigns.current_scope, monitor_id) do
-      {:ok, _preflight} ->
-        conn
-        |> put_flash(:info, "Exact model access verified. No completion call was made.")
-        |> redirect(to: baseline_path(conn, monitor_id))
+    case RateLimit.check(conn, :credential_validation, rate_subject(conn, monitor_id)) do
+      :ok ->
+        case Baselines.validate_model_access(conn.assigns.current_scope, monitor_id) do
+          {:ok, _preflight} ->
+            conn
+            |> put_flash(:info, "Exact model access verified. No completion call was made.")
+            |> redirect(to: baseline_path(conn, monitor_id))
 
-      {:error, :owner_required} ->
-        owner_required(conn, monitor_id, "verify model access")
+          {:error, :owner_required} ->
+            owner_required(conn, monitor_id, "verify model access")
 
-      {:error, :not_found} ->
-        send_resp(conn, :not_found, "Not found")
+          {:error, :not_found} ->
+            send_resp(conn, :not_found, "Not found")
 
-      {:error, _reason} ->
-        baseline_failed(conn, monitor_id, "Exact model access could not be verified.")
+          {:error, _reason} ->
+            baseline_failed(conn, monitor_id, "Exact model access could not be verified.")
+        end
+
+      {:error, state} ->
+        RateLimit.reject(conn, state)
     end
   end
 
   def authorize(conn, %{"monitor_id" => monitor_id} = params) do
+    case RateLimit.check(conn, :run_authorization, rate_subject(conn, monitor_id)) do
+      :ok -> authorize_baseline(conn, monitor_id, params)
+      {:error, state} -> RateLimit.reject(conn, state)
+    end
+  end
+
+  defp authorize_baseline(conn, monitor_id, params) do
     case Baselines.authorize(
            conn.assigns.current_scope,
            monitor_id,
@@ -68,6 +82,27 @@ defmodule SilentRegressionWeb.BaselineController do
       {:error, :capture_in_progress} ->
         baseline_failed(conn, monitor_id, "A baseline capture is already in progress.")
 
+      {:error, :workspace_run_limit} ->
+        baseline_failed(
+          conn,
+          monitor_id,
+          "The workspace authorized-run limit is exhausted for today."
+        )
+
+      {:error, :workspace_call_limit} ->
+        baseline_failed(
+          conn,
+          monitor_id,
+          "The workspace provider-call limit is exhausted for today."
+        )
+
+      {:error, :per_run_call_limit} ->
+        baseline_failed(
+          conn,
+          monitor_id,
+          "This baseline would exceed the workspace per-run provider-call limit."
+        )
+
       {:error, :owner_required} ->
         owner_required(conn, monitor_id, "authorize provider spend")
 
@@ -77,6 +112,11 @@ defmodule SilentRegressionWeb.BaselineController do
       {:error, _reason} ->
         baseline_failed(conn, monitor_id, "The baseline capture could not be authorized.")
     end
+  end
+
+  defp rate_subject(conn, target_id) do
+    scope = conn.assigns.current_scope
+    [scope.workspace.id, scope.user.id, target_id]
   end
 
   def approve(conn, %{"monitor_id" => monitor_id} = params) do
