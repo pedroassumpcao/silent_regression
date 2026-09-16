@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 11 in progress
+> **Status:** Task 11 complete; Task 12 next
 >
-> **Progress:** 10 of 14 tasks complete
+> **Progress:** 11 of 14 tasks complete
 >
 > **Last revised:** 2026-09-16
 >
@@ -281,7 +281,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 8 | Contract authoring, fixture validation, and approval | 6, 7 | Complete | `e766a02`, `40321b3`, `3798fd5`, `fd14b70` |
 | 9 | Durable capture execution and provider accounting | 4, 5, 7 | Complete | `36d385b`, `fff370f`, `e81ef85`, `fa169c6`, `9f3d518` |
 | 10 | Baseline capture, inspection, and approval | 8, 9 | Complete | `76f748e`, `bd060be`, `a632f92`, `6769b25`, `4a4112f` |
-| 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | In progress | — |
+| 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | Complete | `bafadc1`, `dd1c29a`, `03dc23f`, `e8ef6b2` |
 | 12 | Run results, evidence, alerts, and operational signals | 9, 10 | Not started | — |
 | 13 | Structured review and versioned correction loop | 8, 12 | Not started | — |
 | 14 | Onboarding telemetry, notifications, security, and pilot readiness | 2–13 | Not started | — |
@@ -670,23 +670,32 @@ approval with immutable membership and provenance.
 
 ### Task 11 — Manual/daily/weekly scheduling and monitor operations
 
-**Status:** In progress
+**Status:** Complete
 
 **Objective:** Deliver the continuous part of the wedge with a deliberately small scheduling surface.
 
 **Checklist:**
 
-- [ ] Support `Run now`, `Daily`, `Weekly`, `Pause`, and `Resume`.
-- [ ] Store cadence and the next scheduled UTC time on the monitor.
-- [ ] Add a small recurring Oban dispatcher that enqueues due monitors.
-- [ ] Lock or atomically claim due monitors to prevent duplicate scheduling.
-- [ ] Add unique scheduled-run identity by monitor and intended execution time.
-- [ ] Prevent overlapping runs for the same monitor.
-- [ ] Recalculate `next_run_at` only after an atomic scheduling decision.
-- [ ] Require an approved compatible baseline before activation.
-- [ ] Show last run, next run, cadence, monitor state, and unresolved alert count.
-- [ ] Pause automatically on revoked credentials, incompatible versions, repeated authentication failures, or exhausted workspace guardrails.
-- [ ] Record schedule and lifecycle audit events.
+- [x] Support `Run now`, `Daily`, `Weekly`, `Pause`, and `Resume`.
+- [x] Store cadence and the next scheduled UTC time on the monitor.
+- [x] Add a small recurring Oban dispatcher that enqueues due monitors.
+- [x] Lock or atomically claim due monitors to prevent duplicate scheduling.
+- [x] Add unique scheduled-run identity by monitor and intended execution time.
+- [x] Prevent overlapping runs for the same monitor.
+- [x] Recalculate `next_run_at` only after an atomic scheduling decision.
+- [x] Require an approved compatible baseline before activation.
+- [x] Show last run, next run, cadence, monitor state, and a durable runs-needing-attention count; Task 12 owns formal unresolved alerts.
+- [x] Pause automatically on revoked credentials, incompatible versions, repeated authentication failures, or exhausted workspace guardrails.
+- [x] Record schedule and lifecycle audit events.
+
+**Completion evidence:** Monitor cadence and lifecycle state are durable and owner-attributed; manual
+and scheduled executions share the bounded capture path; PostgreSQL workspace/monitor locks,
+scheduled-window identities, and monitor-level overlap rejection make dispatch idempotent across
+restarts and nodes. Execution rechecks active state, credential validity, and exact baseline
+compatibility before reserving a provider attempt. The authenticated Inertia page supports owner
+activation, run-now confirmation, pause/resume, and member read-only inspection. Formal alert rows
+remain correctly sequenced in Task 12; Task 11 reports durable failed/review-required run attention
+instead of inventing a temporary alert lifecycle.
 
 **Acceptance criteria:**
 
@@ -1439,6 +1448,31 @@ The product is ready for the first external design partner only when:
 - The implementation will retain the existing durable capture path, add database-backed scheduling
   and atomic claims around it, and keep all provider spend behind explicit manual action or an
   owner-configured active schedule.
+
+### 2026-09-16 — Task 11 complete
+
+- Added manual, daily, and weekly UTC operations with owner-attributed activation, schedule changes,
+  pause, and resume. Daily/weekly anchors advance past delayed windows without a catch-up burst.
+- Added the recurring Oban dispatcher, workspace/monitor lock ordering, stable scheduled-window
+  identities, capture-level overlap rejection, and atomic `next_run_at` advancement.
+- Added a conservative 200-call daily workspace envelope based on committed maximum attempts, plus
+  automatic pause for revoked/invalid credentials, incompatible baselines or behavior, two
+  consecutive authentication/authorization failures, unavailable schedule owners, and exhausted
+  capacity.
+- Added an execution-time eligibility check before provider-attempt reservation, so a queued run
+  cannot begin another provider request after pause, credential revocation, or incompatibility.
+- Added the authenticated Inertia operations experience under the existing workspace-scoped router
+  pipeline. Owners can activate, confirm bounded Run now spend, pause, and resume; members inspect
+  the same durable state without mutation controls. Dashboard and approved-baseline flows now lead
+  into operations.
+- The real browser flow activated the approved Billing monitor on Daily, displayed one planned and
+  two maximum calls without authorizing a provider request, then paused it. The persisted next run
+  cleared, Run now became disabled, and the browser console remained error-free. The development
+  monitor was left paused.
+- Verification passes: 39 focused scheduling/capture/baseline tests, 13 focused controller tests,
+  TypeScript checking, all 29 frontend tests, the production asset build, and `mix precommit` with
+  536 Elixir tests.
+- Task 11 commits: `bafadc1`, `dd1c29a`, `03dc23f`, and `e8ef6b2`. Task 12 is next.
 
 ## 17. References
 
