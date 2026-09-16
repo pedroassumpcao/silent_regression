@@ -13,7 +13,8 @@ defmodule Mix.Tasks.SilentRegression.ProviderSmoke do
 
   Execution makes exactly one completion call with no retry and requires exact
   confirmation of the previewed provider, model, maximum call count, and
-  fingerprint:
+  fingerprint. It writes a secret-free local receipt before the call and
+  updates that receipt with the safe result afterward:
 
       mix silent_regression.provider_smoke ... \
         --execute \
@@ -21,6 +22,9 @@ defmodule Mix.Tasks.SilentRegression.ProviderSmoke do
         --confirm-model claude-haiku-4-5-20251001 \
         --confirm-max-calls 1 \
         --confirm-fingerprint PREVIEW_FINGERPRINT
+
+  Receipts default to `results/provider_smoke`. Use `--receipt-dir` to select a
+  different local directory.
 
   Run execution only after a fresh, provider-specific user authorization. The
   task never prints the credential or captured output.
@@ -39,7 +43,8 @@ defmodule Mix.Tasks.SilentRegression.ProviderSmoke do
     confirm_provider: :string,
     confirm_model: :string,
     confirm_max_calls: :integer,
-    confirm_fingerprint: :string
+    confirm_fingerprint: :string,
+    receipt_dir: :string
   ]
 
   @impl Mix.Task
@@ -62,7 +67,8 @@ defmodule Mix.Tasks.SilentRegression.ProviderSmoke do
 
       if Keyword.get(opts, :execute, false) do
         confirm_execution!(opts, preview)
-        execute!(preview)
+        receipt_path = start_receipt!(opts, preview)
+        execute!(preview, receipt_path)
       else
         Mix.shell().info("Preview only: no provider request was made.")
       end
@@ -114,10 +120,12 @@ defmodule Mix.Tasks.SilentRegression.ProviderSmoke do
     end
   end
 
-  defp execute!(preview) do
+  defp execute!(preview, receipt_path) do
     case PilotSmoke.execute(preview) do
       {:ok, summary} ->
+        complete_receipt!(receipt_path, preview, :passed, summary)
         Mix.shell().info("Provider smoke passed")
+        Mix.shell().info("Receipt: #{receipt_path}")
         Mix.shell().info("Actual calls: #{summary.actual_call_count}")
         Mix.shell().info("Attempts: #{summary.attempts}")
 
@@ -137,14 +145,95 @@ defmodule Mix.Tasks.SilentRegression.ProviderSmoke do
         Mix.shell().info("Provider request ID: #{summary.request_id || "not returned"}")
 
       {:error, summary} when is_map(summary) ->
+        complete_receipt!(receipt_path, preview, :failed, summary)
         Mix.shell().error("Provider smoke failed")
+        Mix.shell().error("Receipt: #{receipt_path}")
         Mix.shell().error("Safe result: #{inspect(summary)}")
         Mix.raise("The provider smoke did not satisfy the fixed contract.")
 
       {:error, reason} ->
+        complete_receipt!(receipt_path, preview, :failed, %{reason: format_reason(reason)})
         Mix.raise("Provider smoke execution failed: #{format_reason(reason)}")
     end
   end
+
+  defp start_receipt!(opts, preview) do
+    directory =
+      opts
+      |> Keyword.get(:receipt_dir, "results/provider_smoke")
+      |> validate_receipt_directory!()
+
+    started_at = DateTime.utc_now()
+
+    filename =
+      "#{preview.provider}-#{Calendar.strftime(started_at, "%Y%m%dT%H%M%SZ")}-#{Ecto.UUID.generate()}.json"
+
+    path = Path.join(directory, filename)
+
+    receipt = %{
+      schema_version: "provider-smoke-receipt-v1",
+      status: :started,
+      started_at: DateTime.to_iso8601(started_at),
+      completed_at: nil,
+      workspace_slug: preview.workspace_slug,
+      provider: preview.provider,
+      model: preview.model,
+      credential_id: preview.credential_id,
+      credential_label: preview.credential_label,
+      credential_suffix: preview.credential_suffix,
+      case_key: preview.case_key,
+      retries: preview.retry_limit,
+      planned_call_count: preview.planned_call_count,
+      maximum_call_count: preview.maximum_call_count,
+      preview_fingerprint: preview.preview_fingerprint,
+      result: nil
+    }
+
+    File.mkdir_p!(directory)
+    File.write!(path, encode_receipt(receipt), [:exclusive])
+    path
+  end
+
+  defp complete_receipt!(path, preview, status, result) do
+    receipt = %{
+      schema_version: "provider-smoke-receipt-v1",
+      status: status,
+      started_at: receipt_started_at!(path),
+      completed_at: DateTime.utc_now() |> DateTime.to_iso8601(),
+      workspace_slug: preview.workspace_slug,
+      provider: preview.provider,
+      model: preview.model,
+      credential_id: preview.credential_id,
+      credential_label: preview.credential_label,
+      credential_suffix: preview.credential_suffix,
+      case_key: preview.case_key,
+      retries: preview.retry_limit,
+      planned_call_count: preview.planned_call_count,
+      maximum_call_count: preview.maximum_call_count,
+      preview_fingerprint: preview.preview_fingerprint,
+      result: result
+    }
+
+    File.write!(path, encode_receipt(receipt))
+  end
+
+  defp receipt_started_at!(path) do
+    path
+    |> File.read!()
+    |> Jason.decode!()
+    |> Map.fetch!("started_at")
+  end
+
+  defp encode_receipt(receipt), do: [Jason.encode_to_iodata!(receipt, pretty: true), "\n"]
+
+  defp validate_receipt_directory!(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> Mix.raise("--receipt-dir must not be empty.")
+      directory -> directory
+    end
+  end
+
+  defp validate_receipt_directory!(_value), do: Mix.raise("--receipt-dir must be a path.")
 
   defp format_reason(reason) when is_atom(reason), do: Atom.to_string(reason)
   defp format_reason(reason), do: inspect(reason)

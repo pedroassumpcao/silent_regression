@@ -32,7 +32,8 @@ defmodule Mix.Tasks.SilentRegression.ProviderSmokeTest do
     refute output =~ "sk-test-provider-credential-sentinel"
   end
 
-  test "executes only when every confirmation matches the current preview" do
+  @tag :tmp_dir
+  test "executes only when every confirmation matches the current preview", %{tmp_dir: tmp_dir} do
     {scope, credential} = validated_credential(:anthropic, "claude-haiku-4-5-20251001")
 
     {:ok, preview} =
@@ -61,7 +62,9 @@ defmodule Mix.Tasks.SilentRegression.ProviderSmokeTest do
               "--confirm-max-calls",
               "1",
               "--confirm-fingerprint",
-              preview.preview_fingerprint
+              preview.preview_fingerprint,
+              "--receipt-dir",
+              tmp_dir
             ]
         )
       end)
@@ -69,10 +72,29 @@ defmodule Mix.Tasks.SilentRegression.ProviderSmokeTest do
     assert output =~ "Provider smoke passed"
     assert output =~ "Actual calls: 1"
     assert output =~ "Contract: pass"
+    assert output =~ "Receipt: #{tmp_dir}"
     refute output =~ "sk-test-provider-credential-sentinel"
+
+    assert [receipt_name] = File.ls!(tmp_dir)
+
+    receipt = tmp_dir |> Path.join(receipt_name) |> File.read!() |> Jason.decode!()
+
+    assert receipt["schema_version"] == "provider-smoke-receipt-v1"
+    assert receipt["status"] == "passed"
+    assert receipt["provider"] == "anthropic"
+    assert receipt["model"] == "claude-haiku-4-5-20251001"
+    assert receipt["maximum_call_count"] == 1
+    assert receipt["result"]["contract_status"] == "pass"
+    assert receipt["result"]["actual_call_count"] == 1
+
+    receipt_contents = Jason.encode!(receipt)
+    refute receipt_contents =~ "sk-test-provider-credential-sentinel"
+    refute receipt_contents =~ "output_text"
+    refute receipt_contents =~ "Reply with exactly approved."
   end
 
-  test "rejects a stale or mistyped execution confirmation before any call" do
+  @tag :tmp_dir
+  test "rejects a stale or mistyped execution confirmation before any call", %{tmp_dir: tmp_dir} do
     {scope, credential} = validated_credential(:openai, "gpt-5.6-luna")
 
     assert_raise Mix.Error, ~r/confirmation does not match/, fn ->
@@ -88,11 +110,15 @@ defmodule Mix.Tasks.SilentRegression.ProviderSmokeTest do
               "--confirm-max-calls",
               "2",
               "--confirm-fingerprint",
-              String.duplicate("0", 64)
+              String.duplicate("0", 64),
+              "--receipt-dir",
+              tmp_dir
             ]
         )
       end)
     end
+
+    assert File.ls!(tmp_dir) == []
   end
 
   defp validated_credential(provider, model) do

@@ -41,3 +41,6 @@ npm-debug.log
 
 # Local LLM drift-spike runs can contain prompts, outputs, and provider metadata.
 /results/drift_spike/
+
+# Local provider-smoke receipts contain provider request metadata.
+/results/provider_smoke/
