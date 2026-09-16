@@ -16,11 +16,11 @@ encryption-key operations, or pilot spending remains gated by the decisions reco
 
 ## Phase 2: Notification outbox and preferences
 
-- [ ] Add workspace/user actionable-alert email preferences.
-- [ ] Add durable, deduplicated notification deliveries.
-- [ ] Add the ID-only Oban email worker and content-free alert email.
-- [ ] Add authenticated preference controls and delivery-status evidence.
-- [ ] Retain the Local adapter until the approved provider is configured for deployment.
+- [x] Add workspace/user actionable-alert email preferences.
+- [x] Add durable, deduplicated notification deliveries.
+- [x] Add the ID-only Oban email worker and content-free alert email.
+- [x] Add authenticated preference controls and delivery-status evidence.
+- [x] Retain the Local adapter until the approved provider is configured for deployment.
 
 ## Phase 3: Pilot limits and rate limiting
 

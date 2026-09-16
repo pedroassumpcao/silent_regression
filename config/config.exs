@@ -45,7 +45,7 @@ config :silent_regression, Oban,
       {"* * * * *", SilentRegression.MonitorOperations.Workers.DispatcherWorker, max_attempts: 1}
     ]
   ],
-  queues: [capture: 4, scheduler: 1],
+  queues: [capture: 4, scheduler: 1, notifications: 2],
   repo: SilentRegression.Repo
 
 config :silent_regression, :provider_adapters,
@@ -127,6 +127,10 @@ config :phoenix_live_view,
 # For production it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
 config :silent_regression, SilentRegression.Mailer, adapter: Swoosh.Adapters.Local
+
+config :silent_regression,
+       :notification_email_from,
+       {"Silent Regression", "alerts@silent-regression.local"}
 
 # Configure esbuild (the version is required)
 config :esbuild,

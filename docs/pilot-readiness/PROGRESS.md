@@ -1,6 +1,6 @@
 # Pilot Readiness Progress
 
-## Status: Phase 1 complete; Phase 2 next
+## Status: Phases 1–2 complete; Phase 3 next
 
 ## Quick Reference
 
@@ -16,7 +16,7 @@
 
 ### Phase 2: Notification outbox and preferences
 
-**Status:** Not started
+**Status:** Complete
 
 ### Phase 3: Pilot limits and rate limiting
 
@@ -68,6 +68,14 @@
 - Added activation-funnel queries and an owner-attributed operator command for recording bounded
   assistance metadata without accepting notes or customer content.
 - Verified the focused Elixir tests and the complete TypeScript/frontend suite.
+- Added a workspace/member preference that defaults to actionable-alert email enabled and is
+  rechecked immediately before delivery.
+- Added one database delivery per alert, recipient, and channel, with immutable identity, bounded
+  status metadata, and an ID-only Oban job on the dedicated notifications queue.
+- Added content-minimized alert email and an authenticated preference screen inside the existing
+  workspace scope. The Local adapter remains active until deployment configuration is supplied.
+- Verified outbox deduplication, preference suppression, retry idempotency, delivery state, safe
+  email content, workspace authorization, and the complete frontend suite.
 
 ## Blockers
 

@@ -99,6 +99,8 @@ defmodule SilentRegressionWeb.Router do
     get "/alerts", ResultAlertController, :index
     post "/alerts/:alert_id/acknowledge", ResultAlertController, :acknowledge
     post "/alerts/:alert_id/resolve", ResultAlertController, :resolve
+    get "/settings/notifications", NotificationPreferenceController, :edit
+    patch "/settings/notifications", NotificationPreferenceController, :update
     get "/credentials", ProviderCredentialController, :index
     post "/credentials", ProviderCredentialController, :create
     post "/credentials/:id/validate", ProviderCredentialController, :validate

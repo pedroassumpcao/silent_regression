@@ -13,6 +13,7 @@ defmodule SilentRegression.RunResults do
   alias SilentRegression.Baselines.BaselineSnapshot
   alias SilentRegression.Captures.{CaptureRuleResult, CaptureRun, ProviderAttempt}
   alias SilentRegression.Monitors.Monitor
+  alias SilentRegression.Notifications
   alias SilentRegression.Repo
   alias SilentRegression.Reviews
   alias SilentRegression.RunResults.{Alert, Policy}
@@ -277,6 +278,11 @@ defmodule SilentRegression.RunResults do
       on_conflict: :nothing,
       conflict_target: [:workspace_id, :identity_key]
     )
+
+    alert =
+      Repo.get_by!(Alert, workspace_id: run.workspace_id, identity_key: finding.identity_key)
+
+    Notifications.prepare_alert!(alert)
   end
 
   defp preload_for_policy(run) do

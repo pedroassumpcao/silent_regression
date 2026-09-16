@@ -9,6 +9,7 @@ import {
   KeyRound,
   LogOut,
   LayoutDashboard,
+  Mail,
   Settings2,
   ShieldCheck,
   UserRound,
@@ -32,7 +33,7 @@ import {
 import { cn } from "@/lib/utils"
 
 type ProductShellProps = PropsWithChildren<{
-  currentSection?: "overview" | "credentials" | "monitors" | "alerts"
+  currentSection?: "overview" | "credentials" | "monitors" | "alerts" | "notifications"
   releaseStage: string
   userEmail: string
   workspace: { name: string; slug: string }
@@ -79,6 +80,12 @@ export function ProductShell({
       icon: BellRing,
       href: `/app/${workspace.slug}/alerts`,
       current: currentSection === "alerts",
+    },
+    {
+      label: "Notifications",
+      icon: Mail,
+      href: `/app/${workspace.slug}/settings/notifications`,
+      current: currentSection === "notifications",
     },
   ]
 
