@@ -1,6 +1,6 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 12 complete; Task 13 next
+> **Status:** Task 13 in progress
 >
 > **Progress:** 12 of 14 tasks complete
 >
@@ -747,7 +747,7 @@ instead of inventing a temporary alert lifecycle.
 
 ### Task 13 — Structured review and versioned correction loop
 
-**Status:** Not started
+**Status:** In progress
 
 **Objective:** Capture design-partner judgment as governed evidence and make correction safe.
 
