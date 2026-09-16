@@ -1388,6 +1388,21 @@ The product is ready for the first external design partner only when:
   both match, and the captured `Billing` output passes a non-persisted local rescore. The original
   pending snapshot remains unchanged and unapproved. No additional provider request was made.
 
+### 2026-09-16 — Billing contract approved and mismatched snapshot rejected
+
+- Received explicit owner approval for Billing contract version 2,
+  `b9644c93-3782-4096-b8a9-b8559e5feeb7`, sealed with fingerprint
+  `1a21fffa1262fc27715b51f052d910c1dc9018a93975ba668250cf1aedf5be25`.
+- Rejected mismatched snapshot `c757f35d-9d41-4980-a952-b5b227ab6614` without deleting its
+  successful capture run `49f1a1b8-f4cc-4f6a-8c5a-0a55640aa48c` or provider evidence.
+- The refreshed one-sample preflight is ready with no blockers under fingerprint
+  `4016024ce7949d253a14cf892f435a6ff5166aca969dfa8ffdea0f91034d95c0`. Its bounded envelope remains
+  one active case, one planned completion, one retry maximum, two attempts maximum, 32 output tokens
+  per attempt, and 64 output tokens maximum. Exact `gpt-5.6-luna` access remains verified and the
+  generation configuration still contains only the 32-token limit.
+- No provider request was made during contract approval, snapshot rejection, or refreshed preflight.
+  A new explicit authorization is required before another live capture.
+
 ## 17. References
 
 - [Feasibility spike implementation plan](implementation_plan.md)
