@@ -152,6 +152,31 @@ Reviewable drift should present representative baseline/current samples, the fac
 
 The review record should allow a short rationale and optional proposed contract update. Contract changes then go through a separate approval and offline-rescoring workflow.
 
+### 5.5 Contract-to-monitor semantic alignment
+
+Passing output-only fixtures proves that a deterministic contract executes consistently; it does
+not prove that its rules describe the monitor's prompt, frozen cases, or intended outcomes. Starter
+template values are examples and must never be treated as inferred customer requirements.
+
+Before approval, the product should:
+
+- show the prompt, frozen inputs/context, response requirements, contract rules, and fixtures in one
+  review surface;
+- require an explicit owner attestation that edited template values match the monitor's intended
+  behavior;
+- support case-linked expected outcomes where correctness depends on the input—for example, the
+  expected label for each frozen classification case—instead of checking only that an output belongs
+  to the global allowed-label set;
+- distinguish evaluator conformance fixtures from representative monitor cases and require coverage
+  from both;
+- treat AI- or founder-drafted contracts as suggestions until an owner approves the exact combined
+  monitor-and-contract snapshot; and
+- rescore immutable stored observations under a successor contract before requesting new provider
+  spend when the provider output itself remains valid.
+
+No generic deterministic rule can infer whether arbitrary customer intent and contract semantics
+match. This boundary requires explicit evidence and human approval even when all local checks pass.
+
 ## 6. Target domain model
 
 The exact Ecto schemas should be designed only when product work begins, but the model should preserve these boundaries:

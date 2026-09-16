@@ -649,9 +649,11 @@ progress from persisted validity rather than user-controlled completion flags. S
 - [x] Seal approved baseline membership and provenance.
 - [x] Invalidate compatibility when behavior-affecting configuration changes.
 
-**Remaining gate:** One live-provider capture must be run only after presenting its exact preflight
-and receiving explicit authorization. The implementation and fake-provider browser flow are
-complete; Task 10 remains in progress until that smoke test passes.
+**Remaining gate:** One end-to-end live-provider baseline candidate must complete under an exact,
+explicitly authorized preflight and be eligible for normal approval under its compatible contract.
+The implementation and fake-provider browser flow are complete. Live transport and persistence have
+now succeeded, but Task 10 remains in progress because the first successful live output exposed a
+prompt-to-contract mismatch in the smoke candidate.
 
 **Acceptance criteria:**
 
@@ -1361,6 +1363,30 @@ The product is ready for the first external design partner only when:
   parameter. No provider request was made during contract approval or preflight. A fresh explicit
   authorization is still required before creating the pending baseline and dispatching the live
   completion.
+
+### 2026-09-16 — Live transport passed; smoke contract mismatch found
+
+- Received explicit authorization for the exact ready preflight fingerprint
+  `fcd5613ec2bc583d70c936f9bbd77f4e4102860a4ad5dc7fff733e4da4df1c94`. Pending baseline snapshot
+  `c757f35d-9d41-4980-a952-b5b227ab6614` and capture run
+  `49f1a1b8-f4cc-4f6a-8c5a-0a55640aa48c` preserve the resulting evidence.
+- OpenAI completed the single planned request successfully in one attempt with no retry. The exact
+  requested and returned model was `gpt-5.6-luna`; the response was complete, latency was 2,672 ms,
+  usage was 38 input and 27 output tokens, and provider request ID was
+  `resp_0ce66760004fbe3e016aaab413491087d1a15ab8ffaa073375`.
+- The model returned `Billing`, which is consistent with the frozen request (`I need a refund`) and
+  context (`Billing handles refunds.`). The deterministic evaluation correctly failed because the
+  approved classification rule still contained the starter values `approved` and `rejected`.
+  Therefore the provider, durable worker, provenance, and local-evaluation paths passed, but this
+  snapshot is not eligible for normal baseline approval.
+- The failure exposed a review-process gap: output-only conformance fixtures can prove that a
+  contract is internally executable while still being unrelated to the monitor prompt and cases.
+  Starter template values are examples and must not survive approval without an explicit semantic
+  review against the monitor configuration.
+- Prepared unapproved successor draft `b9644c93-3782-4096-b8a9-b8559e5feeb7` with `Billing` as the
+  sole allowed value for this single frozen smoke case. Its known-valid and known-invalid fixtures
+  both match, and the captured `Billing` output passes a non-persisted local rescore. The original
+  pending snapshot remains unchanged and unapproved. No additional provider request was made.
 
 ## 17. References
 
