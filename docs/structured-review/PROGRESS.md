@@ -12,13 +12,21 @@
 
 ### Phase 1: Review evidence foundation
 
-**Status:** In progress
+**Status:** Completed
 
 - Domain, evidence identity, supersession, concurrency, and authorization decisions recorded.
+- Added exact alert/observation review targets, required reviewer attribution, bounded rationale, and
+  explicit classification/action enums.
+- Added database-enforced append-only history, one root per review stream, and one successor per
+  decision so review chains cannot fork.
+- Added optimistic expected-current validation, current/history queries, review counts, action
+  counts, and changed-judgment counts.
+- Verified attribution, supersession, false-negative capture, cross-workspace isolation, and
+  database immutability with four focused tests.
 
 ### Phase 2: Governed alert and correction lifecycle
 
-**Status:** Not started
+**Status:** In progress
 
 ### Phase 3: Transactional contract rescore and compatibility
 
@@ -43,6 +51,8 @@
   semantic compatibility using fingerprints and execution identities.
 - Confirmed that the existing shadcn select, textarea, dialog, alert, badge, button, and card
   primitives cover the review experience; no frontend dependency is required.
+- Completed the review evidence foundation and began binding it to owner-governed alert resolution
+  and versioned correction.
 
 ## Blockers
 

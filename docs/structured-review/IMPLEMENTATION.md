@@ -7,10 +7,10 @@ the UI can resolve alerts or activate corrected contracts.
 
 ## Phase 1: Review evidence foundation
 
-- [ ] Add append-only review-decision schema, constraints, supersession chain, and audit events.
-- [ ] Derive exact evidence identities for alert and observation subjects on the server.
-- [ ] Add current/history queries, review counts, and changed-judgment counts.
-- [ ] Verify tenant isolation, attribution, immutability, and concurrent supersession behavior.
+- [x] Add append-only review-decision schema, constraints, supersession chain, and audit events.
+- [x] Derive exact evidence identities for alert and observation subjects on the server.
+- [x] Add current/history queries, review counts, and changed-judgment counts.
+- [x] Verify tenant isolation, attribution, immutability, and stale supersession behavior.
 
 ## Phase 2: Governed alert and correction lifecycle
 
