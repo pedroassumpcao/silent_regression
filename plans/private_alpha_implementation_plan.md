@@ -810,14 +810,14 @@ instead of inventing a temporary alert lifecycle.
 - [x] Use the local Swoosh adapter until a transactional provider is selected.
 - [x] Add workspace-level run and call caps with clear errors.
 - [x] Add retention, customer deletion, credential revocation, and workspace closure workflows.
-- [ ] Verify logs, telemetry, exceptions, job arguments, and audit events against a sensitive-data allowlist.
+- [x] Verify logs, telemetry, exceptions, job arguments, and audit events against a sensitive-data allowlist.
 - [ ] Add rate limiting for login, invitations, credential validation, and run authorization.
-- [ ] Add backup/restore and encryption-key rotation notes for eventual Fly.io deployment.
-- [ ] Add an operator runbook for invitations, failed jobs, provider incidents, data deletion, and pilot support.
+- [x] Add backup/restore and encryption-key rotation notes for eventual Fly.io deployment.
+- [x] Add an operator runbook for invitations, failed jobs, provider incidents, data deletion, and pilot support.
 - [ ] Add end-to-end tests for the complete fake-provider journey.
 - [ ] Conduct separate manually authorized OpenAI and Anthropic smoke tests.
-- [ ] Record pilot limits and known limitations in customer-visible alpha documentation.
-- [ ] Produce a deployment-readiness checklist without creating Fly.io resources.
+- [x] Record pilot limits and known limitations in customer-visible alpha documentation.
+- [x] Produce a deployment-readiness checklist without creating Fly.io resources.
 
 Known deletion prerequisite discovered during Task 10 browser-test cleanup: the customer-deletion
 workflow must remove sealed baseline membership/snapshots before their capture observations, and

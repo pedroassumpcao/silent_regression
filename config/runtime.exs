@@ -1,5 +1,18 @@
 import Config
 
+decode_32_byte_key! = fn environment_name ->
+  case System.get_env(environment_name) do
+    nil ->
+      raise "environment variable #{environment_name} is missing"
+
+    encoded_key ->
+      case Base.decode64(encoded_key) do
+        {:ok, key} when byte_size(key) == 32 -> key
+        _other -> raise "#{environment_name} must encode exactly 32 bytes"
+      end
+  end
+end
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration
@@ -24,22 +37,33 @@ config :silent_regression, SilentRegressionWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 if config_env() == :dev do
-  case System.get_env("PROVIDER_CREDENTIAL_ENCRYPTION_KEY") do
+  case System.get_env("PROVIDER_CREDENTIAL_ENCRYPTION_KEY_V1") do
     nil ->
       :ok
 
-    encoded_key ->
-      key =
-        case Base.decode64(encoded_key) do
-          {:ok, key} when byte_size(key) == 32 -> key
-          _other -> raise "PROVIDER_CREDENTIAL_ENCRYPTION_KEY must encode exactly 32 bytes"
+    _encoded_key ->
+      key_v1 = decode_32_byte_key!.("PROVIDER_CREDENTIAL_ENCRYPTION_KEY_V1")
+      encoded_key_v2 = System.get_env("PROVIDER_CREDENTIAL_ENCRYPTION_KEY_V2")
+
+      ciphers =
+        if encoded_key_v2 do
+          key_v2 = decode_32_byte_key!.("PROVIDER_CREDENTIAL_ENCRYPTION_KEY_V2")
+
+          if key_v1 == key_v2 do
+            raise "provider credential encryption key versions must use different key material"
+          end
+
+          [
+            default: {Cloak.Ciphers.AES.GCM, tag: "AES.GCM.V2", key: key_v2, iv_length: 12},
+            retired_v1: {Cloak.Ciphers.AES.GCM, tag: "AES.GCM.V1", key: key_v1, iv_length: 12}
+          ]
+        else
+          [default: {Cloak.Ciphers.AES.GCM, tag: "AES.GCM.V1", key: key_v1, iv_length: 12}]
         end
 
       config :silent_regression, SilentRegression.Vault,
         json_library: Jason,
-        ciphers: [
-          default: {Cloak.Ciphers.AES.GCM, tag: "AES.GCM.V1", key: key, iv_length: 12}
-        ]
+        ciphers: ciphers
   end
 end
 
@@ -61,28 +85,64 @@ if config_env() == :dev do
 end
 
 if config_env() == :prod do
-  provider_credential_encryption_key =
-    case System.get_env("PROVIDER_CREDENTIAL_ENCRYPTION_KEY") do
-      nil ->
-        raise """
-        environment variable PROVIDER_CREDENTIAL_ENCRYPTION_KEY is missing.
-        Generate 32 random bytes and store their Base64 encoding as a runtime secret.
-        """
+  provider_credential_encryption_key_v1 =
+    decode_32_byte_key!.("PROVIDER_CREDENTIAL_ENCRYPTION_KEY_V1")
 
-      encoded_key ->
-        case Base.decode64(encoded_key) do
-          {:ok, key} when byte_size(key) == 32 -> key
-          _other -> raise "PROVIDER_CREDENTIAL_ENCRYPTION_KEY must encode exactly 32 bytes"
-        end
+  provider_credential_encryption_key_v2 =
+    case System.get_env("PROVIDER_CREDENTIAL_ENCRYPTION_KEY_V2") do
+      nil -> nil
+      _encoded_key -> decode_32_byte_key!.("PROVIDER_CREDENTIAL_ENCRYPTION_KEY_V2")
+    end
+
+  provider_credential_ciphers =
+    if provider_credential_encryption_key_v2 do
+      if provider_credential_encryption_key_v1 == provider_credential_encryption_key_v2 do
+        raise "provider credential encryption key versions must use different key material"
+      end
+
+      [
+        default:
+          {Cloak.Ciphers.AES.GCM,
+           tag: "AES.GCM.V2", key: provider_credential_encryption_key_v2, iv_length: 12},
+        retired_v1:
+          {Cloak.Ciphers.AES.GCM,
+           tag: "AES.GCM.V1", key: provider_credential_encryption_key_v1, iv_length: 12}
+      ]
+    else
+      [
+        default:
+          {Cloak.Ciphers.AES.GCM,
+           tag: "AES.GCM.V1", key: provider_credential_encryption_key_v1, iv_length: 12}
+      ]
     end
 
   config :silent_regression, SilentRegression.Vault,
     json_library: Jason,
-    ciphers: [
-      default:
-        {Cloak.Ciphers.AES.GCM,
-         tag: "AES.GCM.V1", key: provider_credential_encryption_key, iv_length: 12}
-    ]
+    ciphers: provider_credential_ciphers
+
+  rate_limit_hmac_key = decode_32_byte_key!.("RATE_LIMIT_HMAC_KEY")
+  deletion_receipt_hmac_key = decode_32_byte_key!.("DELETION_RECEIPT_HMAC_KEY")
+
+  config :silent_regression, :rate_limit_hmac_key, rate_limit_hmac_key
+  config :silent_regression, :deletion_receipt_hmac_key, deletion_receipt_hmac_key
+
+  resend_api_key =
+    System.get_env("RESEND_API_KEY") ||
+      raise "environment variable RESEND_API_KEY is missing"
+
+  mail_from =
+    System.get_env("MAIL_FROM") ||
+      raise "environment variable MAIL_FROM is missing"
+
+  mail_from_name = System.get_env("MAIL_FROM_NAME", "Silent Regression")
+
+  config :swoosh, :api_client, Swoosh.ApiClient.Req
+
+  config :silent_regression, SilentRegression.Mailer,
+    adapter: Swoosh.Adapters.Resend,
+    api_key: resend_api_key
+
+  config :silent_regression, :notification_email_from, {mail_from_name, mail_from}
 
   database_url =
     System.get_env("DATABASE_URL") ||
@@ -113,7 +173,7 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  host = System.get_env("PHX_HOST") || raise "environment variable PHX_HOST is missing"
 
   config :silent_regression, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 

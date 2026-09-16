@@ -1,6 +1,6 @@
 # Pilot Readiness Progress
 
-## Status: Phases 1–4 complete; Phase 5 next
+## Status: Phases 1–5 complete; Phase 6 next
 
 ## Quick Reference
 
@@ -28,7 +28,7 @@
 
 ### Phase 5: Security and operator readiness
 
-**Status:** Not started
+**Status:** Complete
 
 ### Phase 6: End-to-end pilot gate
 
@@ -98,6 +98,21 @@
   recovery. Shared accounts survive when they retain another workspace membership.
 - Documented active, closed, deleted, and disaster-recovery backup behavior in
   `docs/pilot-readiness/DATA_RETENTION.md`.
+- Added production Cloak V1/V2 keyring configuration: V2 becomes the encrypting default when
+  present while V1 remains available to decrypt historical ciphertext. Production now fails closed
+  without versioned encryption, rate-limit HMAC, and deletion-receipt HMAC keys.
+- Added dry-run-first credential key inventory and exact-tag-confirmed re-encryption tooling. It
+  reports only tags and counts, verifies decryptability, and refuses to declare success while any
+  row remains outside the active tag.
+- Configured production email for Swoosh's Resend adapter over the existing Req client while leaving
+  Local/Test adapters unchanged outside production.
+- Added an explicit audit action/metadata allowlist and a sensitive-data boundary suite covering
+  audit records, product events, Phoenix filtering, and key inventory. The complete 593-test backend
+  suite passed after the boundary was enabled.
+- Updated the public Security, Privacy, and private-alpha Terms pages to describe the implemented
+  invite-only workspace, retention, credential, and deletion boundaries.
+- Added operator, incident-response, backup/restore, key-rotation, alpha data, and future deployment
+  documents. A route-level test confirms public registration, billing, and checkout remain absent.
 
 ## Blockers
 

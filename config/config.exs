@@ -35,7 +35,9 @@ config :silent_regression, :scopes,
 
 config :silent_regression,
   ecto_repos: [SilentRegression.Repo],
-  generators: [timestamp_type: :utc_datetime, binary_id: true]
+  generators: [timestamp_type: :utc_datetime, binary_id: true],
+  cloak_repo: SilentRegression.Repo,
+  cloak_schemas: [SilentRegression.ProviderCredentials.ProviderCredential]
 
 config :silent_regression, Oban,
   engine: Oban.Engines.Basic,

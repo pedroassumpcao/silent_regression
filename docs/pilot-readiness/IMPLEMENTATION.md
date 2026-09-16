@@ -40,12 +40,12 @@ encryption-key operations, or pilot spending remains gated by the decisions reco
 
 ## Phase 5: Security and operator readiness
 
-- [ ] Add versioned production Cloak keyring support and rotation verification tooling.
-- [ ] Test logs, exceptions, telemetry, Oban arguments, product events, and audit metadata against a
+- [x] Add versioned production Cloak keyring support and rotation verification tooling.
+- [x] Test logs, exceptions, telemetry, Oban arguments, product events, and audit metadata against a
   sensitive-data denylist and safe-key allowlist.
-- [ ] Write the operator runbook, incident procedures, backup/restore drill, key-rotation guide,
+- [x] Write the operator runbook, incident procedures, backup/restore drill, key-rotation guide,
   alpha data notice, known limitations, and deployment-readiness checklist.
-- [ ] Verify public registration and billing remain absent.
+- [x] Verify public registration and billing remain absent.
 
 ## Phase 6: End-to-end pilot gate
 

@@ -9,6 +9,16 @@ defmodule SilentRegressionWeb.UserSessionControllerTest do
   alias SilentRegression.Audit.AuditEvent
   alias SilentRegression.Repo
 
+  test "router exposes neither public registration nor billing", %{conn: conn} do
+    paths = Enum.map(SilentRegressionWeb.Router.__routes__(), & &1.path)
+
+    refute Enum.any?(paths, &String.contains?(&1, "register"))
+    refute Enum.any?(paths, &String.contains?(&1, "billing"))
+    refute Enum.any?(paths, &String.contains?(&1, "checkout"))
+
+    assert get(conn, "/users/register").status == 404
+  end
+
   describe "GET /users/log-in" do
     test "renders the Inertia login page without registration", %{conn: conn} do
       conn = get(conn, ~p"/users/log-in")

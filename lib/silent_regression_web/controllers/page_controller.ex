@@ -16,7 +16,7 @@ defmodule SilentRegressionWeb.PageController do
     render_public(conn, :security,
       page_title: "Security and data handling",
       meta_description:
-        "Understand the planned private-alpha boundary for managed LLM replay, customer-provided credentials, and captured data.",
+        "Understand the private-alpha boundary for managed LLM replay, encrypted customer-provided credentials, retention, and deletion.",
       canonical_path: ~p"/security"
     )
   end
@@ -25,7 +25,7 @@ defmodule SilentRegressionWeb.PageController do
     render_public(conn, :privacy,
       page_title: "Privacy notice",
       meta_description:
-        "A plain-language placeholder describing the limited information collected for Silent Regression design-partner applications.",
+        "A plain-language private-alpha notice covering applications, workspace monitoring data, retention, and deletion.",
       canonical_path: ~p"/privacy"
     )
   end

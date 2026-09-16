@@ -174,9 +174,9 @@ change application connectivity.
 - Operator-only purge and founder-assistance actions use explicit Mix tasks; they are not public or
   ordinary member routes.
 
-## Decision Gates
+## Approved Decision Gates
 
-The following choices require owner approval before external customer data is accepted:
+The owner approved the following choices on 16 September 2026:
 
 1. Transactional provider: recommend Resend for the pilot because Swoosh 1.28 has a built-in
    adapter and Resend accepts idempotency keys; keep the Local adapter until deployment credentials
@@ -209,4 +209,3 @@ The following choices require owner approval before external customer data is ac
 - [OWASP authentication guidance](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)
 - [OWASP logging guidance](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
 - [Fly.io backup and restore](https://fly.io/docs/postgres/managing/backup-and-restore/)
-
