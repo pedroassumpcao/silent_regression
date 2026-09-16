@@ -25,6 +25,17 @@ defmodule SilentRegression.Providers.CompletionAdapter do
     "http_error" => :provider_unavailable
   }
 
+  @safe_failure_detail_keys ~w(
+    attempts
+    max_retries
+    provider_code
+    provider_param
+    provider_type
+    retries_exhausted
+    status
+  )
+  @maximum_failure_detail_length 200
+
   def complete_once(provider, spike_adapter, secret, request, options)
       when provider in [:openai, :anthropic] and is_binary(secret) and is_list(options) do
     started_at = System.monotonic_time(:millisecond)
@@ -197,7 +208,8 @@ defmodule SilentRegression.Providers.CompletionAdapter do
        when is_map(error) do
     category = Map.get(@category_map, error["type"], :provider_unavailable)
     retryable = error["retryable"] == true
-    request_id = get_in(error, ["details", "request_id"])
+    details = Map.get(error, "details", %{})
+    request_id = if is_map(details), do: details["request_id"]
 
     {:error,
      failure(
@@ -206,7 +218,8 @@ defmodule SilentRegression.Providers.CompletionAdapter do
        request,
        latency_ms,
        retryable,
-       request_id
+       request_id,
+       safe_failure_metadata(details)
      )}
   end
 
@@ -244,7 +257,11 @@ defmodule SilentRegression.Providers.CompletionAdapter do
 
   defp bounded_request_id(_value), do: {:error, :malformed_response}
 
-  defp failure(category, message, request, latency_ms, retryable, request_id \\ nil) do
+  defp failure(category, message, request, latency_ms, retryable) do
+    failure(category, message, request, latency_ms, retryable, nil, %{})
+  end
+
+  defp failure(category, message, request, latency_ms, retryable, request_id, metadata) do
     %Failure{
       category: category,
       message: message,
@@ -252,9 +269,31 @@ defmodule SilentRegression.Providers.CompletionAdapter do
       requested_model: requested_model(request),
       attempts: 1,
       retryable: retryable,
-      latency_ms: latency_ms
+      latency_ms: latency_ms,
+      metadata: metadata
     }
   end
+
+  defp safe_failure_metadata(details) when is_map(details) do
+    details
+    |> Map.take(@safe_failure_detail_keys)
+    |> Enum.reduce(%{}, fn
+      {key, value}, metadata when is_boolean(value) or is_number(value) ->
+        Map.put(metadata, key, value)
+
+      {key, value}, metadata when is_binary(value) ->
+        if String.valid?(value) and byte_size(value) <= @maximum_failure_detail_length do
+          Map.put(metadata, key, value)
+        else
+          metadata
+        end
+
+      {_key, _value}, metadata ->
+        metadata
+    end)
+  end
+
+  defp safe_failure_metadata(_details), do: %{}
 
   defp requested_model(%CompletionRequest{} = request), do: request.requested_model
   defp requested_model(_request), do: nil

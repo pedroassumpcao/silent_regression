@@ -115,7 +115,14 @@ defmodule SilentRegression.Providers.CompletionTest do
       conn
       |> Plug.Conn.put_resp_header("x-request-id", "request-rate-limit")
       |> Plug.Conn.put_status(429)
-      |> Req.Test.json(%{"error" => %{"message" => @secret, "type" => "rate_limit_error"}})
+      |> Req.Test.json(%{
+        "error" => %{
+          "message" => @secret,
+          "type" => "rate_limit_error",
+          "code" => "rate_limit_exceeded",
+          "param" => "model"
+        }
+      })
     end)
 
     log =
@@ -128,6 +135,17 @@ defmodule SilentRegression.Providers.CompletionTest do
         assert failure.attempts == 1
         assert failure.request_id == "request-rate-limit"
         assert failure.latency_ms >= 0
+
+        assert failure.metadata == %{
+                 "attempts" => 1,
+                 "max_retries" => 0,
+                 "provider_code" => "rate_limit_exceeded",
+                 "provider_param" => "model",
+                 "provider_type" => "rate_limit_error",
+                 "retries_exhausted" => true,
+                 "status" => 429
+               }
+
         refute inspect(failure) =~ @secret
       end)
 

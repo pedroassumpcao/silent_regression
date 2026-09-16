@@ -76,7 +76,12 @@ defmodule SilentRegression.Providers.FakeOpenAI do
            requested_model: request.requested_model,
            attempts: 1,
            retryable: false,
-           latency_ms: 1
+           latency_ms: 1,
+           metadata: %{
+             "attempts" => 1,
+             "provider_code" => "fake_unavailable",
+             "status" => 503
+           }
          }}
 
       true ->

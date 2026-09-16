@@ -55,6 +55,8 @@ type Observation = {
   returnedModel: string | null
   outputText: string | null
   failureCategory: string | null
+  failureMessage: string | null
+  providerMetadata: Record<string, string | number | boolean>
   inputTokens: number | null
   outputTokens: number | null
   latencyMs: number | null
@@ -550,7 +552,20 @@ function ObservationCard({ observation }: { observation: Observation }) {
           <Alert variant="destructive">
             <XCircle />
             <AlertTitle>Provider outcome: {observation.failureCategory.replaceAll("_", " ")}</AlertTitle>
-            <AlertDescription>No deterministic quality conclusion is inferred from this operational failure.</AlertDescription>
+            <AlertDescription className="space-y-2">
+              <p>{observation.failureMessage || "The provider request did not complete successfully."}</p>
+              <p>No deterministic quality conclusion is inferred from this operational failure.</p>
+              {Object.keys(observation.providerMetadata).length > 0 && (
+                <dl className="grid gap-x-4 gap-y-1 rounded-lg border border-destructive/20 bg-background/60 p-3 font-mono text-xs sm:grid-cols-[auto_1fr]">
+                  {Object.entries(observation.providerMetadata).map(([key, value]) => (
+                    <div className="contents" key={key}>
+                      <dt className="font-semibold text-foreground">{key.replaceAll("_", " ")}</dt>
+                      <dd className="break-all">{String(value)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </AlertDescription>
           </Alert>
         )}
 

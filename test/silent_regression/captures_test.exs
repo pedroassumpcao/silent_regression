@@ -313,6 +313,13 @@ defmodule SilentRegression.CapturesTest do
       assert length(succeeded.evaluations) == 1
       assert length(succeeded.provider_attempts) == 1
       assert failed.failure_category == :provider_unavailable
+
+      assert failed.provider_metadata == %{
+               "attempts" => 1,
+               "provider_code" => "fake_unavailable",
+               "status" => 503
+             }
+
       assert failed.evaluations == []
       assert length(failed.provider_attempts) == 1
     end

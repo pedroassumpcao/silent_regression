@@ -258,6 +258,8 @@ defmodule SilentRegressionWeb.BaselineController do
       returned_model: observation.returned_model,
       output_text: observation.output_text,
       failure_category: observation.failure_category,
+      failure_message: observation.failure_message,
+      provider_metadata: observation.provider_metadata,
       input_tokens: observation.input_tokens,
       output_tokens: observation.output_tokens,
       latency_ms: observation.latency_ms,

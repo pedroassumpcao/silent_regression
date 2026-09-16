@@ -29,7 +29,8 @@ defmodule SilentRegression.Providers.Failure do
     :returned_model,
     :attempts,
     retryable: false,
-    latency_ms: nil
+    latency_ms: nil,
+    metadata: %{}
   ]
 
   @type category ::
@@ -56,7 +57,8 @@ defmodule SilentRegression.Providers.Failure do
           returned_model: String.t() | nil,
           attempts: pos_integer(),
           retryable: boolean(),
-          latency_ms: non_neg_integer() | nil
+          latency_ms: non_neg_integer() | nil,
+          metadata: map()
         }
 
   def categories, do: @categories

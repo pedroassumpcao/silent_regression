@@ -573,7 +573,8 @@ defmodule SilentRegression.Captures do
             status: :retrying,
             requested_model: run.requested_model,
             returned_model: failure.returned_model,
-            provider_request_id: failure.request_id
+            provider_request_id: failure.request_id,
+            provider_metadata: failure.metadata
           })
           |> Repo.update!()
 
@@ -588,6 +589,7 @@ defmodule SilentRegression.Captures do
             provider_request_id: failure.request_id,
             failure_category: category,
             failure_message: failure.message,
+            provider_metadata: failure.metadata,
             terminal_at: now
           })
           |> Repo.update!()

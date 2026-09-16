@@ -55,6 +55,8 @@ const observation = {
   returnedModel: "gpt-5.6-luna",
   outputText: "approved",
   failureCategory: null,
+  failureMessage: null,
+  providerMetadata: {},
   inputTokens: 10,
   outputTokens: 1,
   latencyMs: 42,
@@ -214,6 +216,46 @@ describe("BaselineView", () => {
     expect(screen.getByText(/operational evidence blocks approval/i)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Approve and seal baseline" })).toBeDisabled()
     expect(screen.queryByRole("button", { name: "Approve with recorded exception" })).not.toBeInTheDocument()
+  })
+
+  it("shows bounded provider diagnostics for an operational failure", () => {
+    const failedObservation = {
+      ...observation,
+      status: "failed" as const,
+      completionState: null,
+      outputText: null,
+      failureCategory: "invalid_request",
+      failureMessage: "The provider rejected the completion request.",
+      providerMetadata: {
+        status: 400,
+        provider_code: "unsupported_value",
+        provider_param: "temperature",
+      },
+      evaluation: null,
+    }
+
+    render(
+      <BaselineView
+        {...baseProps}
+        errors={{}}
+        flash={{}}
+        health={{
+          ...health,
+          runStatus: "failed",
+          statusCounts: { failed: 1 },
+          completionCounts: {},
+          evaluationCounts: {},
+          operationalBlockers: [{ code: "provider_failure", message: "The provider request failed." }],
+          normalApprovable: false,
+        }}
+        snapshot={{ ...snapshot, run: { ...snapshot.run, status: "failed", observations: [failedObservation] } }}
+      />,
+    )
+
+    expect(screen.getByText("Provider outcome: invalid request")).toBeInTheDocument()
+    expect(screen.getByText("The provider rejected the completion request.")).toBeInTheDocument()
+    expect(screen.getByText("unsupported_value")).toBeInTheDocument()
+    expect(screen.getByText("temperature")).toBeInTheDocument()
   })
 
   it("records a rationale only for deterministic exceptional acceptance", () => {
