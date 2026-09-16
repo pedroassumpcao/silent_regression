@@ -30,11 +30,11 @@ Make every future alert traceable to a stable severity and exact baseline snapsh
 
 ### Tasks
 
-- [ ] Accept optional `critical` or `warning` severity on deterministic rules without changing old fingerprints.
-- [ ] Persist severity on immutable rule results.
-- [ ] Add an optional baseline snapshot reference to capture runs.
-- [ ] Pin new manual/scheduled plans to the current compatible baseline when available.
-- [ ] Include the baseline reference in immutable run-plan protection and idempotency matching.
+- [x] Accept optional `critical` or `warning` severity on deterministic rules without changing old fingerprints.
+- [x] Persist severity on immutable rule results.
+- [x] Add an optional baseline snapshot reference to capture runs.
+- [x] Pin new manual/scheduled plans to the current compatible baseline when available.
+- [x] Include the baseline reference in immutable run-plan protection and idempotency matching.
 
 ### Success Criteria
 
@@ -51,11 +51,11 @@ Create explainable alerts once, even across retries and concurrent synchronizati
 
 ### Tasks
 
-- [ ] Add the alert schema, constraints, lifecycle actors/timestamps, and database uniqueness.
-- [ ] Implement provenance compatibility and baseline-relative metric comparison.
-- [ ] Implement decisive contract severity and grouped operational findings.
-- [ ] Synchronize terminal run outcomes idempotently from the observation worker.
-- [ ] Implement member acknowledgement and owner-only resolution with audit events.
+- [x] Add the alert schema, constraints, lifecycle actors/timestamps, and database uniqueness.
+- [x] Implement provenance compatibility and baseline-relative metric comparison.
+- [x] Implement decisive contract severity and grouped operational findings.
+- [x] Synchronize terminal run outcomes idempotently from the observation worker.
+- [x] Implement member acknowledgement and owner-only resolution with audit events.
 
 ### Success Criteria
 
@@ -72,11 +72,11 @@ Expose bounded, tenant-scoped product data without losing explainability.
 
 ### Tasks
 
-- [ ] Query workspace alerts, monitor run history, and one exact run detail.
-- [ ] Compute explicit run counts, usage, latency, attempts, and deterministic outcomes.
-- [ ] Present pinned baseline/current provenance and compatibility mismatches.
-- [ ] Allowlist provider diagnostic metadata and redact sensitive diagnostic keys.
-- [ ] Bound long UTF-8 text and structured evidence for browser payloads.
+- [x] Query workspace alerts, monitor run history, and one exact run detail.
+- [x] Compute explicit run counts, usage, latency, attempts, and deterministic outcomes.
+- [x] Present pinned baseline/current provenance and compatibility mismatches.
+- [x] Allowlist provider diagnostic metadata and redact sensitive diagnostic keys.
+- [x] Bound long UTF-8 text and structured evidence for browser payloads.
 
 ### Success Criteria
 
@@ -93,13 +93,13 @@ Let members inspect evidence and let authorized users move alerts through the si
 
 ### Tasks
 
-- [ ] Enable the workspace Alerts navigation and inbox.
-- [ ] Build the monitor result overview and run-history page.
-- [ ] Build the run detail page with case/observation/evaluation/rule evidence.
-- [ ] Add acknowledgement and owner-only resolution actions.
-- [ ] Link operations and dashboard surfaces to formal results.
-- [ ] Add empty, in-progress, partial, stale, and no-alert states.
-- [ ] Constrain long plain-text content for mobile and desktop layouts.
+- [x] Enable the workspace Alerts navigation and inbox.
+- [x] Build the monitor result overview and run-history page.
+- [x] Build the run detail page with case/observation/evaluation/rule evidence.
+- [x] Add acknowledgement and owner-only resolution actions.
+- [x] Link operations and dashboard surfaces to formal results.
+- [x] Add empty, in-progress, partial, stale, and no-alert states.
+- [x] Constrain long plain-text content for mobile and desktop layouts.
 
 ### Success Criteria
 
@@ -116,8 +116,8 @@ Prove the Task 12 acceptance criteria and record the implementation boundary for
 
 ### Tasks
 
-- [ ] Add policy, lifecycle, provenance, presenter, controller, and cross-tenant tests.
-- [ ] Add frontend evidence, lifecycle, empty-state, and responsive-class tests.
+- [x] Add policy, lifecycle, provenance, presenter, controller, and cross-tenant tests.
+- [x] Add frontend evidence, lifecycle, empty-state, and responsive-class tests.
 - [ ] Run a browser journey from a fake completed run through alert inspection and resolution.
 - [ ] Run frontend checks, asset build, and `mix precommit`.
 - [ ] Complete the private-alpha plan and progress records.
@@ -139,4 +139,3 @@ stable alert/evidence identities.
   and table components cover the slice.
 - No new runtime dependency is planned.
 - Result routes remain in the authenticated workspace-scoped controller pipeline.
-

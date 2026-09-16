@@ -186,6 +186,8 @@ function MonitorCard({ monitor, workspaceSlug }: { monitor: MonitorSummary; work
   const complete = monitor.setupStatus === "completed"
   const baselinePending = monitor.state === "baseline_pending"
   const operational = monitor.state === "active" || monitor.state === "paused" || monitor.readyToActivate
+  const resultsAvailable = monitor.state === "active" || monitor.state === "paused"
+  const resultsPath = `/app/${workspaceSlug}/monitors/${monitor.id}/results`
   const nextPath = complete
     ? `/app/${workspaceSlug}/monitors/${monitor.id}/${operational ? "operations" : baselinePending ? "baseline" : "contract"}`
     : `/app/${workspaceSlug}/monitors/${monitor.id}/setup`
@@ -228,11 +230,14 @@ function MonitorCard({ monitor, workspaceSlug }: { monitor: MonitorSummary; work
             <CircleDashed className="size-3.5" />
             {complete ? completeDetail : `Next: ${stepLabel(monitor.nextStep)}`}
           </span>
-          <Button asChild variant={complete ? "outline" : "default"} size="sm">
-            <Link href={nextPath}>
-              {complete ? completeAction : "Resume setup"} <ArrowRight />
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {resultsAvailable && <Button asChild variant="ghost" size="sm"><Link href={resultsPath}>Results</Link></Button>}
+            <Button asChild variant={complete ? "outline" : "default"} size="sm">
+              <Link href={nextPath}>
+                {complete ? completeAction : "Resume setup"} <ArrowRight />
+              </Link>
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

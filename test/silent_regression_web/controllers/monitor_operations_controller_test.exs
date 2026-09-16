@@ -51,7 +51,7 @@ defmodule SilentRegressionWeb.MonitorOperationsControllerTest do
     assert inertia_props(page).canManage
     assert inertia_props(page).monitor.state == :baseline_pending
     assert inertia_props(page).spend.maximumCallCount == 2
-    assert inertia_props(page).runsNeedingAttention == 0
+    assert inertia_props(page).unresolvedAlerts == 0
 
     configured =
       patch(recycle(page), path <> "/schedule", %{"schedule" => %{"cadence" => "daily"}})

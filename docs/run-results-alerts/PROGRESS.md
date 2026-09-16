@@ -1,6 +1,6 @@
 # Run Results and Alerts Progress
 
-## Status: Phase 4 - In Progress
+## Status: Phase 4 - Completed
 
 ## Quick Reference
 
@@ -86,15 +86,29 @@
 
 ### Phase 4: Inertia Product Experience
 
-**Status:** In Progress
+**Status:** Completed
 
 #### Tasks Completed
 
-- None.
+- Enabled the Alerts product navigation and added a workspace inbox ordered by unresolved state,
+  severity, and recency.
+- Added monitor results with formal unresolved alerts, explicit run counters, responsive history,
+  missing-baseline guidance, and direct evidence links.
+- Added run evidence with frozen prompts/configuration, case context, captured output, provider
+  attempts, evaluations, rule results, baseline provenance, and separately labeled operational data.
+- Added member acknowledgement, owner-only post-acknowledgement resolution, flash outcomes, and a
+  redacted diagnostic download.
+- Linked operations and active dashboard monitor cards to results, and replaced the temporary
+  attention label with the formal unresolved-alert count.
+- Added controller, authorization, cross-tenant, redaction, frontend state, inert-content, and
+  responsive-layout tests.
 
 #### Decisions Made
 
-- Add a workspace alert inbox, monitor results page, and run detail page using existing primitives.
+- Reused existing shadcn primitives and native disclosure elements; no dependency or UI primitive
+  was added.
+- All result routes stay inside the authenticated workspace scope because prompts, context, outputs,
+  and alert evidence are private customer data.
 
 #### Blockers
 
@@ -130,6 +144,7 @@
   capture-schema, capture-execution, and monitor-operation tests.
 - Completed Phase 2 with 33 focused alert-policy, lifecycle, capture, and scheduling tests passing.
 - Completed Phase 3 with focused presenter, redaction, provenance, history, and workspace-scope tests.
+- Completed Phase 4 with the full results/alerts Inertia slice and focused backend/frontend tests.
 
 ## Files Changed
 
@@ -158,6 +173,22 @@
 - `lib/silent_regression/monitor_operations.ex`
 - `test/silent_regression/run_results/presenter_test.exs`
 - `test/silent_regression/run_results/safe_value_test.exs`
+- `lib/silent_regression_web/controllers/run_result_controller.ex`
+- `lib/silent_regression_web/controllers/result_alert_controller.ex`
+- `lib/silent_regression_web/controllers/monitor_operations_controller.ex`
+- `lib/silent_regression_web/router.ex`
+- `assets/js/types/results.ts`
+- `assets/js/components/result-evidence.tsx`
+- `assets/js/components/product-shell.tsx`
+- `assets/js/pages/Alerts/Index.tsx`
+- `assets/js/pages/Monitors/Results.tsx`
+- `assets/js/pages/Monitors/Run.tsx`
+- `assets/js/pages/Monitors/Operations.tsx`
+- `assets/js/pages/Dashboard.tsx`
+- `test/silent_regression_web/controllers/run_result_controller_test.exs`
+- `assets/js/test/pages/Alerts.test.tsx`
+- `assets/js/test/pages/Results.test.tsx`
+- `assets/js/test/pages/Run.test.tsx`
 
 ## Architectural Decisions
 

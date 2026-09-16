@@ -32,7 +32,7 @@ import {
 import { cn } from "@/lib/utils"
 
 type ProductShellProps = PropsWithChildren<{
-  currentSection?: "overview" | "credentials" | "monitors"
+  currentSection?: "overview" | "credentials" | "monitors" | "alerts"
   releaseStage: string
   userEmail: string
   workspace: { name: string; slug: string }
@@ -74,7 +74,12 @@ export function ProductShell({
       href: `/app/${workspace.slug}/monitors`,
       current: currentSection === "monitors",
     },
-    { label: "Alerts", icon: BellRing, href: null, current: false },
+    {
+      label: "Alerts",
+      icon: BellRing,
+      href: `/app/${workspace.slug}/alerts`,
+      current: currentSection === "alerts",
+    },
   ]
 
   return (

@@ -45,7 +45,7 @@ defmodule SilentRegression.MonitorOperationsTest do
       assert state.approved_baseline?
       assert state.can_manage?
       assert state.maximum_call_count == 2
-      assert state.runs_needing_attention == 0
+      assert state.unresolved_alerts == 0
 
       event =
         scope

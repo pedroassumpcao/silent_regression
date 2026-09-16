@@ -98,7 +98,7 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
         version: version && version.version
       },
       release_stage: "Private alpha",
-      runs_needing_attention: state.runs_needing_attention,
+      unresolved_alerts: state.unresolved_alerts,
       spend: %{
         case_count: div(state.maximum_call_count, 2),
         maximum_call_count: state.maximum_call_count,

@@ -40,7 +40,7 @@ const baseProps: OperationsProps = {
     version: 1,
   },
   releaseStage: "Private alpha",
-  runsNeedingAttention: 0,
+  unresolvedAlerts: 0,
   spend: {
     caseCount: 1,
     maximumCallCount: 2,

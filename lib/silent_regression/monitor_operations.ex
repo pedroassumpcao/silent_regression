@@ -34,7 +34,7 @@ defmodule SilentRegression.MonitorOperations do
        %{
          monitor: monitor,
          last_run: last_run,
-         runs_needing_attention: unresolved_alert_count(scope, monitor.id),
+         unresolved_alerts: unresolved_alert_count(scope, monitor.id),
          approved_baseline?: Baselines.compatible_approved?(scope, monitor.id),
          maximum_call_count: maximum_call_count(monitor),
          workspace_call_limit: operations_config(:daily_workspace_call_limit),

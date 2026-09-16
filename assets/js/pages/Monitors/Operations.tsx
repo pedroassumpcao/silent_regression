@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { Head, Link, router, usePage } from "@inertiajs/react"
 import {
   Activity,
@@ -70,7 +70,7 @@ export type OperationsProps = {
     version: number | null
   }
   releaseStage: string
-  runsNeedingAttention: number
+  unresolvedAlerts: number
   spend: {
     caseCount: number
     maximumCallCount: number
@@ -88,7 +88,7 @@ export function OperationsView({
   lastRun,
   monitor,
   releaseStage,
-  runsNeedingAttention,
+  unresolvedAlerts,
   spend,
 }: OperationsProps & { flash?: SharedPageProps["flash"] }) {
   const workspace = auth.workspace
@@ -102,6 +102,7 @@ export function OperationsView({
   const baselinePath = `/app/${workspace.slug}/monitors/${monitor.id}/baseline`
   const credentialsPath = `/app/${workspace.slug}/credentials`
   const dashboardPath = `/app/${workspace.slug}/monitors`
+  const resultsPath = `/app/${workspace.slug}/monitors/${monitor.id}/results`
   const active = monitor.state === "active"
   const paused = monitor.state === "paused"
   const pendingActivation = monitor.state === "baseline_pending"
@@ -161,9 +162,14 @@ export function OperationsView({
                 same frozen capture path, exact model, and provider-call ceiling.
               </p>
             </div>
-            <div className="rounded-2xl border bg-card/70 px-5 py-4 text-sm shadow-xs">
-              <p className="text-xs text-muted-foreground">Protected target</p>
-              <p className="mt-1 font-medium capitalize">{monitor.provider || "Provider"} · {monitor.requestedModel || "Model unavailable"}</p>
+            <div className="flex flex-col gap-3 rounded-2xl border bg-card/70 px-5 py-4 text-sm shadow-xs sm:flex-row sm:items-center">
+              <div>
+                <p className="text-xs text-muted-foreground">Protected target</p>
+                <p className="mt-1 font-medium capitalize">{monitor.provider || "Provider"} · {monitor.requestedModel || "Model unavailable"}</p>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link href={resultsPath}>View results</Link>
+              </Button>
             </div>
           </div>
         </header>
@@ -198,7 +204,7 @@ export function OperationsView({
           <MetricCard icon={Activity} label="Monitor state" value={stateLabel(monitor.state)} detail={paused ? pauseReason(monitor.pauseReason) : cadenceLabel(monitor.cadence)} />
           <MetricCard icon={Clock3} label="Last run" value={lastRun ? statusLabel(lastRun.status) : "No managed run"} detail={lastRun ? formatUtc(lastRun.completedAt || lastRun.insertedAt) : "Activate or run on demand"} />
           <MetricCard icon={CalendarClock} label="Next UTC run" value={monitor.nextRunAt ? formatUtc(monitor.nextRunAt) : "Not scheduled"} detail={monitor.cadence === "manual" ? "Run now only" : cadenceLabel(monitor.cadence)} />
-          <MetricCard icon={runsNeedingAttention > 0 ? AlertTriangle : ShieldCheck} label="Runs needing attention" value={runsNeedingAttention} detail={runsNeedingAttention > 0 ? "Inspect when run results ship in Task 12" : "No failed or review-required runs"} tone={runsNeedingAttention > 0 ? "warning" : "success"} />
+          <MetricCard icon={unresolvedAlerts > 0 ? AlertTriangle : ShieldCheck} label="Unresolved alerts" value={unresolvedAlerts} detail={unresolvedAlerts > 0 ? <Link className="underline underline-offset-4" href={resultsPath}>Inspect the evidence and alert lifecycle</Link> : "No open or acknowledged alerts"} tone={unresolvedAlerts > 0 ? "warning" : "success"} />
         </section>
 
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
@@ -359,7 +365,7 @@ export function OperationsView({
   )
 }
 
-function MetricCard({ icon: Icon, label, value, detail, tone }: { icon: typeof Activity; label: string; value: string | number; detail: string; tone?: "success" | "warning" }) {
+function MetricCard({ icon: Icon, label, value, detail, tone }: { icon: typeof Activity; label: string; value: string | number; detail: ReactNode; tone?: "success" | "warning" }) {
   return <Card><CardContent className="p-5"><span className="flex items-center gap-2 text-xs text-muted-foreground"><Icon className={tone === "warning" ? "size-4 text-amber-600" : tone === "success" ? "size-4 text-success" : "size-4"} />{label}</span><p className="mt-3 text-xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p></CardContent></Card>
 }
 
