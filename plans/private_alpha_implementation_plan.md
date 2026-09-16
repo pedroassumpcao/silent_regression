@@ -1284,6 +1284,27 @@ The product is ready for the first external design partner only when:
   the valid credential, presenting the refreshed exact preflight, and obtaining new explicit
   authorization before another provider request.
 
+### 2026-09-15 — Task 10 live completion reached OpenAI and exposed diagnostics gap
+
+- Received fresh authorization to link the smoke monitor to the valid OpenAI credential ending in
+  `nJgA`, perform one exact-model verification request, and—only if the refreshed preflight matched—
+  execute one 32-output-token completion with at most one retry.
+- Recorded the credential-link change in the audit log. Exact-model verification succeeded for
+  `gpt-5.6-luna`, and the refreshed preflight matched the approved envelope: one case, one sample,
+  one planned request, two attempts maximum, 32 output tokens per attempt, and no blockers.
+- The completion reached OpenAI once and failed as a non-retryable `invalid_request` after 1,168 ms.
+  Provider request ID: `req_c0c8e7c82a924fcfacf3692a657bd7d5`. No retry was attempted. Capture
+  run `5f31507c-338b-468a-acfc-b7b3d9b20f9b` and pending baseline snapshot
+  `54094899-b8e3-4c22-8083-eaac04efbaa8` retain the durable failed evidence.
+- The request used the Responses API with plain-text output, 32 maximum output tokens, and an
+  explicitly supplied `temperature` of `0.0`. Earlier successful spike evidence omitted sampling
+  parameters and let the same model use its defaults, so sampling compatibility is the leading
+  hypothesis, but the failed attempt cannot prove it.
+- The managed completion adapter currently preserves only a normalized category, generic message,
+  and provider request ID. It discards bounded non-secret OpenAI diagnostics such as HTTP status,
+  provider error code, and rejected parameter. Close this observability gap before spending on a
+  diagnostic retry, then obtain fresh explicit authorization for any new provider request.
+
 ## 17. References
 
 - [Feasibility spike implementation plan](implementation_plan.md)
