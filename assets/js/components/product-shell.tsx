@@ -190,7 +190,7 @@ export function ProductShell({
           <div className="min-w-0 flex-1">
             <header className="sticky top-0 z-20 border-b border-border/80 bg-background/90 backdrop-blur-xl">
               <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center gap-3 lg:hidden">
+                <div className="min-w-0 flex items-center gap-3 lg:hidden">
                   <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
                     <FlaskConical className="size-4" />
                   </span>
@@ -203,7 +203,7 @@ export function ProductShell({
                   <Activity className="size-4 text-primary" />
                   {workspace.name}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="shrink-0 flex items-center gap-2">
                   <Badge variant="secondary" className="rounded-full px-3 py-1">
                     {releaseStage}
                   </Badge>
