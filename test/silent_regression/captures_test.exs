@@ -74,6 +74,22 @@ defmodule SilentRegression.CapturesTest do
         assert {:ok, %{status: :succeeded, kind: ^kind}} = Captures.get_run(scope, run.id)
       end
     end
+
+    test "rejects a second active capture for the same monitor", %{
+      fixture: fixture,
+      scope: scope
+    } do
+      assert {:ok, first} = Captures.plan_run(scope, fixture.monitor.id, plan_attrs())
+
+      assert {:error, :run_in_progress} =
+               Captures.plan_run(
+                 scope,
+                 fixture.monitor.id,
+                 plan_attrs(%{identity_key: "another-capture", kind: :scheduled})
+               )
+
+      assert first.status == :planned
+    end
   end
 
   describe "enqueue_run/2" do

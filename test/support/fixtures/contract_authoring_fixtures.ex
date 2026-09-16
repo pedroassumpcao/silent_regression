@@ -3,9 +3,12 @@ defmodule SilentRegression.ContractAuthoringFixtures do
   Test helpers for deterministic contract authoring and fixture approval.
   """
 
-  alias SilentRegression.ContractAuthoring
+  import Ecto.Query
+
+  alias SilentRegression.{Baselines, Captures, ContractAuthoring}
   alias SilentRegression.ContractAuthoring.Templates
   alias SilentRegression.Monitors
+  alias SilentRegression.MonitorOperations
   alias SilentRegression.MonitorSetupsFixtures
   alias SilentRegression.ProviderCredentials
 
@@ -68,6 +71,37 @@ defmodule SilentRegression.ContractAuthoringFixtures do
     {:ok, monitor} =
       Monitors.prepare_baseline(scope, fixture.monitor.id, fixture.version.id)
 
+    %{fixture | monitor: monitor}
+  end
+
+  def approved_baseline_fixture(scope, attrs \\ %{}) do
+    fixture = baseline_ready_monitor_fixture(scope, attrs)
+    {:ok, preflight} = Baselines.preflight(scope, fixture.monitor.id)
+
+    {:ok, snapshot} =
+      Baselines.authorize(scope, fixture.monitor.id, %{
+        authorization_key: Ecto.UUID.generate(),
+        samples_per_case: preflight.samples_per_case,
+        preview_fingerprint: preflight.preview_fingerprint
+      })
+
+    Enum.each(snapshot.capture_run.observations, fn observation ->
+      :ok = Captures.execute_observation(snapshot.capture_run.id, observation.id)
+    end)
+
+    Oban.Job
+    |> where([job], fragment("?->>'capture_run_id' = ?", job.args, ^snapshot.capture_run.id))
+    |> SilentRegression.Repo.delete_all()
+
+    {:ok, approved} =
+      Baselines.approve(scope, fixture.monitor.id, %{approval_mode: :normal})
+
+    Map.merge(fixture, %{baseline: approved})
+  end
+
+  def operational_monitor_fixture(scope, attrs \\ %{}) do
+    fixture = approved_baseline_fixture(scope, attrs)
+    {:ok, monitor} = MonitorOperations.configure(scope, fixture.monitor.id, %{cadence: :manual})
     %{fixture | monitor: monitor}
   end
 end

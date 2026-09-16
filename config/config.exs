@@ -40,6 +40,11 @@ config :silent_regression,
 config :silent_regression, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,
+  cron: [
+    crontab: [
+      {"* * * * *", SilentRegression.MonitorOperations.Workers.DispatcherWorker, max_attempts: 1}
+    ]
+  ],
   queues: [capture: 4, scheduler: 1],
   repo: SilentRegression.Repo
 
@@ -68,6 +73,11 @@ config :silent_regression, :capture_domain,
   max_calls_per_run: 200,
   max_retry_limit: 2,
   max_samples_per_case: 10
+
+config :silent_regression, :monitor_operations,
+  daily_workspace_call_limit: 200,
+  repeated_authentication_failure_limit: 2,
+  dispatcher_batch_size: 100
 
 # Provider credentials are write-only inputs. Phoenix filters matching keys at
 # every depth before request parameters are logged.

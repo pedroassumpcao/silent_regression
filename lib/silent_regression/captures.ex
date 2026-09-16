@@ -146,6 +146,30 @@ defmodule SilentRegression.Captures do
 
   def cancel_run(%Scope{}, _run_id), do: {:error, :workspace_required}
 
+  def cancel_monitor_runs(
+        %Scope{workspace: %Workspace{id: workspace_id}, membership: %Membership{}},
+        monitor_id
+      ) do
+    with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id),
+         true <- monitor_in_workspace?(workspace_id, monitor_id) do
+      {:ok, cancel_active_monitor_runs(workspace_id, monitor_id)}
+    else
+      _reason -> {:error, :not_found}
+    end
+  end
+
+  def cancel_monitor_runs(%Scope{}, _monitor_id), do: {:error, :workspace_required}
+
+  @doc false
+  def cancel_monitor_runs(monitor_id) do
+    with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id),
+         %Monitor{workspace_id: workspace_id} <- Repo.get(Monitor, monitor_id) do
+      cancel_active_monitor_runs(workspace_id, monitor_id)
+    else
+      _reason -> []
+    end
+  end
+
   @doc false
   def execute_observation(capture_run_id, observation_id) do
     with {:ok, capture_run_id} <- Ecto.UUID.cast(capture_run_id),
@@ -236,7 +260,10 @@ defmodule SilentRegression.Captures do
           else: {:error, :identity_conflict}
 
       nil ->
-        insert_run(resources, user, plan)
+        case active_run_for_monitor(resources.monitor.id) do
+          nil -> insert_run(resources, user, plan)
+          %CaptureRun{} -> {:error, :run_in_progress}
+        end
     end
   end
 
@@ -344,6 +371,10 @@ defmodule SilentRegression.Captures do
         finalize_run!(run)
         :done
 
+      run.kind in [:manual, :scheduled] and not execution_allowed?(run) ->
+        cancel_ineligible_run!(run)
+        :done
+
       started_attempt = started_attempt(observation.id) ->
         handle_started_attempt!(run, observation, started_attempt)
 
@@ -351,6 +382,53 @@ defmodule SilentRegression.Captures do
         run = ensure_run_started!(run)
         prepare_reserved_attempt(run, observation)
     end
+  end
+
+  defp execution_allowed?(run) do
+    monitor_state =
+      Monitor
+      |> where(
+        [monitor],
+        monitor.id == ^run.monitor_id and monitor.workspace_id == ^run.workspace_id and
+          monitor.active_version_id == ^run.monitor_version_id and
+          monitor.provider_credential_id == ^run.provider_credential_id
+      )
+      |> select([monitor], monitor.state)
+      |> Repo.one()
+
+    credential_valid? =
+      ProviderCredential
+      |> where(
+        [credential],
+        credential.id == ^run.provider_credential_id and
+          credential.workspace_id == ^run.workspace_id and credential.provider == ^run.provider and
+          credential.status == :valid
+      )
+      |> Repo.exists?()
+
+    credential_valid? and
+      case monitor_state do
+        :baseline_pending -> true
+        :active -> Baselines.capture_run_compatible?(run)
+        _state -> false
+      end
+  end
+
+  defp cancel_ineligible_run!(run) do
+    now = DateTime.utc_now()
+
+    CaptureObservation
+    |> where(
+      [observation],
+      observation.capture_run_id == ^run.id and
+        observation.status in [:planned, :retrying]
+    )
+    |> Repo.update_all(set: [status: :cancelled, terminal_at: now, updated_at: now])
+
+    run
+    |> CaptureRun.lifecycle_changeset(%{cancellation_requested_at: now})
+    |> Repo.update!()
+    |> finalize_run!()
   end
 
   defp handle_started_attempt!(run, observation, attempt) do
@@ -992,6 +1070,50 @@ defmodule SilentRegression.Captures do
     )
     |> lock("FOR UPDATE")
     |> Repo.one()
+  end
+
+  defp monitor_in_workspace?(workspace_id, monitor_id) do
+    Monitor
+    |> where(
+      [monitor],
+      monitor.workspace_id == ^workspace_id and monitor.id == ^monitor_id
+    )
+    |> Repo.exists?()
+  end
+
+  defp active_run_for_monitor(monitor_id) do
+    CaptureRun
+    |> where(
+      [run],
+      run.monitor_id == ^monitor_id and run.status in [:planned, :queued, :running]
+    )
+    |> order_by([run], asc: run.inserted_at, asc: run.id)
+    |> limit(1)
+    |> lock("FOR UPDATE")
+    |> Repo.one()
+  end
+
+  defp cancel_active_monitor_runs(workspace_id, monitor_id) do
+    run_ids =
+      CaptureRun
+      |> where(
+        [run],
+        run.workspace_id == ^workspace_id and run.monitor_id == ^monitor_id and
+          run.status in [:planned, :queued, :running]
+      )
+      |> select([run], run.id)
+      |> Repo.all()
+
+    Enum.flat_map(run_ids, fn run_id ->
+      case cancel_run_transaction(workspace_id, run_id) do
+        {:ok, run} ->
+          cancel_queued_jobs(run.id)
+          [run]
+
+        {:error, _reason} ->
+          []
+      end
+    end)
   end
 
   defp run_by_identity(workspace_id, identity_key, options) do

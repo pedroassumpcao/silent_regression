@@ -16,6 +16,7 @@ defmodule SilentRegression.Baselines do
   }
 
   alias SilentRegression.Captures
+  alias SilentRegression.Captures.CaptureRun
   alias SilentRegression.ContractAuthoring.ContractVersion
   alias SilentRegression.Monitors
   alias SilentRegression.Monitors.{Monitor, MonitorVersion}
@@ -222,6 +223,44 @@ defmodule SilentRegression.Baselines do
   end
 
   def current_approved(%Scope{}, _monitor_id), do: {:error, :workspace_required}
+
+  def current_compatible(
+        %Scope{workspace: %Workspace{id: workspace_id}, membership: %Membership{}},
+        monitor_id
+      ) do
+    with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id),
+         %BaselineSnapshot{} = snapshot <- approved_snapshot(workspace_id, monitor_id),
+         snapshot <- preload_snapshot(snapshot),
+         :ok <- ensure_snapshot_compatible(snapshot) do
+      {:ok, snapshot}
+    else
+      :error -> {:error, :not_found}
+      nil -> {:error, :baseline_required}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def current_compatible(%Scope{}, _monitor_id), do: {:error, :workspace_required}
+
+  @doc false
+  def capture_run_compatible?(%CaptureRun{} = run) do
+    case approved_snapshot(run.workspace_id, run.monitor_id) do
+      %BaselineSnapshot{} = snapshot ->
+        snapshot.monitor_version_id == run.monitor_version_id and
+          snapshot.contract_version_id == run.contract_version_id and
+          snapshot.provider_credential_id == run.provider_credential_id and
+          snapshot.provider == run.provider and
+          snapshot.requested_model == run.requested_model and
+          snapshot.monitor_fingerprint == run.monitor_fingerprint and
+          snapshot.case_set_fingerprint == run.case_set_fingerprint and
+          snapshot.contract_fingerprint == run.contract_fingerprint and
+          snapshot.evaluator_engine_version == run.evaluator_engine_version and
+          ensure_snapshot_compatible(snapshot) == :ok
+
+      nil ->
+        false
+    end
+  end
 
   @doc false
   def authorized_baseline_run?(run_id) do

@@ -20,6 +20,16 @@ defmodule SilentRegression.Monitors.Monitor do
   @foreign_key_type :binary_id
 
   @states [:draft, :validating, :ready, :baseline_pending, :active, :paused, :archived]
+  @cadences [:manual, :daily, :weekly]
+
+  @pause_reasons [
+    :owner_paused,
+    :credential_unavailable,
+    :incompatible_configuration,
+    :repeated_authentication_failures,
+    :workspace_call_limit,
+    :schedule_owner_unavailable
+  ]
 
   schema "monitors" do
     field :name, :string
@@ -27,9 +37,15 @@ defmodule SilentRegression.Monitors.Monitor do
     field :state, Ecto.Enum, values: @states, default: :draft
     field :state_changed_at, :utc_datetime
     field :archived_at, :utc_datetime
+    field :cadence, Ecto.Enum, values: @cadences, default: :manual
+    field :next_run_at, :utc_datetime
+    field :last_scheduled_at, :utc_datetime
+    field :schedule_updated_at, :utc_datetime
+    field :pause_reason, Ecto.Enum, values: @pause_reasons
 
     belongs_to :workspace, Workspace
     belongs_to :created_by_user, User
+    belongs_to :schedule_updated_by_user, User
     belongs_to :active_version, MonitorVersion
     belongs_to :draft_version, MonitorVersion
     belongs_to :provider_credential, ProviderCredential
@@ -123,7 +139,43 @@ defmodule SilentRegression.Monitors.Monitor do
     |> add_error(:state, "has an invalid target")
   end
 
+  def schedule_changeset(
+        %__MODULE__{} = monitor,
+        %User{} = user,
+        attrs
+      ) do
+    monitor
+    |> cast(attrs, [
+      :state,
+      :state_changed_at,
+      :cadence,
+      :next_run_at,
+      :last_scheduled_at,
+      :pause_reason
+    ])
+    |> put_change(:schedule_updated_by_user_id, user.id)
+    |> put_change(:schedule_updated_at, Map.fetch!(attrs, :schedule_updated_at))
+    |> validate_required([:cadence, :schedule_updated_at, :schedule_updated_by_user_id])
+    |> validate_schedule()
+    |> add_constraints()
+  end
+
+  def system_schedule_changeset(%__MODULE__{} = monitor, attrs) do
+    monitor
+    |> cast(attrs, [
+      :state,
+      :state_changed_at,
+      :next_run_at,
+      :last_scheduled_at,
+      :pause_reason
+    ])
+    |> validate_schedule()
+    |> add_constraints()
+  end
+
   def states, do: @states
+  def cadences, do: @cadences
+  def pause_reasons, do: @pause_reasons
 
   def transition_allowed?(:validating, target) when target in [:draft, :ready], do: true
 
@@ -145,12 +197,59 @@ defmodule SilentRegression.Monitors.Monitor do
     |> validate_length(:description, max: 2_000)
   end
 
+  defp validate_schedule(changeset) do
+    cadence = get_field(changeset, :cadence)
+    state = get_field(changeset, :state)
+    next_run_at = get_field(changeset, :next_run_at)
+    pause_reason = get_field(changeset, :pause_reason)
+
+    changeset
+    |> then(fn changeset ->
+      if cadence == :manual and next_run_at do
+        add_error(changeset, :next_run_at, "must be empty for a manual cadence")
+      else
+        changeset
+      end
+    end)
+    |> then(fn changeset ->
+      if state == :paused and next_run_at do
+        add_error(changeset, :next_run_at, "must be empty while paused")
+      else
+        changeset
+      end
+    end)
+    |> then(fn changeset ->
+      if state == :active and cadence in [:daily, :weekly] and is_nil(next_run_at) do
+        add_error(changeset, :next_run_at, "is required for an active schedule")
+      else
+        changeset
+      end
+    end)
+    |> then(fn changeset ->
+      cond do
+        state == :paused and is_nil(pause_reason) ->
+          add_error(changeset, :pause_reason, "is required while paused")
+
+        state != :paused and not is_nil(pause_reason) ->
+          add_error(changeset, :pause_reason, "must be empty unless paused")
+
+        true ->
+          changeset
+      end
+    end)
+  end
+
   defp add_constraints(changeset) do
     changeset
     |> foreign_key_constraint(:workspace_id)
     |> foreign_key_constraint(:created_by_user_id)
     |> foreign_key_constraint(:active_version_id)
+    |> foreign_key_constraint(:schedule_updated_by_user_id)
     |> check_constraint(:state, name: :monitors_state_check)
     |> check_constraint(:archived_at, name: :monitors_archived_at_check)
+    |> check_constraint(:cadence, name: :monitors_cadence_check)
+    |> check_constraint(:pause_reason, name: :monitors_pause_reason_check)
+    |> check_constraint(:next_run_at, name: :monitors_manual_schedule_check)
+    |> check_constraint(:next_run_at, name: :monitors_paused_schedule_check)
   end
 end

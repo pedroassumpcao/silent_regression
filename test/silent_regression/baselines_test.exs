@@ -159,6 +159,9 @@ defmodule SilentRegression.BaselinesTest do
       assert event.target_id == approved.id
       assert event.metadata["approval_mode"] == "normal"
       assert event.metadata["member_count"] == 1
+
+      assert {:ok, compatible} = Baselines.current_compatible(scope, fixture.monitor.id)
+      assert compatible.id == approved.id
     end
 
     test "deterministic failures require a bounded exceptional rationale", %{scope: scope} do
@@ -256,6 +259,31 @@ defmodule SilentRegression.BaselinesTest do
 
       assert {:error, :incompatible_baseline} =
                Baselines.approve(scope, fixture.monitor.id, %{approval_mode: :normal})
+    end
+
+    test "current compatibility requires an approved snapshot for the exact active behavior", %{
+      scope: scope
+    } do
+      fixture = baseline_ready_monitor_fixture(scope)
+
+      assert {:error, :baseline_required} =
+               Baselines.current_compatible(scope, fixture.monitor.id)
+
+      {fixture, snapshot} = authorized_snapshot(scope)
+      complete_capture(snapshot)
+
+      assert {:ok, _approved} =
+               Baselines.approve(scope, fixture.monitor.id, %{approval_mode: :normal})
+
+      assert {:ok, _candidate} =
+               Monitors.create_version(
+                 scope,
+                 fixture.monitor.id,
+                 valid_version_attributes(%{system_prompt: "Changed after approval."})
+               )
+
+      assert {:error, :incompatible_baseline} =
+               Baselines.current_compatible(scope, fixture.monitor.id)
     end
 
     test "rejecting a pending capture cancels it and permits a new authorization", %{scope: scope} do

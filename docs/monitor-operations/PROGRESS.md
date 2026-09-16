@@ -6,8 +6,8 @@ Task 11 is in progress.
 
 ## Phase checklist
 
-- [ ] Phase 1 — Durable scheduling model
-- [ ] Phase 2 — Atomic orchestration and dispatcher
+- [x] Phase 1 — Durable scheduling model
+- [x] Phase 2 — Atomic orchestration and dispatcher
 - [ ] Phase 3 — Operations experience
 - [ ] Phase 4 — Integrated verification
 
@@ -24,4 +24,8 @@ Task 11 is in progress.
 
 - 2026-09-16: Task 11 started; official Oban/PostgreSQL behavior and existing product foundations
   reviewed; implementation split into four independently verifiable phases.
-
+- 2026-09-16: Added durable cadence, schedule ownership, next/last execution timestamps, and bounded
+  pause reasons. Added exact current-baseline compatibility as a reusable domain check.
+- 2026-09-16: Added owner-only activation, run-now, pause, and resume; a recurring database-backed
+  dispatcher; stable run identities; overlap prevention; workspace call guardrails; execution-time
+  eligibility checks; and automatic pause policies. The focused backend suite passes with 39 tests.
