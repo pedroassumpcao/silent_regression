@@ -2,7 +2,7 @@ defmodule SilentRegressionWeb.AppController do
   use SilentRegressionWeb, :controller
 
   alias SilentRegression.Accounts.Scope
-  alias SilentRegression.{Baselines, MonitorSetups, Workspaces}
+  alias SilentRegression.{Baselines, MonitorSetups, PilotReadiness, Workspaces}
 
   def entry(conn, _params) do
     case Workspaces.default_workspace_scope(conn.assigns.current_scope) do
@@ -30,6 +30,7 @@ defmodule SilentRegressionWeb.AppController do
     conn
     |> assign(:page_title, "Monitors")
     |> render_inertia("Dashboard", %{
+      activation: PilotReadiness.onboarding(scope),
       current_section: current_section,
       monitors: Enum.map(MonitorSetups.list_summaries(scope), &summary_prop(scope, &1)),
       release_stage: "Private alpha",

@@ -8,11 +8,11 @@ encryption-key operations, or pilot spending remains gated by the decisions reco
 
 ## Phase 1: Activation and learning evidence
 
-- [ ] Add the derived six-stage onboarding checklist.
-- [ ] Extend the product-event schema and strict property allowlist.
-- [ ] Record baseline approval, schedule activation, alert review, and corrective action.
-- [ ] Add an operator-only founder-assistance event command.
-- [ ] Add activation-funnel queries without exposing customer content.
+- [x] Add the derived six-stage onboarding checklist.
+- [x] Extend the product-event schema and strict property allowlist.
+- [x] Record baseline approval, schedule activation, alert review, and corrective action.
+- [x] Add an operator-only founder-assistance event command.
+- [x] Add activation-funnel queries without exposing customer content.
 
 ## Phase 2: Notification outbox and preferences
 
@@ -68,4 +68,3 @@ Login and invitation-acceptance rate limiting remains in the public browser pipe
 must run before authentication. Credential validation, baseline authorization, schedule activation,
 and Run now remain in the authenticated workspace scope and combine rate limiting with existing
 owner checks.
-

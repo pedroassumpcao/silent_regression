@@ -19,7 +19,7 @@ defmodule SilentRegression.Reviews do
     CaptureRun
   }
 
-  alias SilentRegression.Repo
+  alias SilentRegression.{ProductAnalytics, Repo}
   alias SilentRegression.Reviews.{ContractRevisionOrigin, ReviewDecision}
   alias SilentRegression.RunResults.Alert
   alias SilentRegression.Workspaces.{Membership, Workspace}
@@ -29,7 +29,7 @@ defmodule SilentRegression.Reviews do
           workspace: %Workspace{id: workspace_id},
           membership: %Membership{},
           user: %User{} = reviewer
-        },
+        } = scope,
         attrs
       )
       when is_map(attrs) do
@@ -46,7 +46,7 @@ defmodule SilentRegression.Reviews do
                %ReviewDecision{}
                |> ReviewDecision.create_changeset(evidence, reviewer, attrs)
                |> Repo.insert() do
-          record_review!(decision, reviewer)
+          record_review!(scope, decision, reviewer)
           Repo.preload(decision, :reviewer_user)
         else
           {:error, reason} -> Repo.rollback(reason)
@@ -119,6 +119,11 @@ defmodule SilentRegression.Reviews do
                ContractAuthoring.create_revision(scope, decision.monitor_id),
              {:ok, origin} <- insert_revision_origin(decision, contract_version, actor) do
           record_revision_origin!(origin, decision, actor)
+
+          ProductAnalytics.record!(scope, "review.action_started", decision.monitor_id, %{
+            "action" => Atom.to_string(decision.action)
+          })
+
           %{origin: origin, contract_version: contract_version}
         else
           nil -> Repo.rollback(:not_found)
@@ -354,7 +359,7 @@ defmodule SilentRegression.Reviews do
     }
   end
 
-  defp record_review!(decision, reviewer) do
+  defp record_review!(scope, decision, reviewer) do
     Audit.record_event!(%{
       action: "review_decision.recorded",
       target_type: "review_decision",
@@ -368,6 +373,13 @@ defmodule SilentRegression.Reviews do
         "review_key" => decision.review_key,
         "supersedes_id" => decision.supersedes_id
       }
+    })
+
+    ProductAnalytics.record!(scope, "review.recorded", decision.monitor_id, %{
+      "action" => Atom.to_string(decision.action),
+      "classification" => Atom.to_string(decision.classification),
+      "subject_kind" => Atom.to_string(decision.subject_kind),
+      "superseded" => not is_nil(decision.supersedes_id)
     })
   end
 

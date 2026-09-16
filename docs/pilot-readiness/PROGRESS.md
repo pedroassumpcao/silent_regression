@@ -1,6 +1,6 @@
 # Pilot Readiness Progress
 
-## Status: Decision gates pending
+## Status: Phase 1 complete; Phase 2 next
 
 ## Quick Reference
 
@@ -12,7 +12,7 @@
 
 ### Phase 1: Activation and learning evidence
 
-**Status:** Not started
+**Status:** Complete
 
 ### Phase 2: Notification outbox and preferences
 
@@ -36,10 +36,15 @@
 
 ## Decision Gates
 
-- [ ] Transactional email provider and local-until-deployment boundary approved.
-- [ ] Raw content retention, closure retention, deletion SLA, and backup expiry approved.
-- [ ] Versioned Cloak keyring and rotation procedure approved.
-- [ ] Workspace run/call caps and supported model allowlists approved.
+- [x] Transactional email provider and local-until-deployment boundary approved: keep Local now and
+  use Resend for deployment.
+- [x] Raw content retention, closure retention, deletion SLA, and backup expiry approved: retain raw
+  evidence while active, retain closed workspaces for 30 days, execute explicit deletion within 7
+  days, and expire disaster-recovery backups within 30 days.
+- [x] Versioned Cloak keyring and rotation procedure approved: a new default key plus retired
+  decrypt-only keys, with old-key removal only after ciphertext migration and backup expiry.
+- [x] Workspace run/call caps and supported model allowlists approved: 20 authorized runs/day, 200
+  reserved calls/day, 200 calls/run, and the existing OpenAI and Anthropic allowlists.
 
 ## Session Log
 
@@ -55,8 +60,15 @@
   PostgreSQL fixed-window rate limits, explicit workspace pilot policy, and ordered tenant purge as
   the recommended architecture.
 - Paused customer-data-affecting implementation at the four explicit Task 14 decision gates.
+- Received owner approval for all four decision gates.
+- Added a six-stage checklist derived from credentials, setup, cases, contract, baseline, and active
+  daily/weekly scheduling rather than storing mutable checklist flags.
+- Extended the content-free product event stream through baseline approval, schedule activation,
+  review, corrective action, and allowlisted founder-assistance evidence.
+- Added activation-funnel queries and an owner-attributed operator command for recording bounded
+  assistance metadata without accepting notes or customer content.
+- Verified the focused Elixir tests and the complete TypeScript/frontend suite.
 
 ## Blockers
 
-- Owner approval of the four Task 14 decision gates.
-
+- None.

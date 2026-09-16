@@ -9,7 +9,7 @@ defmodule SilentRegression.MonitorOperations do
   import Ecto.Query
 
   alias SilentRegression.Accounts.{Scope, User}
-  alias SilentRegression.{Audit, Baselines, Captures}
+  alias SilentRegression.{Audit, Baselines, Captures, ProductAnalytics}
   alias SilentRegression.Captures.{CaptureObservation, CaptureRun}
   alias SilentRegression.MonitorOperations.Schedule
   alias SilentRegression.Monitors.{CaseVersion, Monitor, MonitorVersion}
@@ -85,6 +85,8 @@ defmodule SilentRegression.MonitorOperations do
             "cadence" => Atom.to_string(cadence),
             "next_run_at" => iso8601(updated.next_run_at)
           })
+
+          record_schedule_activation!(scope, updated, "configured")
 
           updated
         else
@@ -235,6 +237,8 @@ defmodule SilentRegression.MonitorOperations do
             "next_run_at" => iso8601(resumed.next_run_at)
           })
 
+          record_schedule_activation!(scope, resumed, "resumed")
+
           resumed
         else
           {:error, reason} -> Repo.rollback(reason)
@@ -246,6 +250,16 @@ defmodule SilentRegression.MonitorOperations do
   end
 
   def resume(%Scope{}, _monitor_id, _options), do: {:error, :owner_required}
+
+  defp record_schedule_activation!(scope, %Monitor{cadence: cadence} = monitor, activation_kind)
+       when cadence in [:daily, :weekly] do
+    ProductAnalytics.record!(scope, "schedule.activated", monitor.id, %{
+      "activation_kind" => activation_kind,
+      "cadence" => Atom.to_string(cadence)
+    })
+  end
+
+  defp record_schedule_activation!(_scope, %Monitor{}, _activation_kind), do: :ok
 
   @doc false
   def sweep_ineligible(at \\ DateTime.utc_now(), limit \\ nil) do

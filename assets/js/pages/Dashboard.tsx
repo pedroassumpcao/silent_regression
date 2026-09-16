@@ -2,6 +2,7 @@ import { Head, Link, usePage } from "@inertiajs/react"
 import {
   ArrowRight,
   CheckCircle2,
+  Circle,
   CircleDashed,
   Clock3,
   FlaskConical,
@@ -36,7 +37,23 @@ export type MonitorSummary = {
   readyToActivate?: boolean
 }
 
+export type ActivationChecklist = {
+  completedCount: number
+  totalCount: number
+  percent: number
+  complete: boolean
+  monitorId: string | null
+  monitorName: string | null
+  steps: Array<{
+    key: "credential" | "workflow" | "cases" | "contract" | "baseline" | "schedule"
+    label: string
+    complete: boolean
+    href: string
+  }>
+}
+
 type DashboardProps = {
+  activation?: ActivationChecklist
   auth: SharedPageProps["auth"]
   currentSection: "overview" | "monitors"
   monitors: MonitorSummary[]
@@ -45,6 +62,7 @@ type DashboardProps = {
 }
 
 export function DashboardView({
+  activation,
   auth,
   currentSection,
   flash = {},
@@ -105,6 +123,8 @@ export function DashboardView({
           </Alert>
         )}
 
+        {activation && <ActivationCard activation={activation} />}
+
         {monitors.length === 0 ? (
           <EmptyMonitors createPath={createPath} />
         ) : (
@@ -124,6 +144,69 @@ export function DashboardView({
         )}
       </div>
     </ProductShell>
+  )
+}
+
+function ActivationCard({ activation }: { activation: ActivationChecklist }) {
+  const nextStep = activation.steps.find(step => !step.complete)
+
+  return (
+    <Card id="activation-checklist" className="overflow-hidden border-primary/15 bg-card/80">
+      <CardHeader className="gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <Badge variant="outline" className="mb-3 rounded-full border-primary/25 text-primary">
+            Private-alpha activation
+          </Badge>
+          <CardTitle>
+            {activation.complete ? "Your monitoring loop is active" : "Complete the monitoring loop"}
+          </CardTitle>
+          <CardDescription className="mt-2 max-w-2xl leading-6">
+            This checklist is derived from durable workspace evidence. It updates automatically if
+            a credential is revoked, a baseline becomes incompatible, or monitoring is paused.
+          </CardDescription>
+        </div>
+        <div className="min-w-40">
+          <div className="mb-2 flex justify-between text-xs text-muted-foreground">
+            <span>{activation.completedCount} of {activation.totalCount}</span>
+            <span>{activation.percent}%</span>
+          </div>
+          <Progress value={activation.percent} aria-label="Private-alpha activation progress" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {activation.steps.map((step, index) => (
+            <li key={step.key}>
+              <Link
+                href={step.href}
+                className="flex min-h-20 items-center gap-3 rounded-xl border bg-background/70 p-4 transition-colors hover:border-primary/30 hover:bg-primary/[0.03]"
+              >
+                <span className={step.complete ? "text-success" : "text-muted-foreground"}>
+                  {step.complete ? <CheckCircle2 className="size-5" /> : <Circle className="size-5" />}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Step {index + 1}
+                  </span>
+                  <span className="mt-1 block text-sm font-medium">{step.label}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+
+        {nextStep && (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-5">
+            <p className="text-sm text-muted-foreground">
+              Next for {activation.monitorName || "this workspace"}: {nextStep.label}
+            </p>
+            <Button asChild size="sm">
+              <Link href={nextStep.href}>Continue activation <ArrowRight /></Link>
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 

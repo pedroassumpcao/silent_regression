@@ -22,7 +22,7 @@ defmodule SilentRegression.Baselines do
   alias SilentRegression.Monitors.{Monitor, MonitorVersion}
   alias SilentRegression.ProviderCredentials
   alias SilentRegression.ProviderCredentials.ProviderCredential
-  alias SilentRegression.Repo
+  alias SilentRegression.{ProductAnalytics, Repo}
   alias SilentRegression.Workspaces.{Membership, Workspace}
 
   def preflight(scope, monitor_id, attrs \\ %{})
@@ -136,7 +136,7 @@ defmodule SilentRegression.Baselines do
           workspace: %Workspace{id: workspace_id},
           membership: %Membership{role: :owner},
           user: %User{} = user
-        },
+        } = scope,
         monitor_id,
         attrs
       )
@@ -151,7 +151,7 @@ defmodule SilentRegression.Baselines do
              [] <- Health.approval_blockers(summary, mode),
              {:ok, approved} <- approve_snapshot(snapshot, user, mode, attrs),
              :ok <- insert_members(approved),
-             :ok <- record_approval!(approved, user, summary) do
+             :ok <- record_approval!(scope, approved, user, summary) do
           preload_snapshot(approved)
         else
           nil -> Repo.rollback(:not_found)
@@ -422,7 +422,7 @@ defmodule SilentRegression.Baselines do
     :ok
   end
 
-  defp record_approval!(snapshot, user, summary) do
+  defp record_approval!(scope, snapshot, user, summary) do
     Audit.record_event!(%{
       action: "baseline.approved",
       target_type: "baseline_snapshot",
@@ -435,6 +435,10 @@ defmodule SilentRegression.Baselines do
         "deterministic_failure_count" => summary.deterministic_failure_count,
         "member_count" => summary.observation_count
       }
+    })
+
+    ProductAnalytics.record!(scope, "baseline.approved", snapshot.monitor_id, %{
+      "approval_mode" => Atom.to_string(snapshot.approval_mode)
     })
 
     :ok

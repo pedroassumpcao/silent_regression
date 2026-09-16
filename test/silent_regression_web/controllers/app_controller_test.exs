@@ -53,6 +53,15 @@ defmodule SilentRegressionWeb.AppControllerTest do
                  }
                ]
              },
+             activation: %{
+               complete: false,
+               completedCount: 0,
+               monitorId: nil,
+               monitorName: nil,
+               percent: 0,
+               steps: activation_steps,
+               totalCount: 6
+             },
              currentSection: "overview",
              monitors: [],
              pageTitle: "Monitors",
@@ -64,6 +73,9 @@ defmodule SilentRegressionWeb.AppControllerTest do
     assert email == accepted.user.email
     assert workspace_id == accepted.workspace.id
     assert membership_id == accepted.membership.id
+    assert length(activation_steps) == 6
+    assert Enum.all?(activation_steps, &(&1.complete == false))
+    assert hd(activation_steps).href == "/app/acme-ai/credentials"
 
     refute inspect(inertia_props(conn)) =~ "hashed_password"
     refute inspect(inertia_props(conn)) =~ "token_hash"

@@ -9,6 +9,7 @@ defmodule SilentRegression.ReviewsTest do
   alias SilentRegression.Accounts.Scope
   alias SilentRegression.Captures.Workers.ObservationWorker
   alias SilentRegression.MonitorOperations
+  alias SilentRegression.ProductAnalytics
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
   alias SilentRegression.Reviews
@@ -75,6 +76,26 @@ defmodule SilentRegression.ReviewsTest do
 
     assert [%{decision: ^first, current?: false}, %{decision: ^corrected, current?: true}] =
              review_state.decisions
+
+    review_events =
+      scope
+      |> ProductAnalytics.list_events()
+      |> Enum.filter(&(&1.name == "review.recorded"))
+
+    assert Enum.map(review_events, & &1.properties) == [
+             %{
+               "action" => "prompt_change",
+               "classification" => "confirmed_regression",
+               "subject_kind" => "alert",
+               "superseded" => false
+             },
+             %{
+               "action" => "contract_revision",
+               "classification" => "acceptable_variation",
+               "subject_kind" => "alert",
+               "superseded" => true
+             }
+           ]
   end
 
   test "captures a missed regression on an observation without an alert", %{
@@ -142,6 +163,16 @@ defmodule SilentRegression.ReviewsTest do
     assert {:ok, repeated} = Reviews.start_contract_revision(scope, decision.id)
     assert repeated.origin.id == first.origin.id
     assert repeated.contract_version.id == first.contract_version.id
+
+    action_events =
+      scope
+      |> ProductAnalytics.list_events()
+      |> Enum.filter(&(&1.name == "review.action_started"))
+
+    assert Enum.map(action_events, & &1.properties) == [
+             %{"action" => "contract_revision"},
+             %{"action" => "contract_revision"}
+           ]
   end
 
   test "stale or non-contract reviews cannot start a correction", %{

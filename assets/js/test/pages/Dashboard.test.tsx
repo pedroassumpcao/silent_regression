@@ -19,6 +19,44 @@ const auth = {
 }
 
 describe("DashboardView", () => {
+  it("shows the derived activation path without presenting stored checklist state", () => {
+    render(
+      <DashboardView
+        activation={{
+          completedCount: 2,
+          totalCount: 6,
+          percent: 33,
+          complete: false,
+          monitorId: "monitor-id",
+          monitorName: "Citation guard",
+          steps: [
+            { key: "credential", label: "Connect a provider credential", complete: true, href: "/app/acme-ai/credentials" },
+            { key: "workflow", label: "Define the workflow", complete: true, href: "/app/acme-ai/monitors/monitor-id/setup" },
+            { key: "cases", label: "Add representative cases", complete: false, href: "/app/acme-ai/monitors/monitor-id/setup/cases" },
+            { key: "contract", label: "Approve the deterministic contract", complete: false, href: "/app/acme-ai/monitors/monitor-id/contract" },
+            { key: "baseline", label: "Approve the baseline", complete: false, href: "/app/acme-ai/monitors/monitor-id/baseline" },
+            { key: "schedule", label: "Activate monitoring", complete: false, href: "/app/acme-ai/monitors/monitor-id/operations" },
+          ],
+        }}
+        releaseStage="Private alpha"
+        currentSection="overview"
+        monitors={[]}
+        workspace={{ name: "Acme AI", slug: "acme-ai" }}
+        auth={auth}
+      />,
+    )
+
+    expect(screen.getByRole("progressbar", { name: "Private-alpha activation progress" })).toHaveAttribute(
+      "aria-valuenow",
+      "33",
+    )
+    expect(screen.getByText("Next for Citation guard: Add representative cases")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /continue activation/i })).toHaveAttribute(
+      "href",
+      "/app/acme-ai/monitors/monitor-id/setup/cases",
+    )
+  })
+
   it("gives an empty workspace one clear path into monitor setup", () => {
     render(
       <DashboardView
