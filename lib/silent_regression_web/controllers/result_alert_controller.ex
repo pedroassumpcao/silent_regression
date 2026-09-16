@@ -48,6 +48,9 @@ defmodule SilentRegressionWeb.ResultAlertController do
       {:error, :acknowledgement_required} ->
         alert_failed(conn, "Acknowledge the alert before resolving it.")
 
+      {:error, :review_required} ->
+        alert_failed(conn, "Record a current review judgment before resolving this alert.")
+
       {:error, :not_found} ->
         send_resp(conn, :not_found, "Not found")
 

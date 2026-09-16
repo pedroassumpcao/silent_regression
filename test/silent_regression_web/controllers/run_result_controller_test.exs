@@ -11,6 +11,7 @@ defmodule SilentRegressionWeb.RunResultControllerTest do
   alias SilentRegression.MonitorOperations
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
+  alias SilentRegression.Reviews
   alias SilentRegression.RunResults.Alert
   alias SilentRegression.WorkspacesFixtures
 
@@ -97,6 +98,14 @@ defmodule SilentRegressionWeb.RunResultControllerTest do
 
     assert {:ok, member_alert} = SilentRegression.RunResults.get_alert(member_scope, alert.id)
     assert member_alert.status == :acknowledged
+
+    assert {:ok, _review} =
+             Reviews.submit_review(member_scope, %{
+               subject_kind: :alert,
+               subject_id: alert.id,
+               classification: :confirmed_regression,
+               action: :prompt_change
+             })
 
     resolved =
       alert_page

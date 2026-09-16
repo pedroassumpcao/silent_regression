@@ -12,6 +12,7 @@ defmodule SilentRegression.RunResultsTest do
   alias SilentRegression.MonitorOperations
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
+  alias SilentRegression.Reviews
   alias SilentRegression.RunResults
   alias SilentRegression.RunResults.Alert
 
@@ -88,12 +89,22 @@ defmodule SilentRegression.RunResultsTest do
     assert acknowledged.acknowledged_by_user_id == member.user.id
     assert acknowledged.acknowledged_at == acknowledged_at
     assert {:error, :owner_required} = RunResults.resolve_alert(member_scope, alert.id)
+    assert {:error, :review_required} = RunResults.resolve_alert(owner_scope, alert.id)
+
+    assert {:ok, review} =
+             Reviews.submit_review(member_scope, %{
+               subject_kind: :alert,
+               subject_id: alert.id,
+               classification: :operational_anomaly,
+               action: :operational_follow_up
+             })
 
     resolved_at = ~U[2026-09-16 19:05:00.000000Z]
     assert {:ok, resolved} = RunResults.resolve_alert(owner_scope, alert.id, at: resolved_at)
     assert resolved.status == :resolved
     assert resolved.resolved_by_user_id == owner_scope.user.id
     assert resolved.resolved_at == resolved_at
+    assert resolved.resolution_review_decision_id == review.id
 
     assert {:ok, repeated} = RunResults.resolve_alert(owner_scope, alert.id)
     assert repeated.resolved_at == resolved_at

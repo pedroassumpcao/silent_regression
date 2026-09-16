@@ -10,6 +10,7 @@ defmodule SilentRegression.Reviews do
 
   alias SilentRegression.Accounts.{Scope, User}
   alias SilentRegression.Audit
+  alias SilentRegression.ContractAuthoring
 
   alias SilentRegression.Captures.{
     CaptureEvaluation,
@@ -19,7 +20,7 @@ defmodule SilentRegression.Reviews do
   }
 
   alias SilentRegression.Repo
-  alias SilentRegression.Reviews.ReviewDecision
+  alias SilentRegression.Reviews.{ContractRevisionOrigin, ReviewDecision}
   alias SilentRegression.RunResults.Alert
   alias SilentRegression.Workspaces.{Membership, Workspace}
 
@@ -91,6 +92,53 @@ defmodule SilentRegression.Reviews do
     |> chain_query(review_key(:alert, alert_id))
     |> Repo.all()
     |> current_decision()
+  end
+
+  @doc false
+  def locked_current_for_alert(workspace_id, alert_id)
+      when is_binary(workspace_id) and is_binary(alert_id) do
+    workspace_id
+    |> locked_chain(review_key(:alert, alert_id))
+    |> current_decision()
+  end
+
+  def start_contract_revision(
+        %Scope{
+          workspace: %Workspace{id: workspace_id},
+          membership: %Membership{},
+          user: %User{} = actor
+        } = scope,
+        review_id
+      ) do
+    with {:ok, review_id} <- Ecto.UUID.cast(review_id) do
+      Repo.transaction(fn ->
+        with %ReviewDecision{} = decision <- locked_review(workspace_id, review_id),
+             :ok <- ensure_current(decision),
+             :ok <- ensure_contract_action(decision),
+             {:ok, contract_version} <-
+               ContractAuthoring.create_revision(scope, decision.monitor_id),
+             {:ok, origin} <- insert_revision_origin(decision, contract_version, actor) do
+          record_revision_origin!(origin, decision, actor)
+          %{origin: origin, contract_version: contract_version}
+        else
+          nil -> Repo.rollback(:not_found)
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+      |> unwrap_transaction()
+    else
+      :error -> {:error, :not_found}
+    end
+  end
+
+  def start_contract_revision(%Scope{}, _review_id), do: {:error, :workspace_required}
+
+  def list_contract_revision_origins(contract_version_id) when is_binary(contract_version_id) do
+    ContractRevisionOrigin
+    |> where([origin], origin.contract_version_id == ^contract_version_id)
+    |> order_by([origin], asc: origin.inserted_at, asc: origin.id)
+    |> preload([:actor_user, :review_decision])
+    |> Repo.all()
   end
 
   def get_review(
@@ -218,6 +266,16 @@ defmodule SilentRegression.Reviews do
     |> Repo.all()
   end
 
+  defp locked_review(workspace_id, review_id) do
+    ReviewDecision
+    |> where(
+      [decision],
+      decision.workspace_id == ^workspace_id and decision.id == ^review_id
+    )
+    |> lock("FOR UPDATE")
+    |> Repo.one()
+  end
+
   defp chain_query(workspace_id, review_key) do
     ReviewDecision
     |> where(
@@ -237,6 +295,25 @@ defmodule SilentRegression.Reviews do
   defp ensure_expected_current(nil, value) when value in [nil, ""], do: :ok
   defp ensure_expected_current(%ReviewDecision{id: id}, id), do: :ok
   defp ensure_expected_current(_current, _expected), do: {:error, :stale_review}
+
+  defp ensure_current(decision) do
+    if current?(decision), do: :ok, else: {:error, :stale_review}
+  end
+
+  defp ensure_contract_action(%ReviewDecision{action: :contract_revision}), do: :ok
+  defp ensure_contract_action(%ReviewDecision{}), do: {:error, :contract_action_required}
+
+  defp insert_revision_origin(decision, contract_version, actor) do
+    case Repo.get_by(ContractRevisionOrigin, review_decision_id: decision.id) do
+      %ContractRevisionOrigin{} = origin ->
+        {:ok, origin}
+
+      nil ->
+        %ContractRevisionOrigin{}
+        |> ContractRevisionOrigin.create_changeset(decision, contract_version, actor)
+        |> Repo.insert()
+    end
+  end
 
   defp normalize_attrs(attrs) do
     %{
@@ -290,6 +367,20 @@ defmodule SilentRegression.Reviews do
         "classification" => Atom.to_string(decision.classification),
         "review_key" => decision.review_key,
         "supersedes_id" => decision.supersedes_id
+      }
+    })
+  end
+
+  defp record_revision_origin!(origin, decision, actor) do
+    Audit.record_event!(%{
+      action: "review_decision.contract_revision_started",
+      target_type: "review_decision",
+      target_id: decision.id,
+      workspace_id: decision.workspace_id,
+      actor_user_id: actor.id,
+      metadata: %{
+        "contract_version_id" => origin.contract_version_id,
+        "origin_id" => origin.id
       }
     })
   end

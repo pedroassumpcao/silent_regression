@@ -26,11 +26,20 @@
 
 ### Phase 2: Governed alert and correction lifecycle
 
-**Status:** In progress
+**Status:** Completed
+
+- Alert resolution now requires a current alert review and permanently pins the exact decision used
+  by the owner.
+- Legacy resolved alerts remain readable, while the database rejects any new reviewed lifecycle
+  transition that omits a resolution decision.
+- Added immutable review-to-contract-draft origins, including idempotent reuse when a successor
+  draft already exists.
+- Confirmed members can review, acknowledge, and begin correction authoring while only owners can
+  resolve alerts and approve contracts.
 
 ### Phase 3: Transactional contract rescore and compatibility
 
-**Status:** Not started
+**Status:** In progress
 
 ### Phase 4: Inertia review experience
 
@@ -53,6 +62,8 @@
   primitives cover the review experience; no frontend dependency is required.
 - Completed the review evidence foundation and began binding it to owner-governed alert resolution
   and versioned correction.
+- Completed governed resolution and correction origins with 14 focused review, alert, and controller
+  tests passing.
 
 ## Blockers
 

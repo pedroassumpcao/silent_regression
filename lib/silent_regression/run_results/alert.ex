@@ -13,6 +13,7 @@ defmodule SilentRegression.RunResults.Alert do
   alias SilentRegression.Accounts.User
   alias SilentRegression.Captures.{CaptureEvaluation, CaptureRun}
   alias SilentRegression.Monitors.Monitor
+  alias SilentRegression.Reviews.ReviewDecision
   alias SilentRegression.Workspaces.Workspace
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -48,6 +49,7 @@ defmodule SilentRegression.RunResults.Alert do
     belongs_to :capture_evaluation, CaptureEvaluation
     belongs_to :acknowledged_by_user, User
     belongs_to :resolved_by_user, User
+    belongs_to :resolution_review_decision, ReviewDecision
 
     timestamps(type: :utc_datetime_usec)
   end
@@ -103,14 +105,28 @@ defmodule SilentRegression.RunResults.Alert do
 
   def acknowledge_changeset(%__MODULE__{} = alert, _user, _at), do: change(alert)
 
-  def resolve_changeset(%__MODULE__{status: :acknowledged} = alert, %User{} = user, at) do
+  def resolve_changeset(
+        %__MODULE__{status: :acknowledged} = alert,
+        %User{} = user,
+        %ReviewDecision{} = decision,
+        at
+      ) do
     alert
-    |> change(status: :resolved, resolved_by_user_id: user.id, resolved_at: at)
-    |> validate_required([:resolved_by_user_id, :resolved_at])
+    |> change(
+      status: :resolved,
+      resolved_by_user_id: user.id,
+      resolved_at: at,
+      resolution_review_decision_id: decision.id
+    )
+    |> validate_required([
+      :resolved_by_user_id,
+      :resolved_at,
+      :resolution_review_decision_id
+    ])
     |> add_constraints()
   end
 
-  def resolve_changeset(%__MODULE__{} = alert, _user, _at) do
+  def resolve_changeset(%__MODULE__{} = alert, _user, _decision, _at) do
     alert
     |> change()
     |> add_error(:status, "must be acknowledged before it can be resolved")
@@ -128,6 +144,7 @@ defmodule SilentRegression.RunResults.Alert do
     |> foreign_key_constraint(:capture_evaluation_id)
     |> foreign_key_constraint(:acknowledged_by_user_id)
     |> foreign_key_constraint(:resolved_by_user_id)
+    |> foreign_key_constraint(:resolution_review_decision_id)
     |> unique_constraint([:workspace_id, :identity_key])
     |> check_constraint(:category, name: :result_alerts_category_check)
     |> check_constraint(:severity, name: :result_alerts_severity_check)

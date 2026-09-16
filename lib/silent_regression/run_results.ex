@@ -14,6 +14,7 @@ defmodule SilentRegression.RunResults do
   alias SilentRegression.Captures.{CaptureRuleResult, CaptureRun, ProviderAttempt}
   alias SilentRegression.Monitors.Monitor
   alias SilentRegression.Repo
+  alias SilentRegression.Reviews
   alias SilentRegression.RunResults.{Alert, Policy}
   alias SilentRegression.Workspaces.{Membership, Workspace}
 
@@ -40,7 +41,13 @@ defmodule SilentRegression.RunResults do
         desc: alert.id
       )
       |> limit(@alert_limit)
-      |> preload([:monitor, :capture_run, :acknowledged_by_user, :resolved_by_user])
+      |> preload([
+        :monitor,
+        :capture_run,
+        :acknowledged_by_user,
+        :resolved_by_user,
+        :resolution_review_decision
+      ])
       |> Repo.all()
 
     {:ok, %{alerts: alerts, can_resolve?: membership.role == :owner}}
@@ -219,9 +226,19 @@ defmodule SilentRegression.RunResults do
       Repo.transaction(fn ->
         case locked_alert(workspace_id, alert_id) do
           %Alert{status: :acknowledged} = alert ->
-            alert = alert |> Alert.resolve_changeset(user, at) |> Repo.update!()
-            record_lifecycle!(alert, user, "alert.resolved", at)
-            alert
+            case Reviews.locked_current_for_alert(workspace_id, alert.id) do
+              nil ->
+                Repo.rollback(:review_required)
+
+              review_decision ->
+                alert =
+                  alert
+                  |> Alert.resolve_changeset(user, review_decision, at)
+                  |> Repo.update!()
+
+                record_lifecycle!(alert, user, "alert.resolved", at)
+                alert
+            end
 
           %Alert{status: :resolved} = alert ->
             alert
@@ -381,7 +398,13 @@ defmodule SilentRegression.RunResults do
     )
     |> order_by([alert], desc: alert.opened_at, desc: alert.id)
     |> limit(@alert_limit)
-    |> preload([:monitor, :capture_run, :acknowledged_by_user, :resolved_by_user])
+    |> preload([
+      :monitor,
+      :capture_run,
+      :acknowledged_by_user,
+      :resolved_by_user,
+      :resolution_review_decision
+    ])
     |> Repo.all()
   end
 
@@ -392,13 +415,20 @@ defmodule SilentRegression.RunResults do
       alert.workspace_id == ^workspace_id and alert.capture_run_id == ^run_id
     )
     |> order_by([alert], asc: alert.inserted_at, asc: alert.id)
-    |> preload([:monitor, :capture_run, :acknowledged_by_user, :resolved_by_user])
+    |> preload([
+      :monitor,
+      :capture_run,
+      :acknowledged_by_user,
+      :resolved_by_user,
+      :resolution_review_decision
+    ])
     |> Repo.all()
   end
 
   defp load_alert(workspace_id, alert_id) do
     Alert
     |> where([alert], alert.workspace_id == ^workspace_id and alert.id == ^alert_id)
+    |> preload(:resolution_review_decision)
     |> Repo.one()
   end
 

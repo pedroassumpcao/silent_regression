@@ -14,10 +14,10 @@ the UI can resolve alerts or activate corrected contracts.
 
 ## Phase 2: Governed alert and correction lifecycle
 
-- [ ] Require a current review decision before owner-only alert resolution.
-- [ ] Pin the exact resolution decision on the alert.
-- [ ] Add immutable review-to-contract-revision origins.
-- [ ] Preserve member authoring while retaining owner-only resolution and approval.
+- [x] Require a current review decision before owner-only alert resolution.
+- [x] Pin the exact resolution decision on the alert.
+- [x] Add immutable review-to-contract-revision origins.
+- [x] Preserve member authoring while retaining owner-only resolution and approval.
 
 ## Phase 3: Transactional contract rescore and compatibility
 

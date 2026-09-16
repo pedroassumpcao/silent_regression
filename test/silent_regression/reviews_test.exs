@@ -119,6 +119,61 @@ defmodule SilentRegression.ReviewsTest do
     assert {:error, :not_found} = Reviews.list_run_reviews(other_scope, run.id)
   end
 
+  test "a current contract-action review starts one attributable successor draft", %{
+    fixture: fixture,
+    scope: scope
+  } do
+    %{alert: alert} = failed_run(fixture, scope)
+
+    assert {:ok, decision} =
+             Reviews.submit_review(scope, %{
+               subject_kind: :alert,
+               subject_id: alert.id,
+               classification: :contract_needs_revision,
+               action: :contract_revision
+             })
+
+    assert {:ok, first} = Reviews.start_contract_revision(scope, decision.id)
+    assert first.contract_version.status == :draft
+    assert first.contract_version.predecessor_id == fixture.contract.id
+    assert first.origin.review_decision_id == decision.id
+    assert first.origin.contract_version_id == first.contract_version.id
+
+    assert {:ok, repeated} = Reviews.start_contract_revision(scope, decision.id)
+    assert repeated.origin.id == first.origin.id
+    assert repeated.contract_version.id == first.contract_version.id
+  end
+
+  test "stale or non-contract reviews cannot start a correction", %{
+    fixture: fixture,
+    scope: scope
+  } do
+    %{alert: alert} = failed_run(fixture, scope)
+
+    assert {:ok, first} =
+             Reviews.submit_review(scope, %{
+               subject_kind: :alert,
+               subject_id: alert.id,
+               classification: :confirmed_regression,
+               action: :prompt_change
+             })
+
+    assert {:error, :contract_action_required} =
+             Reviews.start_contract_revision(scope, first.id)
+
+    assert {:ok, current} =
+             Reviews.submit_review(scope, %{
+               subject_kind: :alert,
+               subject_id: alert.id,
+               expected_current_id: first.id,
+               classification: :contract_needs_revision,
+               action: :contract_revision
+             })
+
+    assert {:error, :stale_review} = Reviews.start_contract_revision(scope, first.id)
+    assert {:ok, _result} = Reviews.start_contract_revision(scope, current.id)
+  end
+
   test "database rejects decision updates and deletes", %{fixture: fixture, scope: scope} do
     %{alert: alert} = failed_run(fixture, scope)
 
