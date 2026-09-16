@@ -230,7 +230,6 @@ defmodule SilentRegression.Baselines do
       ) do
     with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id),
          %BaselineSnapshot{} = snapshot <- approved_snapshot(workspace_id, monitor_id),
-         snapshot <- preload_snapshot(snapshot),
          :ok <- ensure_snapshot_compatible(snapshot) do
       {:ok, snapshot}
     else
@@ -241,6 +240,10 @@ defmodule SilentRegression.Baselines do
   end
 
   def current_compatible(%Scope{}, _monitor_id), do: {:error, :workspace_required}
+
+  def compatible_approved?(%Scope{} = scope, monitor_id) do
+    match?({:ok, %BaselineSnapshot{}}, current_compatible(scope, monitor_id))
+  end
 
   @doc false
   def capture_run_compatible?(%CaptureRun{} = run) do

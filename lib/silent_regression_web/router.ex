@@ -82,6 +82,11 @@ defmodule SilentRegressionWeb.Router do
     post "/monitors/:monitor_id/baseline/authorize", BaselineController, :authorize
     post "/monitors/:monitor_id/baseline/approve", BaselineController, :approve
     post "/monitors/:monitor_id/baseline/reject", BaselineController, :reject
+    get "/monitors/:monitor_id/operations", MonitorOperationsController, :show
+    patch "/monitors/:monitor_id/operations/schedule", MonitorOperationsController, :configure
+    post "/monitors/:monitor_id/operations/run-now", MonitorOperationsController, :run_now
+    post "/monitors/:monitor_id/operations/pause", MonitorOperationsController, :pause
+    post "/monitors/:monitor_id/operations/resume", MonitorOperationsController, :resume
     get "/credentials", ProviderCredentialController, :index
     post "/credentials", ProviderCredentialController, :create
     post "/credentials/:id/validate", ProviderCredentialController, :validate

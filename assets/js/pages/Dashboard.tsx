@@ -33,6 +33,7 @@ export type MonitorSummary = {
   progressPercent: number
   nextStep: "purpose" | "connection" | "prompt" | "cases" | "review"
   updatedAt: string
+  readyToActivate?: boolean
 }
 
 type DashboardProps = {
@@ -184,9 +185,13 @@ function Metric({ label, value }: { label: string; value: number }) {
 function MonitorCard({ monitor, workspaceSlug }: { monitor: MonitorSummary; workspaceSlug: string }) {
   const complete = monitor.setupStatus === "completed"
   const baselinePending = monitor.state === "baseline_pending"
+  const operational = monitor.state === "active" || monitor.state === "paused" || monitor.readyToActivate
   const nextPath = complete
-    ? `/app/${workspaceSlug}/monitors/${monitor.id}/${baselinePending ? "baseline" : "contract"}`
+    ? `/app/${workspaceSlug}/monitors/${monitor.id}/${operational ? "operations" : baselinePending ? "baseline" : "contract"}`
     : `/app/${workspaceSlug}/monitors/${monitor.id}/setup`
+  const operationalLabel = monitor.state === "active" ? "Active monitoring" : monitor.state === "paused" ? "Monitoring paused" : "Ready to activate"
+  const completeDetail = operational ? operationalLabel : baselinePending ? "Baseline capture and approval" : "Ready for contract authoring"
+  const completeAction = operational ? monitor.state === "baseline_pending" ? "Activate monitor" : "Manage monitor" : baselinePending ? "Review baseline" : "Define contract"
 
   return (
     <Card id={`monitor-${monitor.id}`} className="group transition-shadow hover:shadow-md">
@@ -221,11 +226,11 @@ function MonitorCard({ monitor, workspaceSlug }: { monitor: MonitorSummary; work
         <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
           <span className="flex items-center gap-2 text-xs text-muted-foreground">
             <CircleDashed className="size-3.5" />
-            {complete ? baselinePending ? "Baseline capture and approval" : "Ready for contract authoring" : `Next: ${stepLabel(monitor.nextStep)}`}
+            {complete ? completeDetail : `Next: ${stepLabel(monitor.nextStep)}`}
           </span>
           <Button asChild variant={complete ? "outline" : "default"} size="sm">
             <Link href={nextPath}>
-              {complete ? baselinePending ? "Review baseline" : "Define contract" : "Resume setup"} <ArrowRight />
+              {complete ? completeAction : "Resume setup"} <ArrowRight />
             </Link>
           </Button>
         </div>

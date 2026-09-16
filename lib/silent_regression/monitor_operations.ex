@@ -35,8 +35,7 @@ defmodule SilentRegression.MonitorOperations do
          monitor: monitor,
          last_run: last_run,
          runs_needing_attention: attention_count(workspace_id, monitor.id),
-         approved_baseline?:
-           match?({:ok, _snapshot}, Baselines.current_compatible(scope, monitor.id)),
+         approved_baseline?: Baselines.compatible_approved?(scope, monitor.id),
          maximum_call_count: maximum_call_count(monitor),
          workspace_call_limit: operations_config(:daily_workspace_call_limit),
          workspace_committed_calls_today:

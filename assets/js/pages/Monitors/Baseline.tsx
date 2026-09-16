@@ -167,6 +167,7 @@ export function BaselineView({
   const credentialsPath = `/app/${workspace.slug}/credentials`
   const hasSnapshot = Boolean(props.snapshot)
   const approved = props.snapshot?.status === "approved"
+  const operationsPath = `/app/${workspace.slug}/monitors/${props.monitor.id}/operations`
 
   return (
     <ProductShell
@@ -246,6 +247,7 @@ export function BaselineView({
               errors={errors}
               health={props.health}
               path={path}
+              operationsPath={operationsPath}
               snapshot={props.snapshot}
             />
           </>
@@ -608,12 +610,13 @@ function ObservationCard({ observation }: { observation: Observation }) {
   )
 }
 
-function ApprovalPanel({ canDecide, compatibility, errors, health, path, snapshot }: {
+function ApprovalPanel({ canDecide, compatibility, errors, health, operationsPath, path, snapshot }: {
   canDecide: boolean
   compatibility: BaselineProps["compatibility"]
   errors: SharedPageProps["errors"]
   health: Health | null
   path: string
+  operationsPath: string
   snapshot: Snapshot
 }) {
   const exceptionalForm = useForm({
@@ -631,7 +634,13 @@ function ApprovalPanel({ canDecide, compatibility, errors, health, path, snapsho
           <CardTitle className="flex items-center gap-2 text-2xl"><ShieldCheck className="size-6" /> Approved baseline</CardTitle>
           <CardDescription className="leading-6">{snapshot.memberCount} exact observation{snapshot.memberCount === 1 ? "" : "s"} sealed {formatDate(snapshot.approvedAt)} with {snapshot.approvalMode} approval.</CardDescription>
         </CardHeader>
-        {snapshot.approvalRationale && <CardContent><p className="rounded-xl border bg-background/70 p-4 text-sm leading-6"><span className="font-medium">Recorded rationale:</span> {snapshot.approvalRationale}</p></CardContent>}
+        <CardContent className="space-y-4">
+          {snapshot.approvalRationale && <p className="rounded-xl border bg-background/70 p-4 text-sm leading-6"><span className="font-medium">Recorded rationale:</span> {snapshot.approvalRationale}</p>}
+          <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">The reference is sealed. Choose manual, daily, or weekly operation next.</p>
+            <Button asChild id="continue-to-operations"><Link href={operationsPath}>Continue to operations <ExternalLink /></Link></Button>
+          </div>
+        </CardContent>
       </Card>
     )
   }

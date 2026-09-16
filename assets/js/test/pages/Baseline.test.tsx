@@ -292,4 +292,27 @@ describe("BaselineView", () => {
     expect(screen.getByRole("button", { name: "Approve with recorded exception" })).toBeEnabled()
     expect(screen.getByRole("button", { name: "Approve and seal baseline" })).toBeDisabled()
   })
+
+  it("continues an approved baseline into monitor operations", () => {
+    render(
+      <BaselineView
+        {...baseProps}
+        errors={{}}
+        flash={{}}
+        health={health}
+        snapshot={{
+          ...snapshot,
+          status: "approved",
+          approvalMode: "normal",
+          approvedAt: "2026-09-16T15:00:00Z",
+          memberCount: 1,
+        }}
+      />,
+    )
+
+    expect(screen.getByRole("link", { name: /continue to operations/i })).toHaveAttribute(
+      "href",
+      "/app/acme-ai/monitors/monitor-id/operations",
+    )
+  })
 })

@@ -2,7 +2,7 @@ defmodule SilentRegressionWeb.AppController do
   use SilentRegressionWeb, :controller
 
   alias SilentRegression.Accounts.Scope
-  alias SilentRegression.{MonitorSetups, Workspaces}
+  alias SilentRegression.{Baselines, MonitorSetups, Workspaces}
 
   def entry(conn, _params) do
     case Workspaces.default_workspace_scope(conn.assigns.current_scope) do
@@ -31,13 +31,13 @@ defmodule SilentRegressionWeb.AppController do
     |> assign(:page_title, "Monitors")
     |> render_inertia("Dashboard", %{
       current_section: current_section,
-      monitors: Enum.map(MonitorSetups.list_summaries(scope), &summary_prop/1),
+      monitors: Enum.map(MonitorSetups.list_summaries(scope), &summary_prop(scope, &1)),
       release_stage: "Private alpha",
       workspace: %{name: scope.workspace.name, slug: scope.workspace.slug}
     })
   end
 
-  defp summary_prop(%{setup: setup, progress: progress}) do
+  defp summary_prop(scope, %{setup: setup, progress: progress}) do
     %{
       id: setup.monitor.id,
       name: setup.monitor.name,
@@ -48,7 +48,8 @@ defmodule SilentRegressionWeb.AppController do
       total_steps: progress.total_count,
       progress_percent: progress.percent,
       next_step: progress.next_step,
-      updated_at: setup.updated_at
+      updated_at: setup.updated_at,
+      ready_to_activate: Baselines.compatible_approved?(scope, setup.monitor.id)
     }
   end
 end
