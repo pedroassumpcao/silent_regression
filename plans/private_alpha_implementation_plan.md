@@ -1347,6 +1347,21 @@ The product is ready for the first external design partner only when:
   draft reports no approval blockers. It remains deliberately unapproved pending owner review; no
   provider call was made while preparing it.
 
+### 2026-09-16 — Corrected Task 10 contract approved and preflight ready
+
+- Received explicit owner approval for corrected contract version
+  `e69bb14a-dfd2-4ec9-8056-29493796ee32`. The two-fixture snapshot was sealed with fingerprint
+  `3205ac4bbf0f994db0113f647f061fe5f8a7bf04db60199730970e1fd77f215f`; the approval is recorded in
+  the audit log and the approved content is immutable.
+- Re-ran the local one-sample baseline preflight after approval. It is ready with no blockers under
+  preview fingerprint `fcd5613ec2bc583d70c936f9bbd77f4e4102860a4ad5dc7fff733e4da4df1c94`:
+  one active case, one planned completion, one retry maximum, two attempts maximum, 32 output tokens
+  per attempt, and 64 output tokens maximum. The exact `gpt-5.6-luna` credential check remains valid.
+- The corrected generation configuration is `%{"max_output_tokens" => 32}` and contains no sampling
+  parameter. No provider request was made during contract approval or preflight. A fresh explicit
+  authorization is still required before creating the pending baseline and dispatching the live
+  completion.
+
 ## 17. References
 
 - [Feasibility spike implementation plan](implementation_plan.md)
