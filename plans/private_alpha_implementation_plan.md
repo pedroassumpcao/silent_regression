@@ -1304,6 +1304,13 @@ The product is ready for the first external design partner only when:
   and provider request ID. It discards bounded non-secret OpenAI diagnostics such as HTTP status,
   provider error code, and rejected parameter. Close this observability gap before spending on a
   diagnostic retry, then obtain fresh explicit authorization for any new provider request.
+- Closed that diagnostics gap in `6769b25`: managed failures now retain only an explicit allowlist
+  of bounded, non-secret provider facts and persist them with the observation; the baseline review
+  UI displays those facts without exposing raw provider messages or bodies. Verification passed
+  with 509 backend tests, 22 frontend tests, TypeScript checking, and a production asset build.
+- The existing failed observation predates this change, so its upstream code and parameter cannot
+  be recovered locally. Task 10 still requires a newly authorized diagnostic capture before the
+  live gate can pass.
 
 ## 17. References
 
