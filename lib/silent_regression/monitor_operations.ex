@@ -15,11 +15,11 @@ defmodule SilentRegression.MonitorOperations do
   alias SilentRegression.Monitors.{CaseVersion, Monitor, MonitorVersion}
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
+  alias SilentRegression.RunResults
   alias SilentRegression.Workspaces.{Membership, Workspace}
 
   @active_run_statuses [:planned, :queued, :running]
   @terminal_run_statuses [:succeeded, :partial_failed, :failed, :cancelled, :needs_review]
-  @attention_statuses [:partial_failed, :failed, :needs_review]
 
   def get_state(
         %Scope{workspace: %Workspace{id: workspace_id}, membership: %Membership{}} = scope,
@@ -34,7 +34,7 @@ defmodule SilentRegression.MonitorOperations do
        %{
          monitor: monitor,
          last_run: last_run,
-         runs_needing_attention: attention_count(workspace_id, monitor.id),
+         runs_needing_attention: unresolved_alert_count(scope, monitor.id),
          approved_baseline?: Baselines.compatible_approved?(scope, monitor.id),
          maximum_call_count: maximum_call_count(monitor),
          workspace_call_limit: operations_config(:daily_workspace_call_limit),
@@ -633,14 +633,11 @@ defmodule SilentRegression.MonitorOperations do
     |> Repo.one()
   end
 
-  defp attention_count(workspace_id, monitor_id) do
-    CaptureRun
-    |> where(
-      [run],
-      run.workspace_id == ^workspace_id and run.monitor_id == ^monitor_id and
-        run.kind in [:manual, :scheduled] and run.status in ^@attention_statuses
-    )
-    |> Repo.aggregate(:count)
+  defp unresolved_alert_count(scope, monitor_id) do
+    case RunResults.unresolved_alert_count(scope, monitor_id) do
+      {:ok, count} -> count
+      {:error, _reason} -> 0
+    end
   end
 
   defp record_event!(monitor, actor_user_id, action, at, metadata) do

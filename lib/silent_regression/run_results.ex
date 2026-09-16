@@ -10,14 +10,120 @@ defmodule SilentRegression.RunResults do
 
   alias SilentRegression.Accounts.{Scope, User}
   alias SilentRegression.Audit
-
-  alias SilentRegression.Captures.{CaptureRuleResult, CaptureRun}
-
+  alias SilentRegression.Baselines.BaselineSnapshot
+  alias SilentRegression.Captures.{CaptureRuleResult, CaptureRun, ProviderAttempt}
+  alias SilentRegression.Monitors.Monitor
   alias SilentRegression.Repo
   alias SilentRegression.RunResults.{Alert, Policy}
   alias SilentRegression.Workspaces.{Membership, Workspace}
 
   @terminal_run_statuses [:succeeded, :partial_failed, :failed, :cancelled, :needs_review]
+  @history_limit 25
+  @alert_limit 100
+
+  def list_workspace_alerts(%Scope{
+        workspace: %Workspace{id: workspace_id},
+        membership: %Membership{} = membership
+      }) do
+    alerts =
+      Alert
+      |> where([alert], alert.workspace_id == ^workspace_id)
+      |> order_by(
+        [alert],
+        asc:
+          fragment(
+            "CASE ? WHEN 'open' THEN 0 WHEN 'acknowledged' THEN 1 ELSE 2 END",
+            alert.status
+          ),
+        asc: fragment("CASE ? WHEN 'critical' THEN 0 ELSE 1 END", alert.severity),
+        desc: alert.opened_at,
+        desc: alert.id
+      )
+      |> limit(@alert_limit)
+      |> preload([:monitor, :capture_run, :acknowledged_by_user, :resolved_by_user])
+      |> Repo.all()
+
+    {:ok, %{alerts: alerts, can_resolve?: membership.role == :owner}}
+  end
+
+  def list_workspace_alerts(%Scope{}), do: {:error, :workspace_required}
+
+  def get_monitor_overview(
+        %Scope{
+          workspace: %Workspace{id: workspace_id},
+          membership: %Membership{} = membership
+        },
+        monitor_id
+      ) do
+    with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id),
+         %Monitor{} = monitor <- load_monitor(workspace_id, monitor_id) do
+      runs = history_runs(workspace_id, monitor.id)
+      alerts = monitor_alerts(workspace_id, monitor.id)
+      alerts_by_run = Enum.group_by(alerts, & &1.capture_run_id)
+
+      {:ok,
+       %{
+         monitor: monitor,
+         runs: Enum.map(runs, &%{run: &1, alerts: Map.get(alerts_by_run, &1.id, [])}),
+         alerts: alerts,
+         current_baseline: current_baseline(workspace_id, monitor.id),
+         can_resolve?: membership.role == :owner
+       }}
+    else
+      _reason -> {:error, :not_found}
+    end
+  end
+
+  def get_monitor_overview(%Scope{}, _monitor_id), do: {:error, :workspace_required}
+
+  def get_run_detail(
+        %Scope{
+          workspace: %Workspace{id: workspace_id},
+          membership: %Membership{} = membership
+        },
+        monitor_id,
+        run_id
+      ) do
+    with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id),
+         {:ok, run_id} <- Ecto.UUID.cast(run_id),
+         %Monitor{} = monitor <- load_monitor(workspace_id, monitor_id),
+         %CaptureRun{} = run <- load_detail_run(workspace_id, monitor.id, run_id) do
+      {:ok,
+       %{
+         monitor: monitor,
+         run: run,
+         alerts: run_alerts(workspace_id, run.id),
+         can_resolve?: membership.role == :owner
+       }}
+    else
+      _reason -> {:error, :not_found}
+    end
+  end
+
+  def get_run_detail(%Scope{}, _monitor_id, _run_id), do: {:error, :workspace_required}
+
+  def unresolved_alert_count(
+        %Scope{workspace: %Workspace{id: workspace_id}, membership: %Membership{}},
+        monitor_id
+      ) do
+    with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id),
+         true <- monitor_exists?(workspace_id, monitor_id) do
+      count =
+        Alert
+        |> where(
+          [alert],
+          alert.workspace_id == ^workspace_id and alert.monitor_id == ^monitor_id and
+            alert.status in [:open, :acknowledged]
+        )
+        |> Repo.aggregate(:count)
+
+      {:ok, count}
+    else
+      _reason -> {:error, :not_found}
+    end
+  end
+
+  def unresolved_alert_count(%Scope{}, _monitor_id), do: {:error, :workspace_required}
 
   @doc false
   def sync_run(run_id) do
@@ -198,6 +304,96 @@ defmodule SilentRegression.RunResults do
     |> where([run], run.id == ^run_id)
     |> lock("FOR UPDATE")
     |> Repo.one()
+  end
+
+  defp load_monitor(workspace_id, monitor_id) do
+    Monitor
+    |> where(
+      [monitor],
+      monitor.workspace_id == ^workspace_id and monitor.id == ^monitor_id
+    )
+    |> preload(:active_version)
+    |> Repo.one()
+  end
+
+  defp monitor_exists?(workspace_id, monitor_id) do
+    Monitor
+    |> where(
+      [monitor],
+      monitor.workspace_id == ^workspace_id and monitor.id == ^monitor_id
+    )
+    |> Repo.exists?()
+  end
+
+  defp history_runs(workspace_id, monitor_id) do
+    CaptureRun
+    |> where(
+      [run],
+      run.workspace_id == ^workspace_id and run.monitor_id == ^monitor_id and
+        run.kind in [:manual, :scheduled]
+    )
+    |> order_by([run], desc: run.inserted_at, desc: run.id)
+    |> limit(@history_limit)
+    |> preload([:baseline_snapshot, observations: [:provider_attempts, :evaluations]])
+    |> Repo.all()
+  end
+
+  defp load_detail_run(workspace_id, monitor_id, run_id) do
+    run =
+      CaptureRun
+      |> where(
+        [run],
+        run.workspace_id == ^workspace_id and run.monitor_id == ^monitor_id and run.id == ^run_id
+      )
+      |> Repo.one()
+
+    if run do
+      attempt_query = from(attempt in ProviderAttempt, order_by: attempt.attempt_number)
+      rule_query = from(result in CaptureRuleResult, order_by: result.position)
+
+      Repo.preload(run, [
+        :monitor_version,
+        baseline_snapshot: [members: :capture_observation],
+        observations: [
+          :case_version,
+          provider_attempts: attempt_query,
+          evaluations: [rule_results: rule_query]
+        ]
+      ])
+    end
+  end
+
+  defp current_baseline(workspace_id, monitor_id) do
+    BaselineSnapshot
+    |> where(
+      [baseline],
+      baseline.workspace_id == ^workspace_id and baseline.monitor_id == ^monitor_id and
+        baseline.status == :approved
+    )
+    |> Repo.one()
+  end
+
+  defp monitor_alerts(workspace_id, monitor_id) do
+    Alert
+    |> where(
+      [alert],
+      alert.workspace_id == ^workspace_id and alert.monitor_id == ^monitor_id
+    )
+    |> order_by([alert], desc: alert.opened_at, desc: alert.id)
+    |> limit(@alert_limit)
+    |> preload([:monitor, :capture_run, :acknowledged_by_user, :resolved_by_user])
+    |> Repo.all()
+  end
+
+  defp run_alerts(workspace_id, run_id) do
+    Alert
+    |> where(
+      [alert],
+      alert.workspace_id == ^workspace_id and alert.capture_run_id == ^run_id
+    )
+    |> order_by([alert], asc: alert.inserted_at, asc: alert.id)
+    |> preload([:monitor, :capture_run, :acknowledged_by_user, :resolved_by_user])
+    |> Repo.all()
   end
 
   defp load_alert(workspace_id, alert_id) do

@@ -1,6 +1,6 @@
 # Run Results and Alerts Progress
 
-## Status: Phase 3 - In Progress
+## Status: Phase 4 - In Progress
 
 ## Quick Reference
 
@@ -61,11 +61,20 @@
 
 ### Phase 3: Result Queries and Presenters
 
-**Status:** In Progress
+**Status:** Completed
 
 #### Tasks Completed
 
-- None.
+- Added workspace alert, monitor history, exact run detail, and unresolved-alert queries with tenant
+  scoping.
+- Added explicit run counters for calls, observations, completion, evaluations, failures, model
+  mismatches, tokens, latency, and alerts without an aggregate quality score.
+- Added side-by-side pinned baseline/current provenance and mismatch reporting.
+- Added UTF-8-safe bounded text, recursively bounded structured evidence, sensitive-key redaction,
+  and provider-metadata allowlisting.
+- Added a redacted diagnostic presenter that omits case inputs/context, prompts, outputs, and rule
+  evidence while preserving operational IDs and counts.
+- Replaced the operations context's temporary failed-run count with the formal unresolved-alert count.
 
 #### Decisions Made
 
@@ -77,7 +86,7 @@
 
 ### Phase 4: Inertia Product Experience
 
-**Status:** Not Started
+**Status:** In Progress
 
 #### Tasks Completed
 
@@ -120,6 +129,7 @@
 - Completed Phase 1 severity and baseline-provenance implementation with focused parser, evaluator,
   capture-schema, capture-execution, and monitor-operation tests.
 - Completed Phase 2 with 33 focused alert-policy, lifecycle, capture, and scheduling tests passing.
+- Completed Phase 3 with focused presenter, redaction, provenance, history, and workspace-scope tests.
 
 ## Files Changed
 
@@ -143,6 +153,11 @@
 - `priv/repo/migrations/20260916180822_create_result_alerts.exs`
 - `test/silent_regression/run_results_test.exs`
 - `test/silent_regression/run_results/policy_test.exs`
+- `lib/silent_regression/run_results/presenter.ex`
+- `lib/silent_regression/run_results/safe_value.ex`
+- `lib/silent_regression/monitor_operations.ex`
+- `test/silent_regression/run_results/presenter_test.exs`
+- `test/silent_regression/run_results/safe_value_test.exs`
 
 ## Architectural Decisions
 
