@@ -1,6 +1,6 @@
 # Pilot Readiness Progress
 
-## Status: Phases 1–5 complete; Phase 6 next
+## Status: Phases 1–5 complete; Phase 6 awaits separately authorized live smokes
 
 ## Quick Reference
 
@@ -32,7 +32,8 @@
 
 ### Phase 6: End-to-end pilot gate
 
-**Status:** Not started
+**Status:** In progress — local gates pass; OpenAI and Anthropic live calls await separate
+just-in-time authorization
 
 ## Decision Gates
 
@@ -113,7 +114,40 @@
   invite-only workspace, retention, credential, and deletion boundaries.
 - Added operator, incident-response, backup/restore, key-rotation, alpha data, and future deployment
   documents. A route-level test confirms public registration, billing, and checkout remain absent.
+- Completed a headed, invited-user fake-provider journey using only product and operator surfaces:
+  accepted an invitation, stored and validated a credential, finished immutable setup, proved and
+  approved a deterministic contract, exceptionally approved a deliberate failing baseline,
+  activated a daily schedule, authorized a bounded manual run, reviewed the resulting critical
+  alert, recorded a confirmed-regression judgment, acknowledged it, and resolved it as an owner.
+- Verified the dashboard derived all six activation stages as complete, the operations screen
+  displayed the approved 20-run/200-call daily envelopes, and the retention screen disclosed the
+  active/closed/deletion/backup boundaries with exact-slug confirmation. The final destructive
+  deletion submission was deliberately not made without separate authorization.
+- Verified the Local mailbox received exactly one actionable-alert email. It contained only the
+  monitor name, category, severity, and authenticated evidence link; no prompt, context, output, or
+  rule evidence appeared in the message.
+- Found and fixed a generic Chromium validation defect in contract rule IDs: the previous escaped
+  hyphen produced an invalid HTML `pattern` under Unicode-set regular-expression rules. The new
+  pattern accepts the parser's lowercase/number/underscore/hyphen grammar; a regression test and a
+  fresh browser console check pass with zero errors and zero warnings.
+- Added `mix silent_regression.provider_smoke`, a preview-first fixed-content operator task that
+  selects one existing valid credential, prints the exact provider/model/configuration/case,
+  enforces one sample, zero retries, and one maximum call, fingerprints the preview, requires exact
+  execution confirmations, and never prints the credential or captured output.
+- Previewed both no-call smoke contracts against the existing valid credentials. OpenAI
+  `gpt-5.6-luna` fingerprint is
+  `f56e5e19bf7fddef6fbc69f0e6a52486b77dfe6d28d7b6ac314f28bab51a2978`; Anthropic
+  `claude-haiku-4-5-20251001` fingerprint is
+  `e12848cc79d78273598470a0a6f9d0ca266a3085e44c3b358e83525c54c6c4b6`. Neither preview made a
+  provider request.
+- Verification passes: TypeScript checking, all 44 frontend tests, the production asset build, and
+  `mix precommit` with 597 Elixir tests.
 
-## Blockers
+## Pending explicit authorizations
 
-- None.
+- One OpenAI `gpt-5.6-luna` smoke completion, capped at one call with no retry.
+- After the OpenAI result is reviewed, one separate Anthropic `claude-haiku-4-5-20251001` smoke
+  completion, capped at one call with no retry.
+- Optional cleanup of the temporary `task-14-browser-pilot` workspace through its irreversible
+  deletion request and operator purge. The workspace remains intact because deletion was not
+  separately authorized.

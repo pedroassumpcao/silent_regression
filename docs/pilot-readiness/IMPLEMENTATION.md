@@ -49,11 +49,11 @@ encryption-key operations, or pilot spending remains gated by the decisions reco
 
 ## Phase 6: End-to-end pilot gate
 
-- [ ] Run the complete invited-user fake-provider journey without direct database intervention.
-- [ ] Verify notification deduplication, preferences, caps, rate limits, closure, deletion, and
+- [x] Run the complete invited-user fake-provider journey without direct database intervention.
+- [x] Verify notification deduplication, preferences, caps, rate limits, closure, deletion, and
   cross-tenant isolation.
-- [ ] Run TypeScript, frontend, asset, and full Elixir verification.
-- [ ] Preview separate bounded OpenAI and Anthropic smoke contracts.
+- [x] Run TypeScript, frontend, asset, and full Elixir verification.
+- [x] Preview separate bounded OpenAI and Anthropic smoke contracts.
 - [ ] Request explicit authorization immediately before each live provider smoke.
 - [ ] Reconcile Task 14 and the private-alpha readiness checklist.
 

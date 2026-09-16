@@ -1,6 +1,6 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 14 in progress; decision gates approved, phases 1–4 complete
+> **Status:** Task 14 in progress; local readiness gates pass and separate live smokes await authorization
 >
 > **Progress:** 13 of 14 tasks complete
 >
@@ -811,10 +811,10 @@ instead of inventing a temporary alert lifecycle.
 - [x] Add workspace-level run and call caps with clear errors.
 - [x] Add retention, customer deletion, credential revocation, and workspace closure workflows.
 - [x] Verify logs, telemetry, exceptions, job arguments, and audit events against a sensitive-data allowlist.
-- [ ] Add rate limiting for login, invitations, credential validation, and run authorization.
+- [x] Add rate limiting for login, invitations, credential validation, and run authorization.
 - [x] Add backup/restore and encryption-key rotation notes for eventual Fly.io deployment.
 - [x] Add an operator runbook for invitations, failed jobs, provider incidents, data deletion, and pilot support.
-- [ ] Add end-to-end tests for the complete fake-provider journey.
+- [x] Add end-to-end tests for the complete fake-provider journey.
 - [ ] Conduct separate manually authorized OpenAI and Anthropic smoke tests.
 - [x] Record pilot limits and known limitations in customer-visible alpha documentation.
 - [x] Produce a deployment-readiness checklist without creating Fly.io resources.
@@ -897,17 +897,17 @@ Proposed product-validation gate before broader productization:
 The product is ready for the first external design partner only when:
 
 - [ ] Tasks 1–14 are complete.
-- [ ] Public registration and all billing routes are absent.
-- [ ] Tenant isolation has explicit adversarial tests.
-- [ ] Provider credentials are encrypted, redacted, revocable, and never returned to the browser.
-- [ ] The full onboarding and monitoring loop passes with the fake provider.
+- [x] Public registration and all billing routes are absent.
+- [x] Tenant isolation has explicit adversarial tests.
+- [x] Provider credentials are encrypted, redacted, revocable, and never returned to the browser.
+- [x] The full onboarding and monitoring loop passes with the fake provider.
 - [ ] OpenAI and Anthropic smoke tests pass under explicit call caps.
-- [ ] Every behavior-affecting edit produces a compatible new version or invalidates the baseline.
-- [ ] Scheduled work is durable, bounded, unique, and recoverable.
+- [x] Every behavior-affecting edit produces a compatible new version or invalidates the baseline.
+- [x] Scheduled work is durable, bounded, unique, and recoverable.
 - [x] Alerts show deterministic evidence and do not claim semantic understanding.
-- [ ] Result feedback records false alerts and missed regressions.
-- [ ] Customer-visible data use, retention, limitations, and deletion behavior are documented.
-- [ ] The operator runbook and deployment-readiness checklist are complete.
+- [x] Result feedback records false alerts and missed regressions.
+- [x] Customer-visible data use, retention, limitations, and deletion behavior are documented.
+- [x] The operator runbook and deployment-readiness checklist are complete.
 - [ ] The user explicitly authorizes deployment and the first design-partner invitation.
 
 ## 14. Risks and stop conditions
@@ -1522,6 +1522,37 @@ The product is ready for the first external design partner only when:
 - Verification passes with TypeScript checking, all 40 frontend tests, a production asset build,
   and `mix precommit` with 565 Elixir tests. Task 13 commits: `56066af`, `124bf89`, `c82203e`,
   `631b68a`, and `6133982`. Task 14 is next.
+
+### 2026-09-16 — Task 14 local readiness gates complete
+
+- Added the derived six-step activation checklist and content-free product learning events through
+  baseline approval, schedule activation, review, corrective action, and bounded founder
+  assistance.
+- Added preference-controlled, database-deduplicated actionable-alert email delivery with ID-only
+  Oban jobs. Development remains on Swoosh Local; production is configured to fail closed onto
+  Resend over Req when deployment is authorized.
+- Enforced the approved 20 authorized runs/day, 200 reserved calls/day, and 200 calls/run workspace
+  policy, plus durable HMAC-subject rate limits for login, invitation acceptance, credential/model
+  validation, baseline and schedule authorization, and Run now.
+- Added owner-only closure and explicit deletion request flows, immediate execution shutdown and
+  credential revocation, a tested restrictive-FK-aware purge, content-free deletion receipts,
+  30-day closed-workspace retention, seven-day deletion SLA, and 30-day backup expiry.
+- Added versioned Cloak keyring support, key inventory and re-encryption tooling, strict audit and
+  sensitive-data allowlists, public alpha data/retention language, and operator, incident,
+  backup/restore, key-rotation, and deployment-readiness documentation.
+- Completed a headed invited-user fake-provider journey from invitation through 6/6 activation,
+  bounded capture, actionable email, structured review, acknowledgement, and owner resolution.
+  The Local mailbox contained one content-safe notification; the fresh browser console reported
+  zero errors and zero warnings after fixing a generic contract rule-ID pattern defect.
+- Added a preview-first fixed-content provider smoke task. OpenAI `gpt-5.6-luna` preview
+  `f56e5e19bf7fddef6fbc69f0e6a52486b77dfe6d28d7b6ac314f28bab51a2978` and Anthropic
+  `claude-haiku-4-5-20251001` preview
+  `e12848cc79d78273598470a0a6f9d0ca266a3085e44c3b358e83525c54c6c4b6` each bind one fixed case,
+  one sample, zero retries, 16 output tokens, and one maximum call. Previewing made no provider
+  request; each live call still requires a separate just-in-time authorization.
+- Verification passes with TypeScript checking, all 44 frontend tests, a production asset build,
+  and `mix precommit` with 597 Elixir tests. The temporary browser workspace remains intact pending
+  separate authorization for irreversible deletion and purge.
 
 ## 17. References
 

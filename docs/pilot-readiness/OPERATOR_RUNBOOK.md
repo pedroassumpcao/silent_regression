@@ -59,6 +59,26 @@ Do not record free-form notes. Product events and audit records intentionally re
 4. Tell affected partners that monitoring is paused and whether any run outcome is unknown.
 5. Resume only after credential/model validation and normal capacity checks succeed.
 
+## Provider smoke verification
+
+Preview each provider independently with the exact existing credential ID, workspace, and allowed
+model. Previewing decrypts no credential and makes no provider request:
+
+```shell
+mix silent_regression.provider_smoke \
+  --workspace-slug acme-ai \
+  --provider anthropic \
+  --model claude-haiku-4-5-20251001 \
+  --credential-id CREDENTIAL_UUID
+```
+
+The fixed smoke contract has one case, one sample, zero retries, 16 maximum output tokens, and one
+maximum provider call. Obtain fresh, provider-specific user authorization only after reviewing the
+printed fingerprint and envelope. Then add `--execute` plus the exact printed provider, model,
+maximum-call count, and fingerprint confirmations. Never reuse one provider's authorization for
+the other provider. The task prints safe provenance and contract status but never the credential or
+captured output.
+
 ## Workspace closure, recovery, and deletion
 
 Customer owners initiate closure/deletion in **Data & retention** after typing the exact workspace
