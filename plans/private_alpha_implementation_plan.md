@@ -282,7 +282,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 9 | Durable capture execution and provider accounting | 4, 5, 7 | Complete | `36d385b`, `fff370f`, `e81ef85`, `fa169c6`, `9f3d518` |
 | 10 | Baseline capture, inspection, and approval | 8, 9 | Complete | `76f748e`, `bd060be`, `a632f92`, `6769b25`, `4a4112f` |
 | 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | Complete | `bafadc1`, `dd1c29a`, `03dc23f`, `e8ef6b2` |
-| 12 | Run results, evidence, alerts, and operational signals | 9, 10 | Not started | — |
+| 12 | Run results, evidence, alerts, and operational signals | 9, 10 | In progress | `da75863` |
 | 13 | Structured review and versioned correction loop | 8, 12 | Not started | — |
 | 14 | Onboarding telemetry, notifications, security, and pilot readiness | 2–13 | Not started | — |
 
@@ -767,7 +767,7 @@ instead of inventing a temporary alert lifecycle.
 - [ ] Add append-only review decisions tied to exact run, observation, evaluation, rule, contract, and baseline identities as applicable.
 - [ ] Require reviewer identity, classification, and optional rationale.
 - [ ] Allow a later decision to supersede, not overwrite, an earlier decision.
-- [ ] Add alert acknowledgment and resolution actions with authorization.
+- [ ] Bind the existing authorized alert lifecycle to append-only review decisions so resolution has governed judgment context.
 - [ ] Add `passed but should have failed` entry points for false-negative discovery.
 - [ ] Record whether the review caused a prompt, case, contract, provider, or operational action.
 - [ ] Start a contract-revision flow from a review without mutating history.
