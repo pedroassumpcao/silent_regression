@@ -141,6 +141,7 @@ describe("ContractAuthoringView", () => {
 
     expect(screen.getAllByText("Stable rule ID")).toHaveLength(2)
     expect(screen.getByDisplayValue("allowed_label")).toBeInTheDocument()
+    expect(screen.getAllByLabelText("Stable rule ID")[0]).toHaveAttribute("pattern", "[a-z](?:[a-z0-9_]|-)*")
     expect(screen.getByRole("button", { name: "Advanced JSON" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Save and validate rules" })).toBeEnabled()
   })

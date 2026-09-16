@@ -486,7 +486,7 @@ function RuleEditor({ rule, index, canRemove, onChange, onRemove }: {
       <div className="grid gap-4 lg:grid-cols-[0.7fr_1fr_auto] lg:items-end">
         <div className="space-y-2">
           <Label htmlFor={`rule-${index}-id`}>Stable rule ID</Label>
-          <Input id={`rule-${index}-id`} value={rule.id} pattern="[a-z][a-z0-9_\\-]*" required onChange={event => onChange({ ...rule, id: event.target.value })} />
+          <Input id={`rule-${index}-id`} value={rule.id} pattern="[a-z](?:[a-z0-9_]|-)*" required onChange={event => onChange({ ...rule, id: event.target.value })} />
         </div>
         <div className="space-y-2">
           <Label htmlFor={`rule-${index}-type`}>Check</Label>
