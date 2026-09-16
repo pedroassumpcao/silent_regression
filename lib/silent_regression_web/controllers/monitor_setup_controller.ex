@@ -171,6 +171,7 @@ defmodule SilentRegressionWeb.MonitorSetupController do
     |> render_inertia("Monitors/Setup", %{
       active_case_count: active_case_count,
       credentials: Enum.map(credentials, &credential_prop/1),
+      generation_capabilities: ModelCatalog.generation_capabilities(),
       limits: limits_prop(),
       model_options: ModelCatalog.all(),
       progress: progress_prop(progress),

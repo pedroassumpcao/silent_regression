@@ -38,7 +38,7 @@ defmodule SilentRegression.MonitorSetupsFixtures do
         system_prompt: "Answer only from the supplied context.",
         user_prompt_template: "Question: {{question}}",
         response_format: %{type: "json_object"},
-        generation_config: %{max_output_tokens: "256", temperature: "0"}
+        generation_config: %{max_output_tokens: "256"}
       })
 
     default_case = %{

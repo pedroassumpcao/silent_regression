@@ -94,10 +94,18 @@ type Limits = {
   maxOutputTokens: number
 }
 
+type GenerationCapability = {
+  parameters: string[]
+  reasoningEfforts: string[]
+}
+
+type GenerationCapabilities = Record<Provider, Record<string, GenerationCapability>>
+
 export type MonitorSetupProps = {
   activeCaseCount: number
   auth: SharedPageProps["auth"]
   credentials: Credential[]
+  generationCapabilities: GenerationCapabilities
   limits: Limits
   modelOptions: Record<Provider, string[]>
   progress: SetupProgress
@@ -209,7 +217,13 @@ export function MonitorSetupView({
             />
           )}
           {props.step === "prompt" && (
-            <PromptStep basePath={basePath} errors={errors} limits={props.limits} setup={props.setup} />
+            <PromptStep
+              basePath={basePath}
+              errors={errors}
+              generationCapabilities={props.generationCapabilities}
+              limits={props.limits}
+              setup={props.setup}
+            />
           )}
           {props.step === "cases" && (
             <CasesStep basePath={basePath} errors={errors} limits={props.limits} setup={props.setup} />
@@ -485,7 +499,20 @@ function ConnectionStep({
   )
 }
 
-function PromptStep({ basePath, errors, limits, setup }: StepProps & { limits: Limits }) {
+function PromptStep({
+  basePath,
+  errors,
+  generationCapabilities,
+  limits,
+  setup,
+}: StepProps & { generationCapabilities: GenerationCapabilities; limits: Limits }) {
+  const capabilities = setup.provider && setup.requestedModel
+    ? generationCapabilities[setup.provider]?.[setup.requestedModel]
+    : undefined
+  const supportsTemperature = capabilities?.parameters.includes("temperature") ?? false
+  const supportsTopP = capabilities?.parameters.includes("top_p") ?? false
+  const reasoningEfforts = capabilities?.reasoningEfforts || []
+
   const form = useForm({
     prompt: {
       system_prompt: setup.systemPrompt || "",
@@ -495,9 +522,11 @@ function PromptStep({ basePath, errors, limits, setup }: StepProps & { limits: L
       },
       generation_config: {
         max_output_tokens: String(setup.generationConfig?.maxOutputTokens || 512),
-        temperature: setup.generationConfig?.temperature?.toString() || "",
-        top_p: setup.generationConfig?.topP?.toString() || "",
-        reasoning_effort: setup.generationConfig?.reasoningEffort || "",
+        temperature: supportsTemperature ? setup.generationConfig?.temperature?.toString() || "" : "",
+        top_p: supportsTopP ? setup.generationConfig?.topP?.toString() || "" : "",
+        reasoning_effort: reasoningEfforts.includes(setup.generationConfig?.reasoningEffort || "")
+          ? setup.generationConfig?.reasoningEffort || ""
+          : "",
       },
     },
   })
@@ -584,21 +613,40 @@ function PromptStep({ basePath, errors, limits, setup }: StepProps & { limits: L
           </div>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-3">
-          <OptionalNumber
-            id="temperature"
-            label="Temperature"
-            max={2}
-            value={form.data.prompt.generation_config.temperature}
-            onChange={value => form.setData("prompt.generation_config.temperature", value)}
-          />
-          <OptionalNumber
-            id="top-p"
-            label="Top P"
-            max={1}
-            value={form.data.prompt.generation_config.top_p}
-            onChange={value => form.setData("prompt.generation_config.top_p", value)}
-          />
+        {(supportsTemperature || supportsTopP) && (
+          <div className="grid gap-5 sm:grid-cols-2">
+            {supportsTemperature && (
+              <OptionalNumber
+                id="temperature"
+                label="Temperature"
+                max={2}
+                value={form.data.prompt.generation_config.temperature}
+                onChange={value => form.setData("prompt.generation_config.temperature", value)}
+              />
+            )}
+            {supportsTopP && (
+              <OptionalNumber
+                id="top-p"
+                label="Top P"
+                max={1}
+                value={form.data.prompt.generation_config.top_p}
+                onChange={value => form.setData("prompt.generation_config.top_p", value)}
+              />
+            )}
+          </div>
+        )}
+
+        {!supportsTemperature && !supportsTopP && (
+          <Alert>
+            <ShieldCheck />
+            <AlertTitle>Provider-default sampling</AlertTitle>
+            <AlertDescription>
+              Silent Regression does not send Temperature or Top P for {setup.requestedModel}. This avoids unsupported requests, and the frozen configuration records that provider defaults are used.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {reasoningEfforts.length > 0 && (
           <div className="space-y-2">
             <Label htmlFor="reasoning-effort">Reasoning effort</Label>
             <Select
@@ -608,13 +656,13 @@ function PromptStep({ basePath, errors, limits, setup }: StepProps & { limits: L
               <SelectTrigger id="reasoning-effort" className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="default">Provider default</SelectItem>
-                {['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].map(value => (
+                {reasoningEfforts.map(value => (
                   <SelectItem key={value} value={value}>{value}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-        </div>
+        )}
         {errors.generationConfig && <FieldError message={errors.generationConfig} />}
 
         <FormActions basePath={basePath} processing={form.processing} step="prompt" />

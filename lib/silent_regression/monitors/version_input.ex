@@ -25,6 +25,12 @@ defmodule SilentRegression.Monitors.VersionInput do
            ResponseFormat.normalize(Map.get(attributes, "response_format")),
          {:ok, generation_config} <-
            GenerationConfig.normalize(Map.get(attributes, "generation_config")),
+         :ok <-
+           ModelCatalog.validate_generation_config(
+             provider,
+             requested_model,
+             generation_config
+           ),
          {:ok, cases} <- CaseInput.normalize_many(cases) do
       normalized = %{
         schema_version: Limits.fetch!(:schema_version),

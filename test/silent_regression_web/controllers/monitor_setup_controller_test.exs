@@ -105,6 +105,11 @@ defmodule SilentRegressionWeb.MonitorSetupControllerTest do
       assert credential_prop.id == credential.id
       refute Map.has_key?(credential_prop, :secret)
 
+      assert inertia_props(connection_page).generationCapabilities.openai["gpt-5.6-luna"][
+               "parameters"
+             ] ==
+               ["max_output_tokens", "reasoning_effort"]
+
       connection =
         connection_page
         |> recycle()
@@ -129,8 +134,6 @@ defmodule SilentRegressionWeb.MonitorSetupControllerTest do
             "response_format" => %{"type" => "json_object"},
             "generation_config" => %{
               "max_output_tokens" => "512",
-              "temperature" => "0",
-              "top_p" => "1",
               "reasoning_effort" => "low"
             }
           }

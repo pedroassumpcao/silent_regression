@@ -32,6 +32,28 @@ const baseProps: MonitorSetupProps = {
       lastReturnedModel: "gpt-5.6-luna",
     },
   ],
+  generationCapabilities: {
+    openai: {
+      "gpt-5.6-luna": {
+        parameters: ["max_output_tokens", "reasoning_effort"],
+        reasoningEfforts: ["none", "low", "medium", "high", "xhigh", "max"],
+      },
+      "gpt-5.6-sol": {
+        parameters: ["max_output_tokens", "reasoning_effort"],
+        reasoningEfforts: ["none", "low", "medium", "high", "xhigh", "max"],
+      },
+    },
+    anthropic: {
+      "claude-haiku-4-5-20251001": {
+        parameters: ["max_output_tokens", "temperature", "top_p"],
+        reasoningEfforts: [],
+      },
+      "claude-sonnet-5": {
+        parameters: ["max_output_tokens", "temperature", "top_p"],
+        reasoningEfforts: [],
+      },
+    },
+  },
   limits: {
     maxActiveCases: 20,
     maxTotalCases: 50,
@@ -178,6 +200,16 @@ describe("MonitorSetupView", () => {
     )
 
     expect(screen.getByRole("button", { name: /save and continue/i })).toBeDisabled()
+  })
+
+  it("shows only generation controls supported by the selected model", () => {
+    render(<MonitorSetupView {...baseProps} errors={{}} flash={{}} step="prompt" />)
+
+    expect(screen.getByText("Provider-default sampling")).toBeInTheDocument()
+    expect(screen.queryByLabelText("Temperature")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Top P")).not.toBeInTheDocument()
+    expect(screen.getByLabelText("Reasoning effort")).toBeInTheDocument()
+    expect(screen.queryByRole("option", { name: "minimal" })).not.toBeInTheDocument()
   })
 
   it("adds and removes manual cases while keeping the configured limits visible", async () => {

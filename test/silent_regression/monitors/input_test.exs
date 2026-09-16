@@ -60,6 +60,64 @@ defmodule SilentRegression.Monitors.InputTest do
                })
     end
 
+    test "enforces generation capabilities for the exact provider and model" do
+      attributes = MonitorsFixtures.valid_version_attributes()
+
+      assert {:error,
+              %{
+                field: :generation_config,
+                reason: :unsupported_parameters,
+                parameters: ["temperature"]
+              }} =
+               VersionInput.normalize(%{
+                 attributes
+                 | generation_config: %{max_output_tokens: 256, temperature: 0}
+               })
+
+      assert {:error,
+              %{
+                field: :generation_config,
+                reason: :unsupported_reasoning_effort,
+                reasoning_effort: "minimal"
+              }} =
+               VersionInput.normalize(%{
+                 attributes
+                 | generation_config: %{
+                     max_output_tokens: 256,
+                     reasoning_effort: "minimal"
+                   }
+               })
+
+      assert {:ok, normalized} =
+               VersionInput.normalize(%{
+                 attributes
+                 | generation_config: %{max_output_tokens: 256, reasoning_effort: "low"}
+               })
+
+      assert normalized.generation_config == %{
+               "max_output_tokens" => 256,
+               "reasoning_effort" => "low"
+             }
+
+      assert {:ok, anthropic} =
+               VersionInput.normalize(%{
+                 attributes
+                 | provider: "anthropic",
+                   requested_model: "claude-haiku-4-5-20251001",
+                   generation_config: %{
+                     max_output_tokens: 256,
+                     temperature: 0.2,
+                     top_p: 0.9
+                   }
+               })
+
+      assert anthropic.generation_config == %{
+               "max_output_tokens" => 256,
+               "temperature" => 0.2,
+               "top_p" => 0.9
+             }
+    end
+
     test "enforces active-case and payload limits" do
       attributes = MonitorsFixtures.valid_version_attributes()
 

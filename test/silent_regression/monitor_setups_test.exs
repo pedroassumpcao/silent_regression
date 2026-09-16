@@ -147,8 +147,6 @@ defmodule SilentRegression.MonitorSetupsTest do
                  response_format: %{type: "json_object"},
                  generation_config: %{
                    max_output_tokens: "512",
-                   temperature: "0",
-                   top_p: "0.9",
                    reasoning_effort: "low"
                  }
                })
@@ -157,12 +155,34 @@ defmodule SilentRegression.MonitorSetupsTest do
 
       assert setup.generation_config == %{
                "max_output_tokens" => 512,
-               "temperature" => 0.0,
-               "top_p" => 0.9,
                "reasoning_effort" => "low"
              }
 
       assert MonitorSetups.progress(scope, setup).completed.prompt
+    end
+
+    test "rejects generation settings unsupported by the selected model", %{scope: scope} do
+      %{monitor: monitor} = MonitorSetupsFixtures.setup_fixture(scope)
+      credential = MonitorSetupsFixtures.valid_credential_fixture(scope)
+
+      assert {:ok, _setup} =
+               MonitorSetups.update_connection(scope, monitor.id, %{
+                 provider_credential_id: credential.id,
+                 provider: :openai,
+                 requested_model: "gpt-5.6-luna"
+               })
+
+      assert {:error, changeset} =
+               MonitorSetups.update_prompt(scope, monitor.id, %{
+                 system_prompt: "",
+                 user_prompt_template: "Question: {{question}}",
+                 response_format: %{type: "text"},
+                 generation_config: %{max_output_tokens: "512", temperature: "0"}
+               })
+
+      assert "temperature is not supported for the selected model; leave it blank to use the provider default" in errors_on(
+               changeset
+             ).generation_config
     end
 
     test "treats blank optional form settings as provider defaults", %{scope: scope} do

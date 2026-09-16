@@ -2,6 +2,7 @@ defmodule SilentRegression.Providers.CompletionAdapter do
   @moduledoc false
 
   alias SilentRegression.Contracts.Limits
+  alias SilentRegression.Monitors.ModelCatalog
   alias SilentRegression.Providers.{CompletionRequest, CompletionResult, Failure}
   alias SilentRegression.Spike.{Case, Response}
 
@@ -44,6 +45,12 @@ defmodule SilentRegression.Providers.CompletionAdapter do
       with true <- CompletionRequest.valid?(request),
            true <- Keyword.keyword?(options),
            [] <- Keyword.keys(options) -- [:req_options],
+           :ok <-
+             ModelCatalog.validate_generation_config(
+               provider,
+               request.requested_model,
+               request.generation_config
+             ),
            {:ok, case_definition} <- spike_case(request),
            result <-
              spike_adapter.complete(

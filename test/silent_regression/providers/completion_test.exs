@@ -23,7 +23,7 @@ defmodule SilentRegression.Providers.CompletionTest do
       assert body["store"] == false
       assert body["instructions"] == "Use only supplied evidence."
       assert body["max_output_tokens"] == 256
-      assert body["temperature"] == 0.0
+      refute Map.has_key?(body, "temperature")
       assert body["text"] == %{"format" => %{"type" => "json_object"}}
 
       conn
@@ -152,6 +152,20 @@ defmodule SilentRegression.Providers.CompletionTest do
     refute log =~ @secret
   end
 
+  test "rejects an unsupported model parameter before making an HTTP request" do
+    unsupported = %{
+      request(:openai)
+      | generation_config: %{"max_output_tokens" => 256, "temperature" => 0.0}
+    }
+
+    assert {:error, failure} =
+             OpenAI.complete_once(@secret, unsupported, req_options(@openai_stub))
+
+    assert failure.category == :invalid_request
+    assert failure.request_id == nil
+    assert failure.attempts == 1
+  end
+
   defp request(provider) do
     %CompletionRequest{
       case_id: "supported-answer",
@@ -161,7 +175,7 @@ defmodule SilentRegression.Providers.CompletionTest do
       context: "The Enterprise plan includes SSO.",
       user_prompt: "Which plan includes SSO?",
       response_format: %{"type" => "json_object"},
-      generation_config: %{"max_output_tokens" => 256, "temperature" => 0.0},
+      generation_config: %{"max_output_tokens" => 256},
       client_request_id: "client-attempt-1"
     }
   end

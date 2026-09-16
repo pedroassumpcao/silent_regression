@@ -138,7 +138,7 @@ defmodule SilentRegression.MonitorSetups do
 
   def update_prompt(%Scope{} = scope, monitor_id, attrs) when is_map(attrs) do
     update_setup(scope, monitor_id, :prompt, fn setup ->
-      case normalize_prompt_attributes(attrs) do
+      case normalize_prompt_attributes(setup, attrs) do
         {:ok, normalized} ->
           setup
           |> Setup.prompt_changeset(normalized)
@@ -338,13 +338,19 @@ defmodule SilentRegression.MonitorSetups do
   defp credential_matches(%ProviderCredential{}, _provider),
     do: {:error, :credential_provider_mismatch}
 
-  defp normalize_prompt_attributes(attrs) do
+  defp normalize_prompt_attributes(setup, attrs) do
     with {:ok, system_prompt} <- prompt(attrs, :system_prompt, false),
          {:ok, user_prompt_template} <- prompt(attrs, :user_prompt_template, true),
          {:ok, response_format} <-
            attrs |> value(:response_format, nil) |> ResponseFormat.normalize(),
          {:ok, generation_config} <-
-           attrs |> value(:generation_config, %{}) |> normalize_generation_config() do
+           attrs |> value(:generation_config, %{}) |> normalize_generation_config(),
+         :ok <-
+           validate_generation_config(
+             setup.provider,
+             setup.requested_model,
+             generation_config
+           ) do
       {:ok,
        %{
          system_prompt: system_prompt,
@@ -365,6 +371,32 @@ defmodule SilentRegression.MonitorSetups do
     else
       {:error, {field, "is invalid or exceeds the prompt limit"}}
     end
+  end
+
+  defp validate_generation_config(nil, nil, _generation_config), do: :ok
+
+  defp validate_generation_config(provider, requested_model, generation_config) do
+    case ModelCatalog.validate_generation_config(provider, requested_model, generation_config) do
+      :ok ->
+        :ok
+
+      {:error, %{reason: :unsupported_parameters, parameters: parameters}} ->
+        {:error, {:generation_config, unsupported_parameters_message(parameters)}}
+
+      {:error, %{reason: :unsupported_reasoning_effort}} ->
+        {:error, {:generation_config, "reasoning effort is not supported for the selected model"}}
+
+      {:error, _reason} ->
+        {:error, {:generation_config, "is incompatible with the selected model"}}
+    end
+  end
+
+  defp unsupported_parameters_message([parameter]) do
+    "#{parameter} is not supported for the selected model; leave it blank to use the provider default"
+  end
+
+  defp unsupported_parameters_message(parameters) do
+    "#{Enum.join(parameters, ", ")} are not supported for the selected model; leave them blank to use provider defaults"
   end
 
   defp normalize_generation_config(config) when is_map(config) do
@@ -541,7 +573,7 @@ defmodule SilentRegression.MonitorSetups do
         :generation_config
       ])
 
-    match?({:ok, _normalized}, normalize_prompt_attributes(attributes))
+    match?({:ok, _normalized}, normalize_prompt_attributes(setup, attributes))
   end
 
   defp cases_ready?(setup) do

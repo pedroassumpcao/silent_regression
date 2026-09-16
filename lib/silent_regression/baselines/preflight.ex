@@ -101,6 +101,7 @@ defmodule SilentRegression.Baselines.Preflight do
     )
     |> require_version_state(resources.monitor_version)
     |> require_allowed_model(resources.monitor_version)
+    |> require_supported_generation_config(resources.monitor_version)
     |> require(cases != [], "cases_missing", "Add at least one active case.")
     |> require(
       resources.contract_version,
@@ -155,6 +156,22 @@ defmodule SilentRegression.Baselines.Preflight do
       match?({:ok, _pair}, ModelCatalog.validate(version.provider, version.requested_model)),
       "model_not_allowed",
       "The configured model is no longer available for new captures."
+    )
+  end
+
+  defp require_supported_generation_config(blockers, nil), do: blockers
+
+  defp require_supported_generation_config(blockers, version) do
+    require(
+      blockers,
+      :ok ==
+        ModelCatalog.validate_generation_config(
+          version.provider,
+          version.requested_model,
+          version.generation_config
+        ),
+      "generation_config_unsupported",
+      "The saved generation settings are not supported by this model. Create a compatible configuration before capture."
     )
   end
 
