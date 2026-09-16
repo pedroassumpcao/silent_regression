@@ -1,6 +1,6 @@
 # Pilot Readiness Progress
 
-## Status: Phases 1–5 complete; Phase 6 awaits separately authorized live smokes
+## Status: Complete — all six phases and both separately authorized live smokes pass
 
 ## Quick Reference
 
@@ -32,8 +32,7 @@
 
 ### Phase 6: End-to-end pilot gate
 
-**Status:** In progress — local gates pass; OpenAI and Anthropic live calls await separate
-just-in-time authorization
+**Status:** Complete
 
 ## Decision Gates
 
@@ -140,14 +139,33 @@ just-in-time authorization
   `claude-haiku-4-5-20251001` fingerprint is
   `e12848cc79d78273598470a0a6f9d0ca266a3085e44c3b358e83525c54c6c4b6`. Neither preview made a
   provider request.
+- The first authorized OpenAI execution lost its terminal result to output truncation and the
+  original task persisted no receipt. Its outcome is unknown and it may have consumed one call. It
+  was not replayed under the same authorization.
+- Added durable, content-free provider-smoke receipts in `0824532`. Execution now writes a started
+  receipt before the request and replaces it with the safe passed/failed result afterward. The
+  receipt excludes credential secrets, prompts, contexts, and output text. `mix precommit` passed
+  with 597 tests after the change.
+- With fresh replacement authorization, OpenAI `gpt-5.6-luna` passed in one confirmed call and one
+  attempt: exact returned-model match, complete response, deterministic contract pass, 44 input
+  tokens, 5 output tokens, and 1,425 ms latency. The safe local receipt is
+  `results/provider_smoke/openai-20260916T221742Z-50f0bd6d-88b2-415c-880f-3a51c238711c.json`.
+  Call accounting remains conservative: the confirmed replacement plus the earlier unknown means
+  at most two OpenAI calls may have occurred during this gate.
+- After separate just-in-time authorization, Anthropic `claude-haiku-4-5-20251001` passed in one
+  call and one attempt: exact returned-model match, complete response, deterministic contract pass,
+  46 input tokens, 4 output tokens, and 853 ms latency. The safe local receipt is
+  `results/provider_smoke/anthropic-20260916T221844Z-fa839a54-7a46-4960-abec-7f60206b38b8.json`.
+- Reconciled the readiness documents and marked Task 14 complete. This completes the local
+  private-alpha implementation gate; it does not authorize deployment or inviting the first design
+  partner.
 - Verification passes: TypeScript checking, all 44 frontend tests, the production asset build, and
   `mix precommit` with 597 Elixir tests.
 
-## Pending explicit authorizations
+## Remaining explicit authorizations outside Task 14
 
-- One OpenAI `gpt-5.6-luna` smoke completion, capped at one call with no retry.
-- After the OpenAI result is reviewed, one separate Anthropic `claude-haiku-4-5-20251001` smoke
-  completion, capped at one call with no retry.
 - Optional cleanup of the temporary `task-14-browser-pilot` workspace through its irreversible
   deletion request and operator purge. The workspace remains intact because deletion was not
   separately authorized.
+- Any Fly.io deployment and the first external design-partner invitation remain separate,
+  explicitly authorized follow-ups.

@@ -76,8 +76,12 @@ The fixed smoke contract has one case, one sample, zero retries, 16 maximum outp
 maximum provider call. Obtain fresh, provider-specific user authorization only after reviewing the
 printed fingerprint and envelope. Then add `--execute` plus the exact printed provider, model,
 maximum-call count, and fingerprint confirmations. Never reuse one provider's authorization for
-the other provider. The task prints safe provenance and contract status but never the credential or
-captured output.
+the other provider. Execution writes a `started` receipt under `results/provider_smoke` before the
+network request and updates it with the safe result afterward. If terminal output is interrupted,
+inspect that receipt before considering another call; a `started` receipt with no terminal result
+means the outcome is unknown and must not be replayed without fresh authorization. The receipt and
+task output include safe provenance and contract status but never the credential secret, prompts,
+context, or captured output.
 
 ## Workspace closure, recovery, and deletion
 

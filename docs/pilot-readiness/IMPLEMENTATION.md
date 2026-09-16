@@ -54,8 +54,9 @@ encryption-key operations, or pilot spending remains gated by the decisions reco
   cross-tenant isolation.
 - [x] Run TypeScript, frontend, asset, and full Elixir verification.
 - [x] Preview separate bounded OpenAI and Anthropic smoke contracts.
-- [ ] Request explicit authorization immediately before each live provider smoke.
-- [ ] Reconcile Task 14 and the private-alpha readiness checklist.
+- [x] Request explicit authorization immediately before each live provider smoke.
+- [x] Run each one-call smoke and retain a content-free local result receipt.
+- [x] Reconcile Task 14 and the private-alpha readiness checklist.
 
 ## Route Placement
 

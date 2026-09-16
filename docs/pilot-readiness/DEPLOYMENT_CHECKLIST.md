@@ -23,14 +23,14 @@ This checklist prepares a later Fly.io deployment; it does not authorize creatin
 
 ## Product and operations
 
-- [ ] Invite, activation, baseline, schedule, result, alert, review, correction, and closure flows pass
+- [x] Invite, activation, baseline, schedule, result, alert, review, correction, and closure flows pass
       with fake providers from the browser.
-- [ ] Separate bounded OpenAI and Anthropic smoke calls receive just-in-time authorization.
-- [ ] Limits, model allowlists, rate limits, notification preferences, and deduplication pass.
+- [x] Separate bounded OpenAI and Anthropic smoke calls receive just-in-time authorization.
+- [x] Limits, model allowlists, rate limits, notification preferences, and deduplication pass.
 - [ ] Cross-tenant, sensitive-data, purge, backup/restore, and key-rotation checks pass.
 - [ ] Operator and incident runbooks have named owners and a tested communication channel.
 - [ ] Customer-visible alpha data notice and known limitations are acknowledged by each partner.
-- [ ] Public registration, self-serve billing, and Stripe remain absent.
+- [x] Public registration, self-serve billing, and Stripe remain absent.
 
 ## Go/no-go record
 

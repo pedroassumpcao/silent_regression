@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 14 in progress; local readiness gates pass and separate live smokes await authorization
+> **Status:** Tasks 1–14 complete; the local private-alpha gate passes, while deployment and the first design-partner invitation remain separately authorized follow-ups
 >
-> **Progress:** 13 of 14 tasks complete
+> **Progress:** 14 of 14 tasks complete
 >
 > **Last revised:** 2026-09-16
 >
@@ -283,8 +283,8 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 10 | Baseline capture, inspection, and approval | 8, 9 | Complete | `76f748e`, `bd060be`, `a632f92`, `6769b25`, `4a4112f` |
 | 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | Complete | `bafadc1`, `dd1c29a`, `03dc23f`, `e8ef6b2` |
 | 12 | Run results, evidence, alerts, and operational signals | 9, 10 | Complete | `da75863`, `9ae5017`, `8ae1a9f`, `7214c24`, `b883257`, `1da2310`, `a883245` |
-| 13 | Structured review and versioned correction loop | 8, 12 | Not started | — |
-| 14 | Onboarding telemetry, notifications, security, and pilot readiness | 2–13 | Not started | — |
+| 13 | Structured review and versioned correction loop | 8, 12 | Complete | `56066af`, `124bf89`, `c82203e`, `631b68a`, `6133982`, `a79bcaa` |
+| 14 | Onboarding telemetry, notifications, security, and pilot readiness | 2–13 | Complete | `9e40ee9`, `f45a06e`, `1ab2387`, `57d031d`, `0aacfcd`, `fe3e7e5`, `babfbf6`, `227e778`, `985481b`, `0824532` |
 
 ## 10. Implementation tasks
 
@@ -790,7 +790,7 @@ instead of inventing a temporary alert lifecycle.
 
 ### Task 14 — Onboarding telemetry, notifications, security, and pilot readiness
 
-**Status:** In progress
+**Status:** Complete
 
 **Decision gates before external data:**
 
@@ -815,7 +815,7 @@ instead of inventing a temporary alert lifecycle.
 - [x] Add backup/restore and encryption-key rotation notes for eventual Fly.io deployment.
 - [x] Add an operator runbook for invitations, failed jobs, provider incidents, data deletion, and pilot support.
 - [x] Add end-to-end tests for the complete fake-provider journey.
-- [ ] Conduct separate manually authorized OpenAI and Anthropic smoke tests.
+- [x] Conduct separate manually authorized OpenAI and Anthropic smoke tests.
 - [x] Record pilot limits and known limitations in customer-visible alpha documentation.
 - [x] Produce a deployment-readiness checklist without creating Fly.io resources.
 
@@ -896,12 +896,12 @@ Proposed product-validation gate before broader productization:
 
 The product is ready for the first external design partner only when:
 
-- [ ] Tasks 1–14 are complete.
+- [x] Tasks 1–14 are complete.
 - [x] Public registration and all billing routes are absent.
 - [x] Tenant isolation has explicit adversarial tests.
 - [x] Provider credentials are encrypted, redacted, revocable, and never returned to the browser.
 - [x] The full onboarding and monitoring loop passes with the fake provider.
-- [ ] OpenAI and Anthropic smoke tests pass under explicit call caps.
+- [x] OpenAI and Anthropic smoke tests pass under explicit call caps.
 - [x] Every behavior-affecting edit produces a compatible new version or invalidates the baseline.
 - [x] Scheduled work is durable, bounded, unique, and recoverable.
 - [x] Alerts show deterministic evidence and do not claim semantic understanding.
@@ -945,6 +945,7 @@ The product is ready for the first external design partner only when:
 | 2026-09-15 | Preserve evaluator-owned map keys as JSON strings across the Inertia boundary | Recursive prop camelization is useful for application props but must not rename contract DSL or rule-ID keys; explicit JSON transport preserves exact deterministic bytes and is covered by controller and browser tests | 8–13 |
 | 2026-09-15 | Make baseline authorization and approval owner-only with sealed pending snapshots | The first provider spend and the reference used by later schedules need exact preview provenance, idempotent authorization, immutable observation membership, and stricter operational blockers than exceptional deterministic acceptance | 10 onward |
 | 2026-09-16 | Keep content findings, operational anomalies, and human judgment as separate layers | Deterministic failures can be decisive now; provider/model/usage/latency facts need explicit provenance-aware policy, while append-only customer judgment belongs to Task 13 | 12–14 |
+| 2026-09-16 | Approve the closed-alpha retention, notification, key rotation, and usage boundaries | Local email until deployment, Resend in production, 30-day closed retention and backup expiry, seven-day deletion SLA, versioned Cloak keys, and 20-run/200-call daily workspace caps define a controlled pilot without adding general SaaS machinery | 14 |
 
 ## 16. Session log
 
@@ -1553,6 +1554,25 @@ The product is ready for the first external design partner only when:
 - Verification passes with TypeScript checking, all 44 frontend tests, a production asset build,
   and `mix precommit` with 597 Elixir tests. The temporary browser workspace remains intact pending
   separate authorization for irreversible deletion and purge.
+
+### 2026-09-16 — Task 14 complete
+
+- The first authorized OpenAI provider-smoke command finished after its terminal result was lost to
+  output truncation. Because the original tooling intentionally persisted nothing, its outcome is
+  unknown and it may have consumed one call; it was not replayed under the same authorization.
+- Added a secret-free durable receipt written before every provider-smoke request and updated with
+  the safe result afterward. Receipt tests prove captured output, prompts, context, and credential
+  secrets are excluded. Commit: `0824532`.
+- After fresh replacement authorization, OpenAI `gpt-5.6-luna` passed the fixed deterministic smoke
+  in one confirmed call and attempt with exact model provenance, a complete response, 44 input
+  tokens, 5 output tokens, and 1,425 ms latency. Conservative accounting allows for the earlier
+  unknown request, so at most two OpenAI calls may have occurred during the gate.
+- After separate just-in-time authorization, Anthropic `claude-haiku-4-5-20251001` passed the same
+  fixed smoke in one call and attempt with exact model provenance, a complete response, 46 input
+  tokens, 4 output tokens, and 853 ms latency.
+- Both smoke contracts passed under one-call, zero-retry, 16-output-token envelopes. Task 14 and all
+  14 private-alpha implementation tasks are complete. No deployment, external invitation, or
+  irreversible temporary-workspace deletion was authorized.
 
 ## 17. References
 
