@@ -1,10 +1,10 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 10 in progress
+> **Status:** Task 10 complete; Task 11 next
 >
-> **Progress:** 9 of 14 tasks complete
+> **Progress:** 10 of 14 tasks complete
 >
-> **Last revised:** 2026-09-15
+> **Last revised:** 2026-09-16
 >
 > **Release target:** Invite-only design-partner alpha
 >
@@ -280,7 +280,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 7 | Generic deterministic contract engine | 5 | Complete | `2d93261`, `7d0dbba`, `b0fd9c4`, `b3ad353`, `7626997`, `3215268`, `d7f9671` |
 | 8 | Contract authoring, fixture validation, and approval | 6, 7 | Complete | `e766a02`, `40321b3`, `3798fd5`, `fd14b70` |
 | 9 | Durable capture execution and provider accounting | 4, 5, 7 | Complete | `36d385b`, `fff370f`, `e81ef85`, `fa169c6`, `9f3d518` |
-| 10 | Baseline capture, inspection, and approval | 8, 9 | In progress | `76f748e`, `bd060be`, `a632f92`, `6769b25`, `4a4112f` |
+| 10 | Baseline capture, inspection, and approval | 8, 9 | Complete | `76f748e`, `bd060be`, `a632f92`, `6769b25`, `4a4112f` |
 | 11 | Manual/daily/weekly scheduling and monitor operations | 9, 10 | Not started | — |
 | 12 | Run results, evidence, alerts, and operational signals | 9, 10 | Not started | — |
 | 13 | Structured review and versioned correction loop | 8, 12 | Not started | — |
@@ -631,7 +631,7 @@ progress from persisted validity rather than user-controlled completion flags. S
 
 ### Task 10 — Baseline capture, inspection, and approval
 
-**Status:** In progress
+**Status:** Complete
 
 **Objective:** Make the first live spend explicit and create an immutable compatible reference for the monitor.
 
@@ -649,11 +649,10 @@ progress from persisted validity rather than user-controlled completion flags. S
 - [x] Seal approved baseline membership and provenance.
 - [x] Invalidate compatibility when behavior-affecting configuration changes.
 
-**Remaining gate:** One end-to-end live-provider baseline candidate must complete under an exact,
-explicitly authorized preflight and be eligible for normal approval under its compatible contract.
-The implementation and fake-provider browser flow are complete. Live transport and persistence have
-now succeeded, but Task 10 remains in progress because the first successful live output exposed a
-prompt-to-contract mismatch in the smoke candidate.
+**Completion evidence:** The fake-provider browser flow and explicitly authorized live-provider
+flow both passed. The final live snapshot completed under its exact preflight, passed the compatible
+Billing contract with no operational blocker or model mismatch, and was sealed through normal owner
+approval with immutable membership and provenance.
 
 **Acceptance criteria:**
 
@@ -1419,6 +1418,19 @@ The product is ready for the first external design partner only when:
   blockers, and a compatible snapshot.
 - The snapshot is eligible for normal approval and is deliberately still pending owner review. No
   additional provider request is needed to inspect or approve it.
+
+### 2026-09-16 — Task 10 complete
+
+- Received explicit normal approval for snapshot `833aea60-5d28-4cca-ad02-b0a865319fea`. It is
+  sealed against capture run `799bc712-a700-48ea-9d2e-575298b550ec`, monitor version
+  `a4336256-941a-43ab-abc2-7fdb15bb446a`, and Billing contract version
+  `b9644c93-3782-4096-b8a9-b8559e5feeb7`.
+- Verified one immutable baseline member referencing successful observation
+  `8c9cd0f0-91cd-465f-9c51-f38b62522d8c`, normal approval attribution, exact compatibility, and no
+  operational blocker, deterministic failure, or model mismatch.
+- The monitor remains `baseline_pending` intentionally until Task 11 adds approved-baseline-gated
+  manual and scheduled operations. No provider request was made during baseline approval.
+- Final `mix precommit` passes with 515 tests. Task 10 is complete; Task 11 is next.
 
 ## 17. References
 
