@@ -221,6 +221,7 @@ defmodule SilentRegression.RunResults.Presenter do
       monitor_fingerprint: baseline.monitor_fingerprint,
       case_set_fingerprint: baseline.case_set_fingerprint,
       contract_fingerprint: baseline.contract_fingerprint,
+      contract_semantics_fingerprint: baseline.contract_semantics_fingerprint,
       evaluator_engine_version: baseline.evaluator_engine_version
     }
   end
@@ -236,6 +237,7 @@ defmodule SilentRegression.RunResults.Presenter do
       monitor_fingerprint: run.monitor_fingerprint,
       case_set_fingerprint: run.case_set_fingerprint,
       contract_fingerprint: run.contract_fingerprint,
+      contract_semantics_fingerprint: run.contract_semantics_fingerprint,
       evaluator_engine_version: run.evaluator_engine_version
     }
   end

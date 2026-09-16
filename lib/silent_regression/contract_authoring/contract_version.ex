@@ -11,7 +11,7 @@ defmodule SilentRegression.ContractAuthoring.ContractVersion do
   import Ecto.Changeset
 
   alias SilentRegression.Accounts.User
-  alias SilentRegression.ContractAuthoring.ContractFixture
+  alias SilentRegression.ContractAuthoring.{ContractFixture, RescoreSummary}
   alias SilentRegression.Monitors.{Monitor, MonitorVersion}
   alias SilentRegression.Workspaces.Workspace
 
@@ -44,6 +44,7 @@ defmodule SilentRegression.ContractAuthoring.ContractVersion do
     belongs_to :created_by_user, User
     belongs_to :approved_by_user, User
     has_many :fixtures, ContractFixture
+    has_one :rescore_summary, RescoreSummary
 
     timestamps(type: :utc_datetime)
   end

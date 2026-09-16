@@ -48,6 +48,7 @@ const props: RunProps = {
         monitorFingerprint: "m".repeat(64),
         caseSetFingerprint: "c".repeat(64),
         contractFingerprint: "r".repeat(64),
+        contractSemanticsFingerprint: "s".repeat(64),
         evaluatorEngineVersion: "1",
       },
       current: {
@@ -60,6 +61,7 @@ const props: RunProps = {
         monitorFingerprint: "m".repeat(64),
         caseSetFingerprint: "c".repeat(64),
         contractFingerprint: "r".repeat(64),
+        contractSemanticsFingerprint: "s".repeat(64),
         evaluatorEngineVersion: "1",
       },
     },

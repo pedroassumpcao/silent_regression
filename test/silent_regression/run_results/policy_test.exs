@@ -105,6 +105,7 @@ defmodule SilentRegression.RunResults.PolicyTest do
       monitor_fingerprint: fingerprint("monitor"),
       case_set_fingerprint: fingerprint("cases"),
       contract_fingerprint: fingerprint("contract"),
+      contract_semantics_fingerprint: fingerprint("semantics"),
       evaluator_engine_version: "deterministic-v1",
       members: [
         %BaselineMember{
@@ -141,6 +142,7 @@ defmodule SilentRegression.RunResults.PolicyTest do
       monitor_fingerprint: baseline.monitor_fingerprint,
       case_set_fingerprint: baseline.case_set_fingerprint,
       contract_fingerprint: baseline.contract_fingerprint,
+      contract_semantics_fingerprint: baseline.contract_semantics_fingerprint,
       evaluator_engine_version: baseline.evaluator_engine_version,
       baseline_snapshot_id: baseline.id,
       baseline_snapshot: baseline,

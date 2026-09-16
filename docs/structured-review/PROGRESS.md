@@ -39,11 +39,22 @@
 
 ### Phase 3: Transactional contract rescore and compatibility
 
-**Status:** In progress
+**Status:** Completed
+
+- Extracted one immutable evaluation persistence path shared by normal capture completion and
+  historical contract rescoring.
+- Successor approval now deterministically rescores every stored successful observation inside the
+  approval transaction, persists an immutable summary, and aborts activation on evaluator errors.
+- Added a distinct contract-semantics fingerprint to capture and baseline provenance without
+  rewriting the existing exact contract-snapshot fingerprint.
+- Behavior-identical successors reuse the old approved baseline; semantic rule or evaluator changes
+  make it incompatible and block new runs until a new baseline is approved.
+- Verified both compatibility branches, zero additional provider calls, preserved old evaluations,
+  new evaluation provenance, and summary immutability.
 
 ### Phase 4: Inertia review experience
 
-**Status:** Not started
+**Status:** In progress
 
 ### Phase 5: Verification and handoff
 
@@ -64,6 +75,8 @@
   and versioned correction.
 - Completed governed resolution and correction origins with 14 focused review, alert, and controller
   tests passing.
+- Completed transactional historical rescoring and semantic baseline compatibility with 42 focused
+  contract, baseline, capture, policy, and presenter tests passing.
 
 ## Blockers
 

@@ -245,7 +245,8 @@ function ProvenanceColumn({ title, value }: { title: string; value: Provenance |
         <FingerprintRow name="Provider" value={`${value.provider} / ${value.requestedModel}`} />
         <FingerprintRow name="Monitor" value={value.monitorFingerprint} />
         <FingerprintRow name="Case set" value={value.caseSetFingerprint} />
-        <FingerprintRow name="Contract" value={value.contractFingerprint} />
+        <FingerprintRow name="Contract snapshot" value={value.contractFingerprint} />
+        <FingerprintRow name="Contract semantics" value={value.contractSemanticsFingerprint} />
         <FingerprintRow name="Evaluator" value={value.evaluatorEngineVersion} />
         <FingerprintRow name="Credential ID" value={value.providerCredentialId} />
       </dl>

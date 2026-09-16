@@ -40,6 +40,7 @@ defmodule SilentRegression.Captures.CaptureRun do
     field :monitor_fingerprint, :string
     field :case_set_fingerprint, :string
     field :contract_fingerprint, :string
+    field :contract_semantics_fingerprint, :string
     field :evaluator_engine_version, :string
     field :samples_per_case, :integer
     field :retry_limit, :integer
@@ -71,6 +72,7 @@ defmodule SilentRegression.Captures.CaptureRun do
     :monitor_fingerprint,
     :case_set_fingerprint,
     :contract_fingerprint,
+    :contract_semantics_fingerprint,
     :evaluator_engine_version,
     :samples_per_case,
     :retry_limit,
@@ -124,7 +126,12 @@ defmodule SilentRegression.Captures.CaptureRun do
 
   defp validate_fingerprints(changeset) do
     Enum.reduce(
-      [:monitor_fingerprint, :case_set_fingerprint, :contract_fingerprint],
+      [
+        :monitor_fingerprint,
+        :case_set_fingerprint,
+        :contract_fingerprint,
+        :contract_semantics_fingerprint
+      ],
       changeset,
       &validate_format(&2, &1, ~r/^[0-9a-f]{64}$/)
     )
@@ -145,6 +152,9 @@ defmodule SilentRegression.Captures.CaptureRun do
     |> check_constraint(:provider, name: :capture_runs_provider_check)
     |> check_constraint(:maximum_call_count, name: :capture_runs_counts_check)
     |> check_constraint(:contract_fingerprint, name: :capture_runs_fingerprints_check)
+    |> check_constraint(:contract_semantics_fingerprint,
+      name: :capture_runs_contract_semantics_fingerprint_check
+    )
     |> check_constraint(:status, name: :capture_runs_lifecycle_check)
   end
 end

@@ -250,13 +250,12 @@ defmodule SilentRegression.Baselines do
     case approved_snapshot(run.workspace_id, run.monitor_id) do
       %BaselineSnapshot{} = snapshot ->
         snapshot.monitor_version_id == run.monitor_version_id and
-          snapshot.contract_version_id == run.contract_version_id and
           snapshot.provider_credential_id == run.provider_credential_id and
           snapshot.provider == run.provider and
           snapshot.requested_model == run.requested_model and
           snapshot.monitor_fingerprint == run.monitor_fingerprint and
           snapshot.case_set_fingerprint == run.case_set_fingerprint and
-          snapshot.contract_fingerprint == run.contract_fingerprint and
+          snapshot.contract_semantics_fingerprint == run.contract_semantics_fingerprint and
           snapshot.evaluator_engine_version == run.evaluator_engine_version and
           ensure_snapshot_compatible(snapshot) == :ok
 
@@ -324,6 +323,7 @@ defmodule SilentRegression.Baselines do
       monitor_fingerprint: preflight.monitor_version.fingerprint,
       case_set_fingerprint: preflight.monitor_version.case_set_fingerprint,
       contract_fingerprint: preflight.contract_version.fingerprint,
+      contract_semantics_fingerprint: preflight.contract_version.contract_fingerprint,
       evaluator_engine_version: preflight.contract_version.evaluator_engine_version,
       samples_per_case: preflight.samples_per_case,
       retry_limit: preflight.retry_limit,
@@ -460,21 +460,35 @@ defmodule SilentRegression.Baselines do
 
   defp ensure_snapshot_compatible(snapshot) do
     current_version = Repo.get(MonitorVersion, snapshot.monitor_version_id)
-    current_contract = Repo.get(ContractVersion, snapshot.contract_version_id)
+    baseline_contract = Repo.get(ContractVersion, snapshot.contract_version_id)
+    current_contract = approved_contract(snapshot.monitor_id)
     monitor = Repo.get(Monitor, snapshot.monitor_id)
 
     compatible? =
       match?(%Monitor{}, monitor) and
         monitor.active_version_id == snapshot.monitor_version_id and
         match?(%MonitorVersion{status: :active}, current_version) and
+        match?(%ContractVersion{}, baseline_contract) and
         match?(%ContractVersion{status: :approved}, current_contract) and
         current_version.fingerprint == snapshot.monitor_fingerprint and
         current_version.case_set_fingerprint == snapshot.case_set_fingerprint and
-        current_contract.fingerprint == snapshot.contract_fingerprint and
+        baseline_contract.fingerprint == snapshot.contract_fingerprint and
+        baseline_contract.contract_fingerprint == snapshot.contract_semantics_fingerprint and
+        baseline_contract.evaluator_engine_version == snapshot.evaluator_engine_version and
+        current_contract.contract_fingerprint == snapshot.contract_semantics_fingerprint and
         current_contract.evaluator_engine_version == snapshot.evaluator_engine_version and
         draft_compatible?(monitor, snapshot)
 
     if compatible?, do: :ok, else: {:error, :incompatible_baseline}
+  end
+
+  defp approved_contract(monitor_id) do
+    ContractVersion
+    |> where(
+      [contract],
+      contract.monitor_id == ^monitor_id and contract.status == :approved
+    )
+    |> Repo.one()
   end
 
   defp draft_compatible?(%Monitor{draft_version_id: nil}, _snapshot), do: true
@@ -501,8 +515,8 @@ defmodule SilentRegression.Baselines do
        field(resources.monitor_version, :fingerprint)},
       {:case_set_fingerprint, snapshot.case_set_fingerprint,
        field(resources.monitor_version, :case_set_fingerprint)},
-      {:contract_fingerprint, snapshot.contract_fingerprint,
-       field(resources.contract_version, :fingerprint)},
+      {:contract_semantics_fingerprint, snapshot.contract_semantics_fingerprint,
+       field(resources.contract_version, :contract_fingerprint)},
       {:evaluator_engine_version, snapshot.evaluator_engine_version,
        field(resources.contract_version, :evaluator_engine_version)},
       {:provider, snapshot.provider, field(resources.monitor_version, :provider)},

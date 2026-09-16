@@ -21,11 +21,11 @@ the UI can resolve alerts or activate corrected contracts.
 
 ## Phase 3: Transactional contract rescore and compatibility
 
-- [ ] Extract reusable immutable evaluation persistence from capture execution.
-- [ ] Rescore all stored successful monitor observations under the successor contract.
-- [ ] Persist a rescore summary and abort activation on evaluator errors.
-- [ ] Reuse baselines across behavior-identical contract versions.
-- [ ] Require a new baseline when monitor behavior, contract semantics, evaluator, provider, model,
+- [x] Extract reusable immutable evaluation persistence from capture execution.
+- [x] Rescore all stored successful monitor observations under the successor contract.
+- [x] Persist a rescore summary and abort activation on evaluator errors.
+- [x] Reuse baselines across behavior-identical contract versions.
+- [x] Require a new baseline when monitor behavior, contract semantics, evaluator, provider, model,
   or credential changes.
 
 ## Phase 4: Inertia review experience

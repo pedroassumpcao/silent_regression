@@ -34,6 +34,7 @@ defmodule SilentRegression.Captures.SchemaTest do
       monitor_fingerprint: fixture.version.fingerprint,
       case_set_fingerprint: fixture.version.case_set_fingerprint,
       contract_fingerprint: fixture.contract.fingerprint,
+      contract_semantics_fingerprint: fixture.contract.contract_fingerprint,
       evaluator_engine_version: fixture.contract.evaluator_engine_version,
       samples_per_case: 1,
       retry_limit: 1,

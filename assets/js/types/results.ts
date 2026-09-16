@@ -166,6 +166,7 @@ export type Provenance = {
   monitorFingerprint: string
   caseSetFingerprint: string
   contractFingerprint: string
+  contractSemanticsFingerprint: string
   evaluatorEngineVersion: string
 }
 

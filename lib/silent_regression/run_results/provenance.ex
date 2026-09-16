@@ -8,13 +8,12 @@ defmodule SilentRegression.RunResults.Provenance do
     :workspace_id,
     :monitor_id,
     :monitor_version_id,
-    :contract_version_id,
     :provider_credential_id,
     :provider,
     :requested_model,
     :monitor_fingerprint,
     :case_set_fingerprint,
-    :contract_fingerprint,
+    :contract_semantics_fingerprint,
     :evaluator_engine_version
   ]
 

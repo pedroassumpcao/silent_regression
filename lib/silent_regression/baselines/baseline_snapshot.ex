@@ -33,6 +33,7 @@ defmodule SilentRegression.Baselines.BaselineSnapshot do
     field :monitor_fingerprint, :string
     field :case_set_fingerprint, :string
     field :contract_fingerprint, :string
+    field :contract_semantics_fingerprint, :string
     field :evaluator_engine_version, :string
     field :samples_per_case, :integer
     field :retry_limit, :integer
@@ -68,6 +69,7 @@ defmodule SilentRegression.Baselines.BaselineSnapshot do
     :monitor_fingerprint,
     :case_set_fingerprint,
     :contract_fingerprint,
+    :contract_semantics_fingerprint,
     :evaluator_engine_version,
     :samples_per_case,
     :retry_limit,
@@ -173,7 +175,8 @@ defmodule SilentRegression.Baselines.BaselineSnapshot do
         :preview_fingerprint,
         :monitor_fingerprint,
         :case_set_fingerprint,
-        :contract_fingerprint
+        :contract_fingerprint,
+        :contract_semantics_fingerprint
       ],
       changeset,
       &validate_format(&2, &1, ~r/^[0-9a-f]{64}$/)
@@ -198,6 +201,9 @@ defmodule SilentRegression.Baselines.BaselineSnapshot do
     |> check_constraint(:provider, name: :baseline_snapshots_provider_check)
     |> check_constraint(:maximum_call_count, name: :baseline_snapshots_counts_check)
     |> check_constraint(:preview_fingerprint, name: :baseline_snapshots_fingerprints_check)
+    |> check_constraint(:contract_semantics_fingerprint,
+      name: :baseline_snapshots_contract_semantics_fingerprint_check
+    )
     |> check_constraint(:status, name: :baseline_snapshots_lifecycle_check)
   end
 end

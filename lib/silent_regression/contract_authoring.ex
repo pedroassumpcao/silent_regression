@@ -18,6 +18,8 @@ defmodule SilentRegression.ContractAuthoring do
     DraftInput,
     Fingerprints,
     FixtureJudgment,
+    Rescorer,
+    RescoreSummary,
     Templates
   }
 
@@ -52,6 +54,7 @@ defmodule SilentRegression.ContractAuthoring do
          contract_version: current,
          draft_contract_version: draft,
          approved_contract_version: approved,
+         rescore_summary: rescore_summary(current),
          fixtures: fixtures,
          fixture_results: evaluate_fixtures(current, fixtures),
          readiness: approval_readiness(current, fixtures)
@@ -231,7 +234,9 @@ defmodule SilentRegression.ContractAuthoring do
              fixtures <- load_fixtures(draft.id, lock: true),
              %{ready?: true} <- approval_readiness(draft, fixtures),
              {:ok, draft} <- refresh_fingerprints(draft),
-             :ok <- retire_current_approved(monitor_id),
+             previous <- load_contract(monitor_id, :approved, lock: true),
+             {:ok, rescore_summary} <- Rescorer.rescore(draft, previous),
+             :ok <- retire_current_approved(previous),
              {:ok, approved} <-
                draft
                |> ContractVersion.approve_changeset(
@@ -241,14 +246,34 @@ defmodule SilentRegression.ContractAuthoring do
                )
                |> Repo.update() do
           record_contract_event!(approved, user, "contract_version.approved", %{
-            "fixture_count" => length(fixtures)
+            "fixture_count" => length(fixtures),
+            "rescore_observation_count" => rescore_summary.observation_count,
+            "rescore_pass_count" => rescore_summary.pass_count,
+            "rescore_fail_count" => rescore_summary.fail_count,
+            "interpretation_changed" => rescore_summary.interpretation_changed
           })
 
-          Repo.preload(approved, :fixtures, force: true)
+          Repo.preload(approved, [:fixtures, :rescore_summary], force: true)
         else
-          nil -> Repo.rollback(:not_found)
-          %{ready?: false, blockers: blockers} -> Repo.rollback({:approval_blocked, blockers})
-          {:error, reason} -> Repo.rollback(reason)
+          nil ->
+            Repo.rollback(:not_found)
+
+          %{ready?: false, blockers: blockers} ->
+            Repo.rollback({:approval_blocked, blockers})
+
+          {:error, {:rescore_failed, observation_id, _reason}} ->
+            Repo.rollback(
+              {:approval_blocked,
+               [
+                 blocker(
+                   "historical_rescore_failed",
+                   "Stored observation #{observation_id} could not be safely rescored."
+                 )
+               ]}
+            )
+
+          {:error, reason} ->
+            Repo.rollback(reason)
         end
       end)
     else
@@ -543,19 +568,21 @@ defmodule SilentRegression.ContractAuthoring do
     Map.put(attributes, :fingerprint, Fingerprints.version(attributes))
   end
 
-  defp retire_current_approved(monitor_id) do
-    case load_contract(monitor_id, :approved, lock: true) do
-      nil ->
-        :ok
+  defp retire_current_approved(nil), do: :ok
 
-      approved ->
-        case approved
-             |> ContractVersion.retire_changeset(DateTime.utc_now(:second))
-             |> Repo.update() do
-          {:ok, _retired} -> :ok
-          {:error, changeset} -> {:error, changeset}
-        end
+  defp retire_current_approved(approved) do
+    case approved
+         |> ContractVersion.retire_changeset(DateTime.utc_now(:second))
+         |> Repo.update() do
+      {:ok, _retired} -> :ok
+      {:error, changeset} -> {:error, changeset}
     end
+  end
+
+  defp rescore_summary(nil), do: nil
+
+  defp rescore_summary(contract_version) do
+    Repo.get_by(RescoreSummary, contract_version_id: contract_version.id)
   end
 
   defp insert_revision(approved, monitor, user) do

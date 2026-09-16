@@ -239,6 +239,7 @@ defmodule SilentRegression.Baselines.Preflight do
       "case_ids" => Enum.map(cases, & &1.id),
       "contract_version_id" => contract.id,
       "contract_fingerprint" => contract.fingerprint,
+      "contract_semantics_fingerprint" => contract.contract_fingerprint,
       "evaluator_engine_version" => contract.evaluator_engine_version,
       "provider" => Atom.to_string(version.provider),
       "requested_model" => version.requested_model,

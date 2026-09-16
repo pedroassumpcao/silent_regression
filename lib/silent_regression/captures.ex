@@ -16,13 +16,13 @@ defmodule SilentRegression.Captures do
     CaptureObservation,
     CaptureRuleResult,
     CaptureRun,
+    EvaluationPersistence,
     Prompt,
     ProviderAttempt
   }
 
   alias SilentRegression.Captures.Workers.ObservationWorker
   alias SilentRegression.ContractAuthoring.ContractVersion
-  alias SilentRegression.Contracts
   alias SilentRegression.Monitors.{CaseVersion, Fingerprint, Monitor, MonitorVersion}
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Providers
@@ -276,6 +276,7 @@ defmodule SilentRegression.Captures do
         monitor_fingerprint: resources.monitor_version.fingerprint,
         case_set_fingerprint: resources.monitor_version.case_set_fingerprint,
         contract_fingerprint: resources.contract_version.fingerprint,
+        contract_semantics_fingerprint: resources.contract_version.contract_fingerprint,
         evaluator_engine_version: resources.contract_version.evaluator_engine_version
       })
 
@@ -727,12 +728,13 @@ defmodule SilentRegression.Captures do
              locked_observation(run.id, observation_id),
            %ContractVersion{} = contract_version <-
              Repo.get(ContractVersion, run.contract_version_id) do
-        case evaluation_for(observation.id, contract_version.id, run.evaluator_engine_version) do
-          %CaptureEvaluation{} = evaluation ->
-            evaluation
-
-          nil ->
-            persist_evaluation!(run, observation, contract_version)
+        case EvaluationPersistence.ensure(
+               observation,
+               contract_version,
+               run.evaluator_engine_version
+             ) do
+          {:ok, evaluation} -> evaluation
+          {:error, reason} -> Repo.rollback({:evaluation_failed, reason})
         end
       else
         nil -> Repo.rollback(:not_found)
@@ -740,61 +742,6 @@ defmodule SilentRegression.Captures do
       end
     end)
     |> unwrap_transaction()
-  end
-
-  defp persist_evaluation!(run, observation, contract_version) do
-    source = %{
-      "schema_version" => contract_version.schema_version,
-      "contract_id" => contract_version.id,
-      "contract_version" => contract_version.version,
-      "monitor_id" => contract_version.monitor_id,
-      "root" => contract_version.root
-    }
-
-    with {:ok, contract} <- Contracts.parse_contract(source),
-         {:ok, evaluator_observation} <-
-           Contracts.new_observation(%{
-             "id" => observation.id,
-             "output_text" => observation.output_text
-           }),
-         {:ok, evaluation} <-
-           Contracts.evaluate(contract, evaluator_observation,
-             evaluator_engine_version: run.evaluator_engine_version
-           ),
-         {:ok, persisted} <-
-           %CaptureEvaluation{}
-           |> CaptureEvaluation.create_changeset(observation, contract_version, %{
-             evaluator_engine_version: evaluation.evaluator_engine_version,
-             contract_fingerprint: evaluation.contract_fingerprint,
-             status: evaluation.status,
-             root_rule_id: evaluation.root_rule_id,
-             error: evaluation.error,
-             evaluated_at: evaluation.evaluated_at
-           })
-           |> Repo.insert(),
-         :ok <- persist_rule_results(persisted, evaluation.rule_results) do
-      persisted
-    else
-      {:error, reason} -> Repo.rollback({:evaluation_failed, reason})
-    end
-  end
-
-  defp persist_rule_results(evaluation, rule_results) do
-    rule_results
-    |> Enum.with_index()
-    |> Enum.reduce_while(:ok, fn {result, position}, :ok ->
-      attrs =
-        result
-        |> Map.from_struct()
-        |> Map.put(:position, position)
-
-      case %CaptureRuleResult{}
-           |> CaptureRuleResult.create_changeset(evaluation, attrs)
-           |> Repo.insert() do
-        {:ok, _result} -> {:cont, :ok}
-        {:error, changeset} -> {:halt, {:error, changeset}}
-      end
-    end)
   end
 
   defp finalize_run(run_id) do
@@ -998,17 +945,6 @@ defmodule SilentRegression.Captures do
     |> order_by([attempt], desc: attempt.attempt_number)
     |> limit(1)
     |> lock("FOR UPDATE")
-    |> Repo.one()
-  end
-
-  defp evaluation_for(observation_id, contract_version_id, evaluator_engine_version) do
-    CaptureEvaluation
-    |> where(
-      [evaluation],
-      evaluation.capture_observation_id == ^observation_id and
-        evaluation.contract_version_id == ^contract_version_id and
-        evaluation.evaluator_engine_version == ^evaluator_engine_version
-    )
     |> Repo.one()
   end
 
