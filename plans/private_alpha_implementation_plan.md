@@ -1403,6 +1403,23 @@ The product is ready for the first external design partner only when:
 - No provider request was made during contract approval, snapshot rejection, or refreshed preflight.
   A new explicit authorization is required before another live capture.
 
+### 2026-09-16 — Billing live smoke passed and awaits baseline approval
+
+- Received explicit authorization for preflight fingerprint
+  `4016024ce7949d253a14cf892f435a6ff5166aca969dfa8ffdea0f91034d95c0`. Pending snapshot
+  `833aea60-5d28-4cca-ad02-b0a865319fea` and capture run
+  `799bc712-a700-48ea-9d2e-575298b550ec` preserve the resulting evidence.
+- OpenAI completed the single planned request successfully in one attempt with no retry. The exact
+  requested and returned model was `gpt-5.6-luna`; output `Billing` was complete, latency was
+  2,582 ms, usage was 38 input and 27 output tokens, and provider request ID was
+  `resp_08032a604aee5eae016aaab9e9a63c87d182ee8ca983ff18fc`.
+- The approved Billing contract passed in full: the aggregate rule, allowed-label rule, and length
+  rule all passed. The baseline health summary reports one planned and actual call, one successful
+  complete observation, zero deterministic failures, zero model mismatches, no operational
+  blockers, and a compatible snapshot.
+- The snapshot is eligible for normal approval and is deliberately still pending owner review. No
+  additional provider request is needed to inspect or approve it.
+
 ## 17. References
 
 - [Feasibility spike implementation plan](implementation_plan.md)
