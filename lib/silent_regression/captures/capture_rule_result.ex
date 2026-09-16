@@ -16,6 +16,7 @@ defmodule SilentRegression.Captures.CaptureRuleResult do
     field :position, :integer
     field :rule_id, :string
     field :rule_type, :string
+    field :severity, Ecto.Enum, values: [:critical, :warning], default: :critical
     field :status, Ecto.Enum, values: [:pass, :fail, :evaluator_error]
     field :code, :string
     field :explanation, :string
@@ -35,6 +36,7 @@ defmodule SilentRegression.Captures.CaptureRuleResult do
       :position,
       :rule_id,
       :rule_type,
+      :severity,
       :status,
       :code,
       :explanation,
@@ -46,6 +48,7 @@ defmodule SilentRegression.Captures.CaptureRuleResult do
       :position,
       :rule_id,
       :rule_type,
+      :severity,
       :status,
       :code,
       :explanation,
@@ -62,5 +65,6 @@ defmodule SilentRegression.Captures.CaptureRuleResult do
     |> unique_constraint([:capture_evaluation_id, :position])
     |> check_constraint(:position, name: :capture_rule_results_position_check)
     |> check_constraint(:status, name: :capture_rule_results_status_check)
+    |> check_constraint(:severity, name: :capture_rule_results_severity_check)
   end
 end

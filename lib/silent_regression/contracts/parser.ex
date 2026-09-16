@@ -33,6 +33,7 @@ defmodule SilentRegression.Contracts.Parser do
   @json_types ~w(object array string number integer boolean null)
   @numeric_comparisons ~w(strict mathematical)
   @length_units ~w(graphemes words)
+  @severities ~w(critical warning)
 
   @spec rule_types() :: [String.t()]
   def rule_types, do: @rule_types
@@ -139,9 +140,16 @@ defmodule SilentRegression.Contracts.Parser do
 
   defp validate_rule(rule, path, depth, state) when is_map(rule) do
     with :ok <- validate_depth(depth, path),
-         :ok <- validate_keys(rule, ~w(id type), rule_optional_fields(rule["type"]), path),
+         :ok <-
+           validate_keys(
+             rule,
+             ~w(id type),
+             ["severity" | rule_optional_fields(rule["type"])],
+             path
+           ),
          :ok <- validate_rule_id(rule["id"], path <> "/id"),
          :ok <- validate_rule_type(rule["type"], path <> "/type"),
+         :ok <- validate_rule_severity(rule, path <> "/severity"),
          {:ok, state} <- register_rule(rule["id"], path, state),
          {:ok, normalized, state} <- validate_rule_body(rule, path, depth, state) do
       {:ok, normalized, state}
@@ -179,6 +187,13 @@ defmodule SilentRegression.Contracts.Parser do
       "unsupported_rule_type",
       "Rule type is not supported by contract schema version 1"
     )
+  end
+
+  defp validate_rule_severity(rule, path) do
+    case Map.fetch(rule, "severity") do
+      :error -> :ok
+      {:ok, severity} -> validate_enum(severity, @severities, path)
+    end
   end
 
   defp register_rule(id, path, state) do

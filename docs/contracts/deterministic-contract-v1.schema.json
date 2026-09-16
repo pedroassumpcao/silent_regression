@@ -25,6 +25,9 @@
     "numericComparison": {
       "enum": ["strict", "mathematical"]
     },
+    "severity": {
+      "enum": ["critical", "warning"]
+    },
     "alternative": {
       "type": "string",
       "minLength": 1,
@@ -77,6 +80,7 @@
       "required": ["id", "type", "rules"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "all"},
         "rules": {
           "type": "array",
@@ -92,6 +96,7 @@
       "required": ["id", "type", "rules"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "any"},
         "rules": {
           "type": "array",
@@ -107,6 +112,7 @@
       "required": ["id", "type", "rule"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "not"},
         "rule": {"$ref": "#/$defs/rule"}
       }
@@ -117,6 +123,7 @@
       "required": ["id", "type"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "json_valid"}
       }
     },
@@ -126,6 +133,7 @@
       "required": ["id", "type", "path"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "json_path_exists"},
         "path": {"$ref": "#/$defs/jsonPointer"}
       }
@@ -136,6 +144,7 @@
       "required": ["id", "type", "path", "expected_type"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "json_path_type"},
         "path": {"$ref": "#/$defs/jsonPointer"},
         "expected_type": {"enum": ["object", "array", "string", "number", "integer", "boolean", "null"]}
@@ -147,6 +156,7 @@
       "required": ["id", "type", "path", "expected", "numeric_comparison"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "json_path_equals"},
         "path": {"$ref": "#/$defs/jsonPointer"},
         "expected": {},
@@ -159,6 +169,7 @@
       "required": ["id", "type", "path", "allowed_values", "numeric_comparison"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "json_path_allowed_values"},
         "path": {"$ref": "#/$defs/jsonPointer"},
         "allowed_values": {
@@ -177,6 +188,7 @@
       "required": ["id", "type", "path"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "json_path_number"},
         "path": {"$ref": "#/$defs/jsonPointer"},
         "minimum": {"type": "number", "minimum": -9007199254740991, "maximum": 9007199254740991},
@@ -200,6 +212,7 @@
       "required": ["id", "type", "allowed_values"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "classification"},
         "allowed_values": {"$ref": "#/$defs/alternatives"}
       }
@@ -210,6 +223,7 @@
       "required": ["id", "type", "alternatives"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "required_text"},
         "alternatives": {"$ref": "#/$defs/alternatives"}
       }
@@ -220,6 +234,7 @@
       "required": ["id", "type", "alternatives"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "forbidden_text"},
         "alternatives": {"$ref": "#/$defs/alternatives"}
       }
@@ -230,6 +245,7 @@
       "required": ["id", "type", "source_ids"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "required_source_ids"},
         "source_ids": {"$ref": "#/$defs/sourceIds"}
       }
@@ -240,6 +256,7 @@
       "required": ["id", "type", "source_ids", "require_at_least_one"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "allowed_source_ids"},
         "source_ids": {"$ref": "#/$defs/sourceIds"},
         "require_at_least_one": {"type": "boolean"}
@@ -251,6 +268,7 @@
       "required": ["id", "type", "fact_alternatives", "source_ids", "max_distance_characters"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "fact_citation"},
         "fact_alternatives": {"$ref": "#/$defs/alternatives"},
         "source_ids": {"$ref": "#/$defs/sourceIds"},
@@ -263,6 +281,7 @@
       "required": ["id", "type", "alternatives"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "required_abstention"},
         "alternatives": {"$ref": "#/$defs/alternatives"}
       }
@@ -273,6 +292,7 @@
       "required": ["id", "type", "unit"],
       "properties": {
         "id": {"$ref": "#/$defs/ruleId"},
+        "severity": {"$ref": "#/$defs/severity"},
         "type": {"const": "length"},
         "unit": {"enum": ["graphemes", "words"]},
         "minimum": {"type": "integer", "minimum": 0, "maximum": 1000000},

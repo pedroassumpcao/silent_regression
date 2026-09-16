@@ -38,7 +38,7 @@ defmodule SilentRegression.Captures do
           workspace: %Workspace{id: workspace_id},
           membership: %Membership{},
           user: %User{} = user
-        },
+        } = scope,
         monitor_id,
         attrs
       )
@@ -47,6 +47,7 @@ defmodule SilentRegression.Captures do
       Repo.transaction(fn ->
         with {:ok, resources} <- planning_resources(workspace_id, monitor_id),
              {:ok, plan} <- normalize_plan(attrs, length(resources.cases)),
+             resources <- attach_baseline_snapshot(scope, monitor_id, resources, plan),
              {:ok, run} <- find_or_insert_run(resources, user, plan) do
           Repo.preload(run,
             observations:
@@ -284,6 +285,7 @@ defmodule SilentRegression.Captures do
       monitor_version_id: resources.monitor_version.id,
       contract_version_id: resources.contract_version.id,
       provider_credential_id: resources.credential.id,
+      baseline_snapshot_id: resources.baseline_snapshot && resources.baseline_snapshot.id,
       created_by_user_id: user.id
     }
 
@@ -334,6 +336,7 @@ defmodule SilentRegression.Captures do
       run.monitor_version_id == resources.monitor_version.id and
       run.contract_version_id == resources.contract_version.id and
       run.provider_credential_id == resources.credential.id and
+      run.baseline_snapshot_id == baseline_snapshot_id(resources) and
       run.provider == resources.monitor_version.provider and
       run.requested_model == resources.monitor_version.requested_model and
       run.monitor_fingerprint == resources.monitor_version.fingerprint and
@@ -345,6 +348,24 @@ defmodule SilentRegression.Captures do
       run.planned_call_count == plan.planned_call_count and
       run.maximum_call_count == plan.maximum_call_count
   end
+
+  defp attach_baseline_snapshot(_scope, _monitor_id, resources, %{kind: :baseline}) do
+    Map.put(resources, :baseline_snapshot, nil)
+  end
+
+  defp attach_baseline_snapshot(scope, monitor_id, resources, %{kind: kind})
+       when kind in [:manual, :scheduled] do
+    baseline_snapshot =
+      case Baselines.current_compatible(scope, monitor_id) do
+        {:ok, snapshot} -> snapshot
+        {:error, _reason} -> nil
+      end
+
+    Map.put(resources, :baseline_snapshot, baseline_snapshot)
+  end
+
+  defp baseline_snapshot_id(%{baseline_snapshot: nil}), do: nil
+  defp baseline_snapshot_id(%{baseline_snapshot: snapshot}), do: snapshot.id
 
   defp reserve_attempt(run_id, observation_id) do
     Repo.transaction(fn ->

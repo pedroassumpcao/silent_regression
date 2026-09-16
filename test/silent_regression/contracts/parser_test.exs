@@ -42,6 +42,23 @@ defmodule SilentRegression.Contracts.ParserTest do
       assert schema["properties"]["schema_version"]["const"] == 1
     end
 
+    test "accepts explicit alert severity without changing the omitted default source" do
+      source = contract(json_valid())
+
+      assert {:ok, omitted} = Parser.parse(source)
+      assert Contract.to_source_map(omitted) == source
+
+      warning_source =
+        put_in(source, ["root", "severity"], "warning")
+
+      assert {:ok, warning} = Parser.parse(warning_source)
+      assert warning.root["severity"] == "warning"
+      refute warning.fingerprint == omitted.fingerprint
+
+      invalid_source = put_in(source, ["root", "severity"], "notice")
+      assert {:error, %{"code" => "unsupported_value"}} = Parser.parse(invalid_source)
+    end
+
     test "rejects unknown fields, rule types, executable hooks, and regex input" do
       scenarios = [
         {Map.put(contract(json_valid()), "future", true), "unexpected_fields"},

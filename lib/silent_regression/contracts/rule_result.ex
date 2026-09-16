@@ -6,6 +6,7 @@ defmodule SilentRegression.Contracts.RuleResult do
   @enforce_keys [
     :rule_id,
     :rule_type,
+    :severity,
     :status,
     :code,
     :explanation,
@@ -18,6 +19,7 @@ defmodule SilentRegression.Contracts.RuleResult do
   @type t :: %__MODULE__{
           rule_id: String.t(),
           rule_type: String.t(),
+          severity: :critical | :warning,
           status: status(),
           code: String.t(),
           explanation: String.t(),
@@ -30,6 +32,7 @@ defmodule SilentRegression.Contracts.RuleResult do
     %{
       "rule_id" => result.rule_id,
       "rule_type" => result.rule_type,
+      "severity" => Atom.to_string(result.severity),
       "status" => Atom.to_string(result.status),
       "code" => result.code,
       "explanation" => result.explanation,

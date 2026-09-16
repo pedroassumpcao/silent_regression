@@ -8,6 +8,7 @@ defmodule SilentRegression.Captures.CaptureRun do
   import Ecto.Changeset
 
   alias SilentRegression.Accounts.User
+  alias SilentRegression.Baselines.BaselineSnapshot
   alias SilentRegression.Captures.CaptureObservation
   alias SilentRegression.ContractAuthoring.ContractVersion
   alias SilentRegression.Monitors.{Monitor, MonitorVersion}
@@ -53,6 +54,7 @@ defmodule SilentRegression.Captures.CaptureRun do
     belongs_to :monitor_version, MonitorVersion
     belongs_to :contract_version, ContractVersion
     belongs_to :provider_credential, ProviderCredential
+    belongs_to :baseline_snapshot, BaselineSnapshot
     belongs_to :created_by_user, User
     has_many :observations, CaptureObservation
 
@@ -85,6 +87,7 @@ defmodule SilentRegression.Captures.CaptureRun do
     |> put_change(:monitor_version_id, associations.monitor_version_id)
     |> put_change(:contract_version_id, associations.contract_version_id)
     |> put_change(:provider_credential_id, associations.provider_credential_id)
+    |> put_change(:baseline_snapshot_id, Map.get(associations, :baseline_snapshot_id))
     |> put_change(:created_by_user_id, associations.created_by_user_id)
     |> validate_required(
       @plan_fields ++
@@ -134,6 +137,7 @@ defmodule SilentRegression.Captures.CaptureRun do
     |> foreign_key_constraint(:monitor_version_id)
     |> foreign_key_constraint(:contract_version_id)
     |> foreign_key_constraint(:provider_credential_id)
+    |> foreign_key_constraint(:baseline_snapshot_id)
     |> foreign_key_constraint(:created_by_user_id)
     |> unique_constraint([:workspace_id, :identity_key])
     |> check_constraint(:kind, name: :capture_runs_kind_check)

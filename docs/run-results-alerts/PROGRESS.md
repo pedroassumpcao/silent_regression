@@ -1,6 +1,6 @@
 # Run Results and Alerts Progress
 
-## Status: Phase 1 - In Progress
+## Status: Phase 2 - In Progress
 
 ## Quick Reference
 
@@ -14,11 +14,17 @@
 
 ### Phase 1: Severity and Provenance
 
-**Status:** In Progress
+**Status:** Completed
 
 #### Tasks Completed
 
 - Research and architecture decisions recorded.
+- Optional rule severity is parsed, evaluated, serialized, and persisted without normalizing old
+  contract maps.
+- New managed runs pin the exact compatible baseline snapshot, and the database protects that link
+  as immutable plan provenance.
+- Existing managed runs are conservatively backfilled only when every provenance field matches an
+  approved or superseded snapshot that predates the run.
 
 #### Decisions Made
 
@@ -32,7 +38,7 @@
 
 ### Phase 2: Alert Domain and Policy
 
-**Status:** Not Started
+**Status:** In Progress
 
 #### Tasks Completed
 
@@ -105,6 +111,8 @@
 - Defined alert categories, severities, identities, lifecycle permissions, and conservative
   baseline-relative operational thresholds.
 - Kept mechanical acknowledgement/resolution in Task 12 and append-only human judgment in Task 13.
+- Completed Phase 1 severity and baseline-provenance implementation with focused parser, evaluator,
+  capture-schema, capture-execution, and monitor-operation tests.
 
 ## Files Changed
 
@@ -112,6 +120,14 @@
 - `docs/run-results-alerts/IMPLEMENTATION.md`
 - `docs/run-results-alerts/PROGRESS.md`
 - `plans/private_alpha_implementation_plan.md`
+- `docs/contracts/deterministic-contract-v1.schema.json`
+- `lib/silent_regression/contracts/parser.ex`
+- `lib/silent_regression/contracts/evaluator.ex`
+- `lib/silent_regression/contracts/rule_result.ex`
+- `lib/silent_regression/captures.ex`
+- `lib/silent_regression/captures/capture_run.ex`
+- `lib/silent_regression/captures/capture_rule_result.ex`
+- `priv/repo/migrations/20260916180310_add_result_alert_foundations.exs`
 
 ## Architectural Decisions
 
@@ -126,4 +142,3 @@
   make the comparison historically unambiguous.
 - The existing temporary runs-needing-attention count is intentionally replaced rather than evolved
   into a second alert system.
-

@@ -89,6 +89,7 @@ defmodule SilentRegression.MonitorOperationsTest do
       assert run.samples_per_case == 1
       assert run.retry_limit == 1
       assert run.maximum_call_count == 2
+      assert run.baseline_snapshot_id == fixture.baseline.id
       assert String.starts_with?(run.identity_key, "manual:")
 
       assert [%Oban.Job{args: args}] =

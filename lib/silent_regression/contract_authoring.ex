@@ -821,6 +821,7 @@ defmodule SilentRegression.ContractAuthoring do
     %{
       rule_id: result.rule_id,
       rule_type: result.rule_type,
+      severity: result.severity,
       status: result.status,
       code: result.code,
       explanation: result.explanation,

@@ -66,7 +66,8 @@ defmodule SilentRegression.Contracts.Evaluator do
           "failed_children" => Enum.count(child_statuses, &(&1 == :fail)),
           "error_children" => Enum.count(child_statuses, &(&1 == :evaluator_error))
         },
-        child_ids
+        child_ids,
+        severity(rule)
       )
 
     {status, [parent | Enum.flat_map(children, &elem(&1, 1))]}
@@ -95,7 +96,16 @@ defmodule SilentRegression.Contracts.Evaluator do
       end
 
     parent =
-      result(rule["id"], "not", status, code, explanation, %{}, [child["id"]])
+      result(
+        rule["id"],
+        "not",
+        status,
+        code,
+        explanation,
+        %{},
+        [child["id"]],
+        severity(rule)
+      )
 
     {status, [parent | child_results]}
   end
@@ -736,14 +746,26 @@ defmodule SilentRegression.Contracts.Evaluator do
   defp maybe_violation(violations, false, _violation), do: violations
 
   defp leaf(rule, status, code, explanation, evidence \\ %{}) do
-    result = result(rule["id"], rule["type"], status, code, explanation, evidence)
+    result =
+      result(rule["id"], rule["type"], status, code, explanation, evidence, [], severity(rule))
+
     {status, [result]}
   end
 
-  defp result(rule_id, rule_type, status, code, explanation, evidence, child_ids \\ []) do
+  defp result(
+         rule_id,
+         rule_type,
+         status,
+         code,
+         explanation,
+         evidence,
+         child_ids \\ [],
+         severity \\ :critical
+       ) do
     %RuleResult{
       rule_id: rule_id,
       rule_type: rule_type,
+      severity: severity,
       status: status,
       code: code,
       explanation: explanation,
@@ -751,4 +773,7 @@ defmodule SilentRegression.Contracts.Evaluator do
       child_rule_ids: child_ids
     }
   end
+
+  defp severity(%{"severity" => "warning"}), do: :warning
+  defp severity(_rule), do: :critical
 end

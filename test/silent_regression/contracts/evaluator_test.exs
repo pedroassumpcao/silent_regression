@@ -118,6 +118,31 @@ defmodule SilentRegression.Contracts.EvaluatorTest do
   end
 
   describe "classification and literal text primitives" do
+    test "carries configured rule severity into explainable results" do
+      critical_rule = %{
+        "id" => "route",
+        "type" => "classification",
+        "allowed_values" => ["approved"]
+      }
+
+      observation = observation!("rejected")
+
+      assert {:ok, default_evaluation} =
+               critical_rule
+               |> parse!()
+               |> Contracts.evaluate(observation, evaluated_at: @evaluated_at)
+
+      assert [%RuleResult{severity: :critical, status: :fail}] =
+               default_evaluation.rule_results
+
+      contract = parse!(Map.put(critical_rule, "severity", "warning"))
+
+      assert {:ok, evaluation} =
+               Contracts.evaluate(contract, observation, evaluated_at: @evaluated_at)
+
+      assert [%RuleResult{severity: :warning, status: :fail}] = evaluation.rule_results
+    end
+
     test "normalizes labels while requiring a whole-label match" do
       rule = %{
         "id" => "route",
