@@ -38,11 +38,11 @@ the UI can resolve alerts or activate corrected contracts.
 
 ## Phase 5: Verification and handoff
 
-- [ ] Add context, schema, controller, presenter, compatibility, and rescore tests.
-- [ ] Add component tests for false alert, missed regression, supersession, and owner controls.
-- [ ] Browser-test false alert, missed regression, and contract revision using the fake provider.
-- [ ] Run type checking, frontend tests, asset build, and `mix precommit`.
-- [ ] Reconcile Task 13 and the private-alpha plan.
+- [x] Add context, schema, controller, presenter, compatibility, and rescore tests.
+- [x] Add component tests for false alert, missed regression, supersession, and owner controls.
+- [x] Browser-test false alert, missed regression, and contract revision using the fake provider.
+- [x] Run type checking, frontend tests, asset build, and `mix precommit`.
+- [x] Reconcile Task 13 and the private-alpha plan.
 
 ## Route Placement
 

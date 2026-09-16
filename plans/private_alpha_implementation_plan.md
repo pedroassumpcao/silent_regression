@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Task 13 in progress
+> **Status:** Task 13 complete; Task 14 next
 >
-> **Progress:** 12 of 14 tasks complete
+> **Progress:** 13 of 14 tasks complete
 >
 > **Last revised:** 2026-09-16
 >
@@ -747,7 +747,7 @@ instead of inventing a temporary alert lifecycle.
 
 ### Task 13 — Structured review and versioned correction loop
 
-**Status:** In progress
+**Status:** Complete
 
 **Objective:** Capture design-partner judgment as governed evidence and make correction safe.
 
@@ -764,16 +764,16 @@ instead of inventing a temporary alert lifecycle.
 
 **Checklist:**
 
-- [ ] Add append-only review decisions tied to exact run, observation, evaluation, rule, contract, and baseline identities as applicable.
-- [ ] Require reviewer identity, classification, and optional rationale.
-- [ ] Allow a later decision to supersede, not overwrite, an earlier decision.
-- [ ] Bind the existing authorized alert lifecycle to append-only review decisions so resolution has governed judgment context.
-- [ ] Add `passed but should have failed` entry points for false-negative discovery.
-- [ ] Record whether the review caused a prompt, case, contract, provider, or operational action.
-- [ ] Start a contract-revision flow from a review without mutating history.
-- [ ] Rescore stored observations under a newly approved contract version before activation.
-- [ ] Require a new baseline only when compatibility rules say the interpretation or monitored behavior changed materially.
-- [ ] Expose review counts and disagreement without calling them model accuracy until sample sizes support it.
+- [x] Add append-only review decisions tied to exact run, observation, evaluation, rule, contract, and baseline identities as applicable.
+- [x] Require reviewer identity, classification, and optional rationale.
+- [x] Allow a later decision to supersede, not overwrite, an earlier decision.
+- [x] Bind the existing authorized alert lifecycle to append-only review decisions so resolution has governed judgment context.
+- [x] Add `passed but should have failed` entry points for false-negative discovery.
+- [x] Record whether the review caused a prompt, case, contract, provider, or operational action.
+- [x] Start a contract-revision flow from a review without mutating history.
+- [x] Rescore stored observations under a newly approved contract version before activation.
+- [x] Require a new baseline only when compatibility rules say the interpretation or monitored behavior changed materially.
+- [x] Expose review counts and disagreement without calling them model accuracy until sample sizes support it.
 
 **Acceptance criteria:**
 
@@ -1496,6 +1496,32 @@ The product is ready for the first external design partner only when:
 - Verification passes with 37 frontend tests, a production asset build, and `mix precommit` with
   555 Elixir tests. No live provider call was made. Task 12 commits: `da75863`, `9ae5017`,
   `8ae1a9f`, `7214c24`, `b883257`, `1da2310`, and `a883245`. Task 13 is next.
+
+### 2026-09-16 — Task 13 complete
+
+- Added attributable append-only review decisions for exact alert and observation evidence, with
+  database-enforced linear supersession, non-forking concurrency, tenant isolation, and immutable
+  history. Review summaries explicitly describe human evidence, not model accuracy.
+- Required a current alert judgment before owner-only resolution and pinned the exact decision used
+  as the resolution basis. Members retain review, acknowledgement, and correction-authoring access;
+  only owners can resolve alerts and approve corrected contracts.
+- Added `passed but should have failed` discovery, explicit follow-up actions, and immutable
+  review-to-contract-revision origins. Starting a correction creates or reuses a successor draft and
+  never mutates the reviewed run, approved contract, or earlier judgment.
+- Added transactional historical rescoring before successor activation using the same immutable
+  evaluation persistence path as capture. Rescoring makes zero provider calls and aborts approval on
+  evaluator error.
+- Split exact contract-snapshot provenance from semantic contract provenance. Behavior-identical
+  successor versions retain baseline compatibility; changed rule semantics or any other monitored
+  execution identity require a new baseline.
+- Added the authenticated Inertia review experience inside the existing workspace-scoped router
+  pipeline because rationales and referenced output evidence are private tenant data.
+- A headed fake-provider browser journey recorded and resolved an acceptable-variation alert, then
+  reported a passing output as a missed regression and opened a review-linked version-2 draft. The
+  console reported zero errors and zero warnings; no live provider request was made.
+- Verification passes with TypeScript checking, all 40 frontend tests, a production asset build,
+  and `mix precommit` with 565 Elixir tests. Task 13 commits: `56066af`, `124bf89`, `c82203e`,
+  `631b68a`, and `6133982`. Task 14 is next.
 
 ## 17. References
 

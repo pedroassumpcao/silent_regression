@@ -37,6 +37,7 @@ npm-debug.log
 
 # Local browser-verification artifacts can contain authenticated page state.
 /output/playwright/
+/.playwright-cli/
 
 # Local LLM drift-spike runs can contain prompts, outputs, and provider metadata.
 /results/drift_spike/
