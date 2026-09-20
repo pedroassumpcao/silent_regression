@@ -48,6 +48,7 @@ type JsonScalar = string | number | boolean | null
 type Rule = {
   id: string
   type: RuleType
+  severity?: "critical" | "warning"
   path?: string
   expected_type?: string
   expected?: JsonScalar
@@ -87,6 +88,8 @@ type ContractVersion = {
   fingerprint: string
   contractFingerprint: string
   fixtureSetFingerprint: string
+  proofFingerprint: string | null
+  proofSchemaVersion: string | null
   templateKey: string
   templateUsage: {
     templateKey: string
@@ -105,6 +108,7 @@ type ContractVersion = {
 type RuleResult = {
   ruleId: string
   ruleType: string
+  severity: "critical" | "warning"
   status: RuleStatus
   code: string
   explanation: string
@@ -130,7 +134,26 @@ type Fixture = {
   }
 }
 
-type Blocker = { code: string; message: string; fixtureId: string | null }
+type Blocker = { code: string; message: string; fixtureId: string | null; ruleId?: string | null; missingBranches?: string[] }
+type RuleCoverage = {
+  ruleId: string
+  ruleType: string
+  ruleFingerprint: string
+  severity: "critical" | "warning"
+  positiveFixtureIds: string[]
+  negativeFixtureIds: string[]
+  positiveProven: boolean
+  negativeProven: boolean
+  missingBranches: Array<"positive" | "negative">
+  blocking: boolean
+  waiver: { id: string; rationale: string; waivedByUserId: string; waivedAt: string } | null
+}
+type Coverage = {
+  schemaVersion: string
+  fingerprint: string
+  ready: boolean
+  rules: RuleCoverage[]
+}
 type RescoreSummary = {
   observationCount: number
   passCount: number
@@ -154,6 +177,7 @@ export type ContractAuthoringProps = {
   auth: SharedPageProps["auth"]
   canApprove: boolean
   contract: ContractVersion | null
+  coverage: Coverage | null
   fixtures: Fixture[]
   limits: { maxFixtures: number; maxOutputBytes: number }
   monitor: { id: string; name: string; description: string; state: string; version: number }
@@ -229,7 +253,7 @@ export function ContractAuthoringView({ errors, flash, ...props }: ContractAutho
                 Define what must remain true
               </h1>
               <p className="mt-3 text-base leading-7 text-muted-foreground">
-                Turn observable output requirements into deterministic rules, then prove the contract with one output that should pass and one that should fail.
+                Turn observable output requirements into deterministic rules, then prove both the passing and failing branch of every critical rule.
               </p>
             </div>
             {props.contract && <ContractStatusBadge contract={props.contract} />}
@@ -292,6 +316,17 @@ export function ContractAuthoringView({ errors, flash, ...props }: ContractAutho
               path={path}
               readOnly={sealed}
             />
+            {props.coverage && (
+              <CoverageSection
+                canApprove={props.canApprove}
+                contract={props.contract}
+                coverage={props.coverage}
+                errors={errors}
+                fixtures={props.fixtures}
+                path={path}
+                readOnly={sealed}
+              />
+            )}
             <ApprovalPanel
               canApprove={props.canApprove}
               contract={props.contract}
@@ -478,12 +513,12 @@ function RuleEditor({ rule, index, canRemove, onChange, onRemove }: {
   onRemove: () => void
 }) {
   function changeType(type: RuleType) {
-    onChange(defaultRule(type, rule.id))
+    onChange({ ...defaultRule(type, rule.id), severity: rule.severity || "critical" })
   }
 
   return (
     <div className="rounded-xl border bg-muted/20 p-4">
-      <div className="grid gap-4 lg:grid-cols-[0.7fr_1fr_auto] lg:items-end">
+      <div className="grid gap-4 lg:grid-cols-[0.7fr_1fr_0.7fr_auto] lg:items-end">
         <div className="space-y-2">
           <Label htmlFor={`rule-${index}-id`}>Stable rule ID</Label>
           <Input id={`rule-${index}-id`} value={rule.id} pattern="[a-z](?:[a-z0-9_]|-)*" required onChange={event => onChange({ ...rule, id: event.target.value })} />
@@ -493,6 +528,16 @@ function RuleEditor({ rule, index, canRemove, onChange, onRemove }: {
           <Select value={rule.type} onValueChange={value => changeType(value as RuleType)}>
             <SelectTrigger id={`rule-${index}-type`} className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>{ruleTypes.map(type => <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`rule-${index}-severity`}>Severity</Label>
+          <Select value={rule.severity || "critical"} onValueChange={value => onChange({ ...rule, severity: value as "critical" | "warning" })}>
+            <SelectTrigger id={`rule-${index}-severity`} className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="critical">Critical · blocks</SelectItem>
+              <SelectItem value="warning">Warning · reports</SelectItem>
+            </SelectContent>
           </Select>
         </div>
         <Button aria-label={`Remove rule ${index + 1}`} type="button" size="icon" variant="ghost" disabled={!canRemove} onClick={onRemove}><Trash2 /></Button>
@@ -710,6 +755,126 @@ function FixtureCard({ contract, fixture, path, readOnly }: { contract: Contract
   )
 }
 
+function CoverageSection({ canApprove, contract, coverage, errors, fixtures, path, readOnly }: {
+  canApprove: boolean
+  contract: ContractVersion
+  coverage: Coverage
+  errors: SharedPageProps["errors"]
+  fixtures: Fixture[]
+  path: string
+  readOnly: boolean
+}) {
+  const fixtureNames = new Map(fixtures.map(fixture => [fixture.id, fixture.name]))
+
+  return (
+    <section id="contract-rule-coverage" aria-labelledby="coverage-heading" className="space-y-5">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-sm font-medium text-primary">Approval proof</p>
+          <h2 id="coverage-heading" className="mt-1 text-2xl font-semibold tracking-tight">Coverage by rule and branch</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Only fixtures whose overall and per-rule judgments match the evaluator count. Every critical rule needs a passing example and a failing example; one global negative fixture proves only the rules it actually fails.</p>
+        </div>
+        <Badge variant="outline">Proof {coverage.fingerprint.slice(0, 12)}</Badge>
+      </div>
+
+      {errors.coverageWaiver && <FieldError message={errors.coverageWaiver} />}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {coverage.rules.map(rule => (
+          <CoverageRuleCard
+            key={rule.ruleId}
+            canApprove={canApprove}
+            contract={contract}
+            fixtureNames={fixtureNames}
+            path={path}
+            readOnly={readOnly}
+            rule={rule}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function CoverageRuleCard({ canApprove, contract, fixtureNames, path, readOnly, rule }: {
+  canApprove: boolean
+  contract: ContractVersion
+  fixtureNames: Map<string, string>
+  path: string
+  readOnly: boolean
+  rule: RuleCoverage
+}) {
+  const form = useForm({ coverage_waiver: { rationale: "" } })
+  const waiverPath = `${path}/coverage-waivers/${encodeURIComponent(rule.ruleId)}`
+
+  function submit(event: FormEvent) {
+    event.preventDefault()
+    form.put(waiverPath, { preserveScroll: true, onSuccess: () => form.reset() })
+  }
+
+  return (
+    <Card id={`coverage-rule-${rule.ruleId}`} className={rule.blocking ? "border-amber-500/30" : "border-success/20"}>
+      <CardHeader className="gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="font-mono text-base">{rule.ruleId}</CardTitle>
+            <CardDescription className="mt-1">{ruleTypeLabel(rule.ruleType)} · {rule.ruleFingerprint.slice(0, 12)}</CardDescription>
+          </div>
+          <Badge variant={rule.severity === "critical" ? "destructive" : "outline"}>{rule.severity}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <CoverageBranch label="Positive branch" proven={rule.positiveProven} fixtureIds={rule.positiveFixtureIds} fixtureNames={fixtureNames} />
+          <CoverageBranch label="Negative branch" proven={rule.negativeProven} fixtureIds={rule.negativeFixtureIds} fixtureNames={fixtureNames} />
+        </div>
+
+        {rule.waiver && (
+          <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-sm">
+            <p className="font-medium text-amber-800 dark:text-amber-300">Owner waiver covers the missing branch</p>
+            <p className="mt-1 leading-5 text-muted-foreground">{rule.waiver.rationale}</p>
+            {!readOnly && canApprove && (
+              <Button className="mt-3" type="button" size="sm" variant="outline" onClick={() => router.delete(waiverPath, { preserveScroll: true })}><Trash2 /> Remove waiver</Button>
+            )}
+          </div>
+        )}
+
+        {!rule.waiver && rule.missingBranches.length > 0 && rule.severity === "warning" && (
+          <p className="rounded-lg bg-muted p-3 text-xs leading-5 text-muted-foreground">Coverage is incomplete, but warning rules report evidence without blocking approval.</p>
+        )}
+
+        {!readOnly && !rule.waiver && rule.blocking && canApprove && (
+          <form id={`coverage-waiver-${rule.ruleId}`} className="space-y-3 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3" onSubmit={submit}>
+            <div className="space-y-2">
+              <Label htmlFor={`coverage-waiver-rationale-${rule.ruleId}`}>Owner waiver rationale</Label>
+              <Textarea id={`coverage-waiver-rationale-${rule.ruleId}`} minLength={20} maxLength={1000} required placeholder="Explain why this exact critical rule cannot be exercised safely in a negative fixture." value={form.data.coverage_waiver.rationale} onChange={event => form.setData("coverage_waiver", { rationale: event.target.value })} />
+              <p className="text-xs text-muted-foreground">20–1,000 characters. Any semantic rule edit invalidates this exception.</p>
+            </div>
+            <Button type="submit" size="sm" variant="outline" disabled={form.processing || form.data.coverage_waiver.rationale.trim().length < 20}>{form.processing ? <LoaderCircle className="animate-spin" /> : <LockKeyhole />} Record exact-rule waiver</Button>
+          </form>
+        )}
+
+        {!readOnly && !rule.waiver && rule.blocking && !canApprove && (
+          <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-xs leading-5 text-muted-foreground">Add a matching fixture for each missing branch. Only a workspace owner may explicitly waive missing critical-rule proof.</p>
+        )}
+
+        {readOnly && contract.proofSchemaVersion && (
+          <p className="text-xs text-muted-foreground">Sealed under {contract.proofSchemaVersion}.</p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function CoverageBranch({ fixtureIds, fixtureNames, label, proven }: { fixtureIds: string[]; fixtureNames: Map<string, string>; label: string; proven: boolean }) {
+  return (
+    <div className={`rounded-lg border p-3 ${proven ? "bg-success/5" : "bg-muted/40"}`}>
+      <p className="flex items-center gap-2 text-sm font-medium">{proven ? <CheckCircle2 className="size-4 text-success" /> : <CircleDashed className="size-4 text-muted-foreground" />}{label}</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{proven ? fixtureIds.map(id => fixtureNames.get(id) || id).join(", ") : "No matching fixture yet"}</p>
+    </div>
+  )
+}
+
 function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness, rescoreSummary }: { canApprove: boolean; contract: ContractVersion; fixtureCount: number; path: string; readiness: ContractAuthoringProps["readiness"]; rescoreSummary: RescoreSummary | null }) {
   const form = useForm({})
   const approved = contract.status === "approved"
@@ -727,10 +892,11 @@ function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness, re
           <ContractJsonDialog root={contract.root} />
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <ProofMetric label="Rules" value={String(contract.root.rules.length)} />
             <ProofMetric label="Fixtures" value={String(fixtureCount)} />
             <ProofMetric label="Combined fingerprint" value={contract.fingerprint.slice(0, 12)} mono />
+            <ProofMetric label="Approval proof" value={(contract.proofFingerprint || "Pending").slice(0, 12)} mono />
           </div>
 
           {approved && rescoreSummary && (
@@ -857,7 +1023,7 @@ function defaultRule(type: RuleType, id: string): Rule {
     required_abstention: { id, type, alternatives: ["I don't have enough information"] },
     length: { id, type, unit: "words", minimum: 1, maximum: 100 },
   }
-  return rules[type]
+  return { ...rules[type], severity: "critical" }
 }
 
 function nextRuleId(rules: Rule[]) {

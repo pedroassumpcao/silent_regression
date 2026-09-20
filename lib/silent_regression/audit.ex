@@ -42,11 +42,15 @@ defmodule SilentRegression.Audit do
     "contract_version.updated" => @base_contract_keys,
     "contract_version.approved" =>
       @base_contract_keys ++
-        ~w(fixture_count rescore_observation_count rescore_pass_count rescore_fail_count interpretation_changed),
+        ~w(fixture_count rescore_observation_count rescore_pass_count rescore_fail_count interpretation_changed proof_schema_version proof_fingerprint coverage_waiver_count),
     "contract_version.revision_created" => @base_contract_keys ++ ~w(predecessor_id),
     "contract_fixture.created" => ~w(contract_version_id expected_status position fingerprint),
     "contract_fixture.updated" => ~w(contract_version_id expected_status position fingerprint),
     "contract_fixture.deleted" => ~w(contract_version_id expected_status position fingerprint),
+    "contract_coverage_waiver.created_or_updated" =>
+      ~w(contract_version_id monitor_id rule_id rule_fingerprint),
+    "contract_coverage_waiver.removed" =>
+      ~w(contract_version_id monitor_id rule_id rule_fingerprint),
     "baseline.authorized" =>
       ~w(capture_run_id planned_call_count maximum_call_count samples_per_case),
     "baseline.approved" =>

@@ -7,7 +7,13 @@ defmodule SilentRegression.ContractAuthoringTest do
   alias SilentRegression.Accounts.Scope
   alias SilentRegression.Audit
   alias SilentRegression.ContractAuthoring
-  alias SilentRegression.ContractAuthoring.{ContractFixture, ContractVersion, Templates}
+
+  alias SilentRegression.ContractAuthoring.{
+    ContractFixture,
+    ContractVersion,
+    Templates
+  }
+
   alias SilentRegression.Contracts
   alias SilentRegression.Repo
 
@@ -243,6 +249,190 @@ defmodule SilentRegression.ContractAuthoringTest do
       assert {:error, :owner_required} = ContractAuthoring.approve(member_scope, monitor.id)
       assert {:ok, approved} = ContractAuthoring.approve(owner_scope, monitor.id)
       assert approved.monitor_version_id == completed.version.id
+    end
+
+    test "a global negative proves only the critical rules it actually fails", %{
+      scope: scope,
+      monitor: monitor
+    } do
+      root = %{
+        "id" => "contract",
+        "type" => "all",
+        "rules" => [
+          %{
+            "id" => "required_language",
+            "type" => "required_text",
+            "alternatives" => ["required"]
+          },
+          %{
+            "id" => "prohibited_language",
+            "type" => "forbidden_text",
+            "alternatives" => ["forbidden"]
+          }
+        ]
+      }
+
+      _draft =
+        draft_fixture(scope, monitor, %{
+          template_key: "required_text",
+          root: root
+        })
+
+      _positive =
+        fixture(scope, monitor, %{
+          name: "Both rules pass",
+          output_text: "required and safe"
+        })
+
+      _global_negative =
+        fixture(scope, monitor, %{
+          name: "Only required language fails",
+          output_text: "safe",
+          expected_status: "fail",
+          expected_failed_rule_ids: ["required_language"]
+        })
+
+      assert {:ok, state} = ContractAuthoring.get_state(scope, monitor.id)
+      refute state.readiness.ready?
+
+      assert %{positive_proven?: true, negative_proven?: true} =
+               Enum.find(state.coverage.rules, &(&1.rule_id == "required_language"))
+
+      assert %{positive_proven?: true, negative_proven?: false, blocking?: true} =
+               Enum.find(state.coverage.rules, &(&1.rule_id == "prohibited_language"))
+
+      assert Enum.any?(state.readiness.blockers, fn blocker ->
+               blocker.code == "rule_proof_missing" and
+                 blocker.rule_id == "prohibited_language" and
+                 blocker.missing_branches == [:negative]
+             end)
+
+      assert {:error, {:approval_blocked, blockers}} =
+               ContractAuthoring.approve(scope, monitor.id)
+
+      assert Enum.any?(blockers, &(&1.code == "rule_proof_missing"))
+    end
+
+    test "an owner waiver is bounded to one exact rule and sealed into approval proof", %{
+      scope: scope,
+      monitor: monitor
+    } do
+      root = %{
+        "id" => "contract",
+        "type" => "all",
+        "rules" => [
+          %{
+            "id" => "required_language",
+            "type" => "required_text",
+            "alternatives" => ["required"]
+          },
+          %{
+            "id" => "prohibited_language",
+            "type" => "forbidden_text",
+            "alternatives" => ["forbidden"]
+          }
+        ]
+      }
+
+      _draft =
+        draft_fixture(scope, monitor, %{
+          template_key: "required_text",
+          root: root
+        })
+
+      _positive = fixture(scope, monitor, %{output_text: "required and safe"})
+
+      _negative =
+        fixture(scope, monitor, %{
+          name: "Required language fails",
+          output_text: "safe",
+          expected_status: "fail",
+          expected_failed_rule_ids: ["required_language"]
+        })
+
+      assert {:error, invalid} =
+               ContractAuthoring.put_coverage_waiver(
+                 scope,
+                 monitor.id,
+                 "prohibited_language",
+                 %{rationale: "too short"}
+               )
+
+      assert "should be at least 20 character(s)" in errors_on(invalid).rationale
+
+      assert {:ok, waiver} =
+               ContractAuthoring.put_coverage_waiver(
+                 scope,
+                 monitor.id,
+                 "prohibited_language",
+                 %{
+                   rationale:
+                     "This prohibited production phrase cannot be stored in an alpha fixture."
+                 }
+               )
+
+      assert waiver.rule_fingerprint =~ ~r/^[0-9a-f]{64}$/
+
+      assert {:ok, state} = ContractAuthoring.get_state(scope, monitor.id)
+      assert state.readiness.ready?
+
+      assert %{blocking?: false, waiver: %{id: waiver_id}} =
+               Enum.find(state.coverage.rules, &(&1.rule_id == "prohibited_language"))
+
+      assert waiver_id == waiver.id
+
+      assert {:ok, approved} = ContractAuthoring.approve(scope, monitor.id)
+      assert approved.proof_schema_version == "rule_coverage_v1"
+      assert approved.proof_fingerprint == state.coverage.fingerprint
+
+      assert_raise Postgrex.Error, ~r/approved contract coverage waivers are immutable/, fn ->
+        waiver
+        |> Ecto.Changeset.change(rationale: "A replacement rationale that is long enough.")
+        |> Repo.update!()
+      end
+    end
+
+    test "warning-rule proof gaps stay visible without blocking approval", %{
+      scope: scope,
+      monitor: monitor
+    } do
+      {:ok, template} = Templates.fetch("required_text")
+
+      root =
+        update_in(template, ["root", "rules", Access.at(1)], fn rule ->
+          Map.put(rule, "severity", "warning")
+        end)["root"]
+
+      _draft =
+        draft_fixture(scope, monitor, %{
+          template_key: "required_text",
+          root: root
+        })
+
+      _positive = fixture(scope, monitor, %{output_text: "required phrase and safe"})
+
+      _negative =
+        fixture(scope, monitor, %{
+          output_text: "safe",
+          expected_status: "fail",
+          expected_failed_rule_ids: ["required_language"]
+        })
+
+      assert {:ok, state} = ContractAuthoring.get_state(scope, monitor.id)
+      assert state.readiness.ready?
+
+      assert %{severity: :warning, negative_proven?: false, blocking?: false, waiver: nil} =
+               Enum.find(state.coverage.rules, &(&1.rule_id == "prohibited_language"))
+
+      assert {:error, changeset} =
+               ContractAuthoring.put_coverage_waiver(
+                 scope,
+                 monitor.id,
+                 "prohibited_language",
+                 %{rationale: "Warnings never need an owner proof waiver."}
+               )
+
+      assert "is unnecessary for a warning rule" in errors_on(changeset).coverage_waiver
     end
   end
 

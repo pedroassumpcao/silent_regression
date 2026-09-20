@@ -43,6 +43,7 @@ defmodule SilentRegression.ContractAuthoring.Templates do
           %{
             "id" => "label_length",
             "type" => "length",
+            "severity" => "warning",
             "unit" => "words",
             "minimum" => 1,
             "maximum" => 2

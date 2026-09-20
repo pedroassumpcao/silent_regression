@@ -47,6 +47,8 @@ const contract: NonNullable<ContractAuthoringProps["contract"]> = {
   fingerprint: "a".repeat(64),
   contractFingerprint: "b".repeat(64),
   fixtureSetFingerprint: "c".repeat(64),
+  proofFingerprint: null,
+  proofSchemaVersion: null,
   templateKey: "classification",
   templateUsage: {
     templateKey: "classification",
@@ -75,9 +77,9 @@ const fixtures: ContractAuthoringProps["fixtures"] = [
       status: "pass",
       error: null,
       ruleResults: [
-        { ruleId: "allowed_label", ruleType: "classification", status: "pass", code: "allowed_classification", explanation: "The normalized output matches an allowed classification label.", evidence: {}, childRuleIds: [] },
-        { ruleId: "label_length", ruleType: "length", status: "pass", code: "within_bounds", explanation: "The output length is within the configured bounds.", evidence: {}, childRuleIds: [] },
-        { ruleId: "contract", ruleType: "all", status: "pass", code: "all_children_passed", explanation: "Every rule passed.", evidence: {}, childRuleIds: ["allowed_label", "label_length"] },
+        { ruleId: "allowed_label", ruleType: "classification", severity: "critical", status: "pass", code: "allowed_classification", explanation: "The normalized output matches an allowed classification label.", evidence: {}, childRuleIds: [] },
+        { ruleId: "label_length", ruleType: "length", severity: "warning", status: "pass", code: "within_bounds", explanation: "The output length is within the configured bounds.", evidence: {}, childRuleIds: [] },
+        { ruleId: "contract", ruleType: "all", severity: "critical", status: "pass", code: "all_children_passed", explanation: "Every rule passed.", evidence: {}, childRuleIds: ["allowed_label", "label_length"] },
       ],
     },
   },
@@ -96,9 +98,9 @@ const fixtures: ContractAuthoringProps["fixtures"] = [
       status: "fail",
       error: null,
       ruleResults: [
-        { ruleId: "allowed_label", ruleType: "classification", status: "fail", code: "classification_not_allowed", explanation: "The normalized output is not an allowed classification label.", evidence: {}, childRuleIds: [] },
-        { ruleId: "label_length", ruleType: "length", status: "pass", code: "within_bounds", explanation: "The output length is within the configured bounds.", evidence: {}, childRuleIds: [] },
-        { ruleId: "contract", ruleType: "all", status: "fail", code: "child_failed", explanation: "One rule failed.", evidence: {}, childRuleIds: ["allowed_label", "label_length"] },
+        { ruleId: "allowed_label", ruleType: "classification", severity: "critical", status: "fail", code: "classification_not_allowed", explanation: "The normalized output is not an allowed classification label.", evidence: {}, childRuleIds: [] },
+        { ruleId: "label_length", ruleType: "length", severity: "warning", status: "pass", code: "within_bounds", explanation: "The output length is within the configured bounds.", evidence: {}, childRuleIds: [] },
+        { ruleId: "contract", ruleType: "all", severity: "critical", status: "fail", code: "child_failed", explanation: "One rule failed.", evidence: {}, childRuleIds: ["allowed_label", "label_length"] },
       ],
     },
   },
@@ -109,6 +111,7 @@ const baseProps: ContractAuthoringProps = {
   auth,
   canApprove: true,
   contract: null,
+  coverage: null,
   fixtures: [],
   limits: { maxFixtures: 20, maxOutputBytes: 1_000_000 },
   monitor: {
@@ -126,6 +129,40 @@ const baseProps: ContractAuthoringProps = {
   rescoreSummary: null,
   revisionOrigins: [],
   templates,
+}
+
+const coverage: NonNullable<ContractAuthoringProps["coverage"]> = {
+  schemaVersion: "rule_coverage_v1",
+  fingerprint: "f".repeat(64),
+  ready: true,
+  rules: [
+    {
+      ruleId: "allowed_label",
+      ruleType: "classification",
+      ruleFingerprint: "1".repeat(64),
+      severity: "critical",
+      positiveFixtureIds: ["valid-fixture"],
+      negativeFixtureIds: ["invalid-fixture"],
+      positiveProven: true,
+      negativeProven: true,
+      missingBranches: [],
+      blocking: false,
+      waiver: null,
+    },
+    {
+      ruleId: "label_length",
+      ruleType: "length",
+      ruleFingerprint: "2".repeat(64),
+      severity: "warning",
+      positiveFixtureIds: ["valid-fixture", "invalid-fixture"],
+      negativeFixtureIds: [],
+      positiveProven: true,
+      negativeProven: false,
+      missingBranches: ["negative"],
+      blocking: false,
+      waiver: null,
+    },
+  ],
 }
 
 describe("ContractAuthoringView", () => {
@@ -151,6 +188,7 @@ describe("ContractAuthoringView", () => {
       <ContractAuthoringView
         {...baseProps}
         contract={contract}
+        coverage={coverage}
         errors={{}}
         fixtures={fixtures}
         flash={{}}
@@ -162,6 +200,8 @@ describe("ContractAuthoringView", () => {
     expect(screen.getByText("The normalized output is not an allowed classification label.")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Approve and seal contract" })).toBeEnabled()
     expect(screen.getByText("Your approval will be attributable to your account.")).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Coverage by rule and branch" })).toBeInTheDocument()
+    expect(screen.getByText("Coverage is incomplete, but warning rules report evidence without blocking approval.")).toBeInTheDocument()
   })
 
   it("keeps final approval owner-only while allowing a member to inspect results", () => {
@@ -171,6 +211,7 @@ describe("ContractAuthoringView", () => {
         auth={{ ...auth, membership: { id: "member-id", role: "member" } }}
         canApprove={false}
         contract={contract}
+        coverage={coverage}
         errors={{}}
         fixtures={fixtures}
         flash={{}}
@@ -187,7 +228,8 @@ describe("ContractAuthoringView", () => {
       <ContractAuthoringView
         {...baseProps}
         canApprove
-        contract={{ ...contract, status: "approved", approvedAt: "2026-09-15T18:00:00Z", approvedByUserId: "owner-id" }}
+        contract={{ ...contract, status: "approved", approvedAt: "2026-09-15T18:00:00Z", approvedByUserId: "owner-id", proofFingerprint: "f".repeat(64), proofSchemaVersion: "rule_coverage_v1" }}
+        coverage={coverage}
         rescoreSummary={{ observationCount: 12, passCount: 10, failCount: 2, evaluatorErrorCount: 0, interpretationChanged: true, rescoredAt: "2026-09-16T18:00:00Z", predecessorContractVersionId: "previous-contract-id" }}
         errors={{}}
         fixtures={fixtures}

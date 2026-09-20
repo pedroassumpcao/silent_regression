@@ -121,6 +121,60 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
     end
   end
 
+  def put_coverage_waiver(conn, %{"monitor_id" => monitor_id, "rule_id" => rule_id} = params) do
+    case ContractAuthoring.put_coverage_waiver(
+           conn.assigns.current_scope,
+           monitor_id,
+           rule_id,
+           Map.get(params, "coverage_waiver", %{})
+         ) do
+      {:ok, _waiver} ->
+        conn
+        |> put_flash(:info, "Owner waiver recorded for the exact rule version.")
+        |> redirect(to: contract_path(conn, monitor_id))
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        conn
+        |> assign_errors(%{changeset | action: :update})
+        |> redirect(to: contract_path(conn, monitor_id))
+
+      {:error, :owner_required} ->
+        conn
+        |> put_flash(:error, "Only a workspace owner can record a proof waiver.")
+        |> redirect(to: contract_path(conn, monitor_id))
+
+      {:error, :not_found} ->
+        send_resp(conn, :not_found, "Not found")
+
+      {:error, _reason} ->
+        mutation_failed(conn, monitor_id, "The proof waiver could not be saved.")
+    end
+  end
+
+  def delete_coverage_waiver(conn, %{"monitor_id" => monitor_id, "rule_id" => rule_id}) do
+    case ContractAuthoring.delete_coverage_waiver(
+           conn.assigns.current_scope,
+           monitor_id,
+           rule_id
+         ) do
+      {:ok, _waiver} ->
+        conn
+        |> put_flash(:info, "Owner waiver removed.")
+        |> redirect(to: contract_path(conn, monitor_id))
+
+      {:error, :owner_required} ->
+        conn
+        |> put_flash(:error, "Only a workspace owner can remove a proof waiver.")
+        |> redirect(to: contract_path(conn, monitor_id))
+
+      {:error, :not_found} ->
+        send_resp(conn, :not_found, "Not found")
+
+      {:error, _reason} ->
+        mutation_failed(conn, monitor_id, "The proof waiver could not be removed.")
+    end
+  end
+
   def approve(conn, %{"monitor_id" => monitor_id}) do
     case ContractAuthoring.approve(conn.assigns.current_scope, monitor_id) do
       {:ok, _contract_version} ->
@@ -168,6 +222,7 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
       approved_contract: contract_summary_prop(state.approved_contract_version),
       can_approve: conn.assigns.current_scope.membership.role == :owner,
       contract: contract_prop(state.contract_version),
+      coverage: coverage_prop(state.coverage),
       fixtures: fixture_props(state.fixture_results),
       limits: %{
         max_fixtures: ContractAuthoring.max_fixtures(),
@@ -195,6 +250,8 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
       assistance_mode: contract_version.assistance_mode,
       contract_fingerprint: contract_version.contract_fingerprint,
       fixture_set_fingerprint: contract_version.fixture_set_fingerprint,
+      proof_fingerprint: contract_version.proof_fingerprint,
+      proof_schema_version: contract_version.proof_schema_version,
       root_json: Jason.encode!(contract_version.root),
       template_key: contract_version.template_key,
       template_usage: contract_version.template_usage
@@ -254,6 +311,32 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
     %{
       ready: readiness.ready?,
       blockers: readiness.blockers
+    }
+  end
+
+  defp coverage_prop(nil), do: nil
+
+  defp coverage_prop(coverage) do
+    %{
+      schema_version: coverage.schema_version,
+      fingerprint: coverage.fingerprint,
+      ready: coverage.ready?,
+      rules:
+        Enum.map(coverage.rules, fn rule ->
+          %{
+            rule_id: rule.rule_id,
+            rule_type: rule.rule_type,
+            rule_fingerprint: rule.rule_fingerprint,
+            severity: rule.severity,
+            positive_fixture_ids: rule.positive_fixture_ids,
+            negative_fixture_ids: rule.negative_fixture_ids,
+            positive_proven: rule.positive_proven?,
+            negative_proven: rule.negative_proven?,
+            missing_branches: rule.missing_branches,
+            blocking: rule.blocking?,
+            waiver: rule.waiver
+          }
+        end)
     }
   end
 

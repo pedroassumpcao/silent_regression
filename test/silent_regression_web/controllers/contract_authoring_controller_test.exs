@@ -163,6 +163,19 @@ defmodule SilentRegressionWeb.ContractAuthoringControllerTest do
 
       ready_page = corrected |> recycle() |> get(path)
       assert inertia_props(ready_page).readiness.ready
+      assert inertia_props(ready_page).coverage.schemaVersion == "rule_coverage_v1"
+
+      assert %{severity: :critical, positiveProven: true, negativeProven: true} =
+               Enum.find(
+                 inertia_props(ready_page).coverage.rules,
+                 &(&1.ruleId == "allowed_label")
+               )
+
+      assert %{severity: :warning, negativeProven: false, blocking: false} =
+               Enum.find(
+                 inertia_props(ready_page).coverage.rules,
+                 &(&1.ruleId == "label_length")
+               )
 
       approved =
         ready_page
@@ -173,6 +186,8 @@ defmodule SilentRegressionWeb.ContractAuthoringControllerTest do
       assert inertia_props(sealed_page).contract.status == :approved
       assert inertia_props(sealed_page).contract.approvedByUserId == user.id
       assert inertia_props(sealed_page).contract.fingerprint =~ ~r/^[0-9a-f]{64}$/
+      assert inertia_props(sealed_page).contract.proofSchemaVersion == "rule_coverage_v1"
+      assert inertia_props(sealed_page).contract.proofFingerprint =~ ~r/^[0-9a-f]{64}$/
       assert inertia_props(sealed_page).rescoreSummary.observationCount == 0
       assert inertia_props(sealed_page).rescoreSummary.evaluatorErrorCount == 0
 
@@ -214,6 +229,20 @@ defmodule SilentRegressionWeb.ContractAuthoringControllerTest do
       response = post(recycle(page), path <> "/approve")
       assert redirected_to(response) == path
       assert Phoenix.Flash.get(response.assigns.flash, :error) =~ "Only a workspace owner"
+
+      waiver_response =
+        response
+        |> recycle()
+        |> put(path <> "/coverage-waivers/allowed_label", %{
+          "coverage_waiver" => %{
+            "rationale" => "A member must not be able to create this owner exception."
+          }
+        })
+
+      assert redirected_to(waiver_response) == path
+
+      assert Phoenix.Flash.get(waiver_response.assigns.flash, :error) =~
+               "Only a workspace owner"
     end
   end
 

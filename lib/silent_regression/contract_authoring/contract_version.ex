@@ -11,7 +11,7 @@ defmodule SilentRegression.ContractAuthoring.ContractVersion do
   import Ecto.Changeset
 
   alias SilentRegression.Accounts.User
-  alias SilentRegression.ContractAuthoring.{ContractFixture, RescoreSummary}
+  alias SilentRegression.ContractAuthoring.{ContractFixture, CoverageWaiver, RescoreSummary}
   alias SilentRegression.Monitors.{Monitor, MonitorVersion}
   alias SilentRegression.Workspaces.Workspace
 
@@ -21,6 +21,7 @@ defmodule SilentRegression.ContractAuthoring.ContractVersion do
   @statuses [:draft, :approved, :retired]
   @assistance_modes [:self_serve, :founder_assisted, :codex_assisted]
   @fingerprint_fields [:contract_fingerprint, :fixture_set_fingerprint, :fingerprint]
+  @approval_proof_fields [:proof_schema_version, :proof_fingerprint]
 
   schema "contract_versions" do
     field :version, :integer
@@ -34,6 +35,8 @@ defmodule SilentRegression.ContractAuthoring.ContractVersion do
     field :contract_fingerprint, :string
     field :fixture_set_fingerprint, :string
     field :fingerprint, :string
+    field :proof_schema_version, :string
+    field :proof_fingerprint, :string
     field :approved_at, :utc_datetime
     field :retired_at, :utc_datetime
 
@@ -44,6 +47,7 @@ defmodule SilentRegression.ContractAuthoring.ContractVersion do
     belongs_to :created_by_user, User
     belongs_to :approved_by_user, User
     has_many :fixtures, ContractFixture
+    has_many :coverage_waivers, CoverageWaiver
     has_one :rescore_summary, RescoreSummary
 
     timestamps(type: :utc_datetime)
@@ -81,9 +85,12 @@ defmodule SilentRegression.ContractAuthoring.ContractVersion do
 
   def approve_changeset(%__MODULE__{status: :draft} = contract_version, %User{} = user, at, attrs) do
     contract_version
-    |> change(Map.take(attrs, @fingerprint_fields))
+    |> change(Map.take(attrs, @fingerprint_fields ++ @approval_proof_fields))
     |> change(status: :approved, approved_by_user_id: user.id, approved_at: at)
     |> validate_content()
+    |> validate_required(@approval_proof_fields)
+    |> validate_length(:proof_schema_version, min: 1, max: 80)
+    |> validate_format(:proof_fingerprint, ~r/^[0-9a-f]{64}$/)
     |> add_constraints()
   end
 
@@ -163,6 +170,10 @@ defmodule SilentRegression.ContractAuthoring.ContractVersion do
     |> check_constraint(:status, name: :contract_versions_status_check)
     |> check_constraint(:assistance_mode, name: :contract_versions_assistance_mode_check)
     |> check_constraint(:fingerprint, name: :contract_versions_fingerprints_check)
+    |> check_constraint(:proof_fingerprint,
+      name: :contract_versions_proof_fingerprint_check
+    )
+    |> check_constraint(:proof_schema_version, name: :contract_versions_proof_pair_check)
     |> check_constraint(:status, name: :contract_versions_lifecycle_check)
   end
 end

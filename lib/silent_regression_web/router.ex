@@ -75,6 +75,14 @@ defmodule SilentRegressionWeb.Router do
            ContractAuthoringController,
            :delete_fixture
 
+    put "/monitors/:monitor_id/contract/coverage-waivers/:rule_id",
+        ContractAuthoringController,
+        :put_coverage_waiver
+
+    delete "/monitors/:monitor_id/contract/coverage-waivers/:rule_id",
+           ContractAuthoringController,
+           :delete_coverage_waiver
+
     post "/monitors/:monitor_id/contract/approve", ContractAuthoringController, :approve
     post "/monitors/:monitor_id/contract/revise", ContractAuthoringController, :revise
     get "/monitors/:monitor_id/baseline", BaselineController, :show

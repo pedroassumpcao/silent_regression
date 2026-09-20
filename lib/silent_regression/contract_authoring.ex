@@ -15,6 +15,8 @@ defmodule SilentRegression.ContractAuthoring do
   alias SilentRegression.ContractAuthoring.{
     ContractFixture,
     ContractVersion,
+    Coverage,
+    CoverageWaiver,
     DraftInput,
     Fingerprints,
     FixtureJudgment,
@@ -46,6 +48,9 @@ defmodule SilentRegression.ContractAuthoring do
       approved = load_contract(monitor.id, :approved)
       current = draft || approved
       fixtures = if current, do: load_fixtures(current.id), else: []
+      fixture_results = evaluate_fixtures(current, fixtures)
+      waivers = if current, do: load_coverage_waivers(current.id), else: []
+      coverage = coverage(current, fixture_results, waivers)
 
       {:ok,
        %{
@@ -56,8 +61,10 @@ defmodule SilentRegression.ContractAuthoring do
          approved_contract_version: approved,
          rescore_summary: rescore_summary(current),
          fixtures: fixtures,
-         fixture_results: evaluate_fixtures(current, fixtures),
-         readiness: approval_readiness(current, fixtures)
+         fixture_results: fixture_results,
+         coverage: coverage,
+         coverage_waivers: waivers,
+         readiness: approval_readiness(current, fixtures, fixture_results, coverage)
        }}
     else
       :error -> {:error, :not_found}
@@ -219,6 +226,84 @@ defmodule SilentRegression.ContractAuthoring do
 
   def delete_fixture(%Scope{}, _monitor_id, _fixture_id), do: {:error, :workspace_required}
 
+  def put_coverage_waiver(
+        %Scope{
+          workspace: %Workspace{id: workspace_id},
+          membership: %Membership{role: :owner},
+          user: %User{} = user
+        },
+        monitor_id,
+        rule_id,
+        attrs
+      )
+      when is_binary(rule_id) and is_map(attrs) do
+    mutate_waiver(workspace_id, monitor_id, fn contract_version ->
+      with %{} = rule <- find_rule(contract_version.root, rule_id),
+           fixtures <- load_fixtures(contract_version.id),
+           results <- evaluate_fixtures(contract_version, fixtures),
+           waivers <- load_coverage_waivers(contract_version.id),
+           rule_coverage <-
+             contract_version.root
+             |> Coverage.analyze(results, waivers)
+             |> Map.fetch!(:rules)
+             |> Enum.find(&(&1.rule_id == rule_id)),
+           :ok <- ensure_waivable(rule_coverage),
+           waiver <-
+             Repo.get_by(CoverageWaiver,
+               contract_version_id: contract_version.id,
+               rule_id: rule_id
+             ) || %CoverageWaiver{},
+           waiver_attrs <- %{
+             rule_id: rule_id,
+             rule_fingerprint: Coverage.rule_fingerprint(rule),
+             rationale: value(attrs, :rationale)
+           },
+           {:ok, waiver} <-
+             waiver
+             |> CoverageWaiver.changeset(contract_version, user, waiver_attrs)
+             |> Repo.insert_or_update() do
+        record_coverage_waiver_event!(contract_version, waiver, user, "created_or_updated")
+        {:ok, waiver}
+      else
+        nil -> {:error, :not_found}
+        {:error, reason} -> {:error, reason}
+      end
+    end)
+  end
+
+  def put_coverage_waiver(%Scope{}, _monitor_id, _rule_id, _attrs),
+    do: {:error, :owner_required}
+
+  def delete_coverage_waiver(
+        %Scope{
+          workspace: %Workspace{id: workspace_id},
+          membership: %Membership{role: :owner},
+          user: %User{} = user
+        },
+        monitor_id,
+        rule_id
+      )
+      when is_binary(rule_id) do
+    mutate_waiver(workspace_id, monitor_id, fn contract_version ->
+      case Repo.get_by(CoverageWaiver,
+             contract_version_id: contract_version.id,
+             rule_id: rule_id
+           ) do
+        nil ->
+          {:error, :not_found}
+
+        waiver ->
+          with {:ok, waiver} <- Repo.delete(waiver) do
+            record_coverage_waiver_event!(contract_version, waiver, user, "removed")
+            {:ok, waiver}
+          end
+      end
+    end)
+  end
+
+  def delete_coverage_waiver(%Scope{}, _monitor_id, _rule_id),
+    do: {:error, :owner_required}
+
   def approve(
         %Scope{
           workspace: %Workspace{id: workspace_id},
@@ -232,7 +317,10 @@ defmodule SilentRegression.ContractAuthoring do
         with %Monitor{} <- locked_monitor(workspace_id, monitor_id),
              %ContractVersion{} = draft <- load_contract(monitor_id, :draft, lock: true),
              fixtures <- load_fixtures(draft.id, lock: true),
-             %{ready?: true} <- approval_readiness(draft, fixtures),
+             waivers <- load_coverage_waivers(draft.id, lock: true),
+             results <- evaluate_fixtures(draft, fixtures),
+             coverage <- Coverage.analyze(draft.root, results, waivers),
+             %{ready?: true} <- approval_readiness(draft, fixtures, results, coverage),
              {:ok, draft} <- refresh_fingerprints(draft),
              previous <- load_contract(monitor_id, :approved, lock: true),
              {:ok, rescore_summary} <- Rescorer.rescore(draft, previous),
@@ -242,7 +330,12 @@ defmodule SilentRegression.ContractAuthoring do
                |> ContractVersion.approve_changeset(
                  user,
                  DateTime.utc_now(:second),
-                 fingerprint_attributes(draft, load_fixtures(draft.id))
+                 draft
+                 |> fingerprint_attributes(load_fixtures(draft.id))
+                 |> Map.merge(%{
+                   proof_schema_version: coverage.schema_version,
+                   proof_fingerprint: coverage.fingerprint
+                 })
                )
                |> Repo.update() do
           record_contract_event!(approved, user, "contract_version.approved", %{
@@ -250,7 +343,10 @@ defmodule SilentRegression.ContractAuthoring do
             "rescore_observation_count" => rescore_summary.observation_count,
             "rescore_pass_count" => rescore_summary.pass_count,
             "rescore_fail_count" => rescore_summary.fail_count,
-            "interpretation_changed" => rescore_summary.interpretation_changed
+            "interpretation_changed" => rescore_summary.interpretation_changed,
+            "proof_schema_version" => coverage.schema_version,
+            "proof_fingerprint" => coverage.fingerprint,
+            "coverage_waiver_count" => Enum.count(coverage.rules, & &1.waiver)
           })
 
           Repo.preload(approved, [:fixtures, :rescore_summary], force: true)
@@ -324,12 +420,22 @@ defmodule SilentRegression.ContractAuthoring do
 
   def approval_readiness(%ContractVersion{} = contract_version, fixtures) do
     results = evaluate_fixtures(contract_version, fixtures)
+    waivers = load_coverage_waivers(contract_version.id)
+    coverage = Coverage.analyze(contract_version.root, results, waivers)
 
+    approval_readiness(contract_version, fixtures, results, coverage)
+  end
+
+  defp approval_readiness(nil, _fixtures, _results, _coverage),
+    do: approval_readiness(nil, [])
+
+  defp approval_readiness(%ContractVersion{}, fixtures, results, coverage) do
     blockers =
       []
       |> require_fixture_type(fixtures, :pass)
       |> require_fixture_type(fixtures, :fail)
       |> add_fixture_blockers(results)
+      |> Kernel.++(coverage.blockers)
 
     %{ready?: blockers == [], blockers: blockers}
   end
@@ -381,6 +487,11 @@ defmodule SilentRegression.ContractAuthoring do
     if existing.root == new_root do
       {:ok, contract_version}
     else
+      {_count, nil} =
+        CoverageWaiver
+        |> where([waiver], waiver.contract_version_id == ^contract_version.id)
+        |> Repo.delete_all()
+
       contract_version.id
       |> load_fixtures(lock: true)
       |> Enum.reduce_while({:ok, contract_version}, fn fixture, {:ok, contract_version} ->
@@ -395,6 +506,12 @@ defmodule SilentRegression.ContractAuthoring do
         end
       end)
     end
+  end
+
+  defp coverage(nil, _fixture_results, _waivers), do: nil
+
+  defp coverage(contract_version, fixture_results, waivers) do
+    Coverage.analyze(contract_version.root, fixture_results, waivers)
   end
 
   defp normalize_fixture(contract_version, attrs, position) do
@@ -442,6 +559,38 @@ defmodule SilentRegression.ContractAuthoring do
     else
       :error -> {:error, :not_found}
     end
+  end
+
+  defp mutate_waiver(workspace_id, monitor_id, callback) do
+    with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id) do
+      Repo.transaction(fn ->
+        with %Monitor{} <- locked_monitor(workspace_id, monitor_id),
+             %ContractVersion{} = contract_version <-
+               load_contract(monitor_id, :draft, lock: true),
+             {:ok, result} <- callback.(contract_version) do
+          result
+        else
+          nil -> Repo.rollback(:not_found)
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    else
+      :error -> {:error, :not_found}
+    end
+  end
+
+  defp ensure_waivable(%{severity: :warning}) do
+    {:error, error_changeset(nil, :coverage_waiver, "is unnecessary for a warning rule")}
+  end
+
+  defp ensure_waivable(%{missing_branches: []}) do
+    {:error, error_changeset(nil, :coverage_waiver, "is unnecessary for a fully proven rule")}
+  end
+
+  defp ensure_waivable(%{severity: :critical}), do: :ok
+
+  defp find_rule(%{"type" => "all", "rules" => rules}, rule_id) do
+    Enum.find(rules, &(&1["id"] == rule_id))
   end
 
   defp evaluate_fixtures(nil, _fixtures), do: []
@@ -788,6 +937,16 @@ defmodule SilentRegression.ContractAuthoring do
     Repo.one(query)
   end
 
+  defp load_coverage_waivers(contract_version_id, options \\ []) do
+    query =
+      CoverageWaiver
+      |> where([waiver], waiver.contract_version_id == ^contract_version_id)
+      |> order_by([waiver], asc: waiver.rule_id)
+
+    query = if options[:lock], do: lock(query, "FOR UPDATE"), else: query
+    Repo.all(query)
+  end
+
   defp error_changeset(_contract_version, field, message),
     do: %ContractVersion{} |> change() |> add_error(field, message)
 
@@ -825,6 +984,22 @@ defmodule SilentRegression.ContractAuthoring do
         "expected_status" => Atom.to_string(fixture.expected_status),
         "position" => fixture.position,
         "fingerprint" => fixture.fingerprint
+      }
+    })
+  end
+
+  defp record_coverage_waiver_event!(contract_version, waiver, user, action) do
+    Audit.record_event!(%{
+      action: "contract_coverage_waiver.#{action}",
+      target_type: "contract_coverage_waiver",
+      target_id: waiver.id,
+      workspace_id: contract_version.workspace_id,
+      actor_user_id: user.id,
+      metadata: %{
+        "contract_version_id" => contract_version.id,
+        "monitor_id" => contract_version.monitor_id,
+        "rule_id" => waiver.rule_id,
+        "rule_fingerprint" => waiver.rule_fingerprint
       }
     })
   end

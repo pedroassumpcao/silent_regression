@@ -71,7 +71,12 @@ defmodule SilentRegression.RunResults.PresenterTest do
              "decision"
 
     assert length(evaluation.rule_results) == 3
-    assert Enum.all?(evaluation.rule_results, &(&1.severity == :critical))
+
+    assert Enum.map(evaluation.rule_results, &{&1.rule_id, &1.severity}) == [
+             {"contract", :critical},
+             {"allowed_label", :critical},
+             {"label_length", :warning}
+           ]
   end
 
   test "redacted diagnostics omit prompt, context, output, and rule evidence payloads", %{
