@@ -40,6 +40,10 @@ defmodule SilentRegression.RunResults.PresenterTest do
     assert [observation] = detail.observations
     assert observation.case.key == "supported-answer"
     assert observation.output.text == "approved"
+    assert [attempt] = observation.attempts
+    assert attempt.request_mode == :provider_native_v1
+    assert attempt.request_schema_version == 1
+    assert attempt.request_fingerprint == hd(state.run.observations).request_fingerprint
     assert [evaluation] = observation.evaluations
     assert length(evaluation.rule_results) == 3
     assert Enum.all?(evaluation.rule_results, &(&1.severity == :critical))

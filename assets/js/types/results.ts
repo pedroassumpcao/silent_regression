@@ -131,6 +131,9 @@ export type Observation = {
     id: string
     attemptNumber: number
     status: string
+    requestMode: "legacy_wrapped_v1" | "provider_native_v1" | null
+    requestSchemaVersion: number | null
+    requestFingerprint: string | null
     providerRequestId: string | null
     retryable: boolean | null
     failureCategory: string | null
