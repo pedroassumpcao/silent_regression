@@ -11,10 +11,11 @@ defmodule SilentRegression.MonitorOperations do
   alias SilentRegression.Accounts.{Scope, User}
   alias SilentRegression.{Audit, Baselines, Captures, PilotPolicies, ProductAnalytics}
   alias SilentRegression.Captures.{CaptureObservation, CaptureRun}
+  alias SilentRegression.MonitorOperations.AuthenticationRecovery
   alias SilentRegression.MonitorOperations.Schedule
   alias SilentRegression.Monitors.{CaseVersion, Monitor, MonitorVersion}
   alias SilentRegression.ProviderCredentials
-  alias SilentRegression.ProviderCredentials.ProviderCredential
+  alias SilentRegression.ProviderCredentials.{ModelValidation, ProviderCredential}
   alias SilentRegression.Repo
   alias SilentRegression.RunResults
   alias SilentRegression.Workspaces.{Membership, Workspace}
@@ -38,6 +39,7 @@ defmodule SilentRegression.MonitorOperations do
          last_run: last_run,
          unresolved_alerts: unresolved_alert_count(scope, monitor.id),
          approved_baseline?: Baselines.compatible_approved?(scope, monitor.id),
+         authentication_recovery: authentication_recovery_state(monitor),
          maximum_call_count: maximum_call_count(monitor),
          pilot_usage: usage,
          can_manage?: scope.membership.role == :owner
@@ -251,6 +253,41 @@ defmodule SilentRegression.MonitorOperations do
 
   def resume(%Scope{}, _monitor_id, _options), do: {:error, :owner_required}
 
+  def authorize_authentication_recovery(scope, monitor_id, options \\ [])
+
+  def authorize_authentication_recovery(
+        %Scope{
+          workspace: %Workspace{id: workspace_id},
+          membership: %Membership{role: :owner}
+        } = scope,
+        monitor_id,
+        options
+      ) do
+    with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id),
+         %Monitor{} = monitor <- load_monitor(workspace_id, monitor_id),
+         %MonitorVersion{} = version <- Repo.get(MonitorVersion, monitor.active_version_id),
+         %ProviderCredential{} = credential <- recovery_credential(monitor, version),
+         breaker <- authentication_breaker(monitor.id),
+         :ok <- ensure_recovery_precheck(scope, monitor, breaker),
+         {:ok, _validated} <-
+           ProviderCredentials.validate_credential(scope, credential.id, %{
+             model: version.requested_model
+           }) do
+      finalize_authentication_recovery(
+        scope,
+        monitor.id,
+        recovery_time(options)
+      )
+    else
+      :error -> {:error, :not_found}
+      nil -> {:error, :capture_not_ready}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def authorize_authentication_recovery(%Scope{}, _monitor_id, _options),
+    do: {:error, :owner_required}
+
   defp record_schedule_activation!(scope, %Monitor{cadence: cadence} = monitor, activation_kind)
        when cadence in [:daily, :weekly] do
     ProductAnalytics.record!(scope, "schedule.activated", monitor.id, %{
@@ -397,7 +434,7 @@ defmodule SilentRegression.MonitorOperations do
          {:ok, _snapshot} <- Baselines.current_compatible(scope, monitor.id),
          %MonitorVersion{} = version <- Repo.get(MonitorVersion, monitor.active_version_id),
          :ok <- ensure_credential(monitor, version),
-         false <- repeated_authentication_failures?(monitor.id),
+         false <- authentication_breaker(monitor.id).tripped?,
          :ok <- PilotPolicies.check_capacity(monitor.workspace_id, maximum_calls, at) do
       :ok
     else
@@ -427,31 +464,220 @@ defmodule SilentRegression.MonitorOperations do
     end
   end
 
-  defp repeated_authentication_failures?(monitor_id) do
-    limit = operations_config(:repeated_authentication_failure_limit)
+  defp ensure_recovery_precheck(scope, %Monitor{state: :paused} = monitor, %{tripped?: true}) do
+    with {:ok, _baseline} <- Baselines.current_compatible(scope, monitor.id),
+         false <- active_capture_run?(monitor.id) do
+      :ok
+    else
+      true -> {:error, :run_in_progress}
+      {:error, reason} -> {:error, reason}
+    end
+  end
 
-    runs =
+  defp ensure_recovery_precheck(_scope, %Monitor{}, _breaker),
+    do: {:error, :authentication_recovery_unavailable}
+
+  defp finalize_authentication_recovery(scope, monitor_id, at) do
+    with_locked_monitor(scope.workspace.id, monitor_id, fn monitor ->
+      breaker = authentication_breaker(monitor.id)
+
+      with :ok <- ensure_recovery_precheck(scope, monitor, breaker),
+           %MonitorVersion{} = version <- Repo.get(MonitorVersion, monitor.active_version_id),
+           %ProviderCredential{status: :valid} = credential <-
+             recovery_credential(monitor, version),
+           %ModelValidation{} = validation <-
+             ProviderCredentials.exact_model_validation(credential, version.requested_model),
+           true <- fresh_validation?(validation, breaker),
+           epoch <- next_recovery_epoch(monitor.id),
+           {:ok, run} <- plan_authentication_probe(scope, monitor, epoch),
+           {:ok, recovery} <-
+             %AuthenticationRecovery{}
+             |> AuthenticationRecovery.create_changeset(
+               monitor,
+               credential,
+               validation,
+               run,
+               scope.user,
+               epoch,
+               at
+             )
+             |> Repo.insert(),
+           {:ok, run} <- Captures.enqueue_run(scope, run.id) do
+        record_event!(
+          monitor,
+          scope.user.id,
+          "monitor.authentication_recovery_authorized",
+          at,
+          %{
+            "recovery_id" => recovery.id,
+            "epoch" => epoch,
+            "capture_run_id" => run.id,
+            "provider_credential_id" => credential.id,
+            "requested_model" => version.requested_model,
+            "maximum_call_count" => 1,
+            "retry_limit" => 0
+          }
+        )
+
+        %{recovery: recovery, run: run}
+      else
+        nil -> Repo.rollback(:capture_not_ready)
+        false -> Repo.rollback(:fresh_model_validation_required)
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp plan_authentication_probe(scope, monitor, epoch) do
+    Captures.plan_run(scope, monitor.id, %{
+      identity_key: "authentication_probe:#{monitor.id}:#{epoch}",
+      kind: :authentication_probe,
+      samples_per_case: 1,
+      retry_limit: 0,
+      maximum_call_count: 1
+    })
+  end
+
+  defp recovery_credential(monitor, version) do
+    case Repo.get(ProviderCredential, monitor.provider_credential_id) do
+      %ProviderCredential{workspace_id: workspace_id, provider: provider} = credential
+      when workspace_id == monitor.workspace_id and provider == version.provider ->
+        credential
+
+      _credential ->
+        nil
+    end
+  end
+
+  defp fresh_validation?(validation, %{tripped_at: %DateTime{} = tripped_at}) do
+    DateTime.after?(validation.validated_at, tripped_at)
+  end
+
+  defp fresh_validation?(_validation, _breaker), do: false
+
+  defp next_recovery_epoch(monitor_id) do
+    AuthenticationRecovery
+    |> where([recovery], recovery.monitor_id == ^monitor_id)
+    |> Repo.aggregate(:max, :epoch)
+    |> case do
+      nil -> 1
+      epoch -> epoch + 1
+    end
+  end
+
+  defp authentication_breaker(monitor_id) do
+    limit = operations_config(:repeated_authentication_failure_limit)
+    cutoff = latest_successful_recovery_at(monitor_id)
+
+    query =
       CaptureRun
       |> where(
         [run],
         run.monitor_id == ^monitor_id and run.kind in [:manual, :scheduled] and
           run.status in ^@terminal_run_statuses
       )
+
+    query =
+      if cutoff do
+        where(query, [run], run.completed_at > ^cutoff)
+      else
+        query
+      end
+
+    runs =
+      query
       |> order_by([run], desc: run.completed_at, desc: run.inserted_at, desc: run.id)
       |> limit(^limit)
-      |> select([run], run.id)
+      |> select([run], %{id: run.id, completed_at: run.completed_at})
       |> Repo.all()
 
-    length(runs) == limit and
-      Enum.all?(runs, fn run_id ->
-        CaptureObservation
-        |> where(
-          [observation],
-          observation.capture_run_id == ^run_id and
-            observation.failure_category in [:authentication, :authorization]
-        )
-        |> Repo.exists?()
-      end)
+    tripped? =
+      length(runs) == limit and Enum.all?(runs, &authentication_failure_run?(&1.id))
+
+    %{
+      tripped?: tripped?,
+      tripped_at: if(tripped?, do: hd(runs).completed_at, else: nil),
+      successful_recovery_at: cutoff
+    }
+  end
+
+  defp authentication_failure_run?(run_id) do
+    CaptureObservation
+    |> where(
+      [observation],
+      observation.capture_run_id == ^run_id and
+        observation.failure_category in [:authentication, :authorization]
+    )
+    |> Repo.exists?()
+  end
+
+  defp latest_successful_recovery_at(monitor_id) do
+    AuthenticationRecovery
+    |> join(:inner, [recovery], run in CaptureRun, on: run.id == recovery.capture_run_id)
+    |> where(
+      [recovery, run],
+      recovery.monitor_id == ^monitor_id and run.status == :succeeded
+    )
+    |> order_by([_recovery, run], desc: run.completed_at, desc: run.id)
+    |> limit(1)
+    |> select([_recovery, run], run.completed_at)
+    |> Repo.one()
+  end
+
+  defp authentication_recovery_state(monitor) do
+    breaker = authentication_breaker(monitor.id)
+    latest = latest_authentication_recovery(monitor.id)
+    status = authentication_recovery_status(monitor, breaker, latest)
+
+    %{
+      required?: breaker.tripped?,
+      status: status,
+      tripped_at: breaker.tripped_at,
+      epoch: latest && latest.epoch,
+      authorized_at: latest && latest.authorized_at,
+      credential_validated_at: latest && latest.credential_validated_at,
+      capture_run_id: latest && latest.capture_run_id,
+      probe_status: latest && latest.capture_run.status,
+      failure_category: recovery_failure_category(latest),
+      validation_call_count: if(status, do: 1, else: 0),
+      maximum_call_count: if(status, do: 1, else: 0),
+      retry_limit: 0
+    }
+  end
+
+  defp latest_authentication_recovery(monitor_id) do
+    AuthenticationRecovery
+    |> where([recovery], recovery.monitor_id == ^monitor_id)
+    |> order_by([recovery], desc: recovery.epoch)
+    |> limit(1)
+    |> preload(capture_run: :observations)
+    |> Repo.one()
+  end
+
+  defp authentication_recovery_status(_monitor, %{tripped?: true, tripped_at: tripped_at}, latest) do
+    cond do
+      is_nil(latest) -> :ready
+      not DateTime.after?(latest.credential_validated_at, tripped_at) -> :ready
+      latest.capture_run.status in @active_run_statuses -> :in_progress
+      latest.capture_run.status == :succeeded -> :succeeded
+      true -> :failed
+    end
+  end
+
+  defp authentication_recovery_status(
+         %Monitor{state: :paused, pause_reason: :repeated_authentication_failures},
+         _breaker,
+         %AuthenticationRecovery{capture_run: %CaptureRun{status: :succeeded}}
+       ),
+       do: :succeeded
+
+  defp authentication_recovery_status(_monitor, _breaker, _latest), do: nil
+
+  defp recovery_failure_category(nil), do: nil
+
+  defp recovery_failure_category(%AuthenticationRecovery{capture_run: run}) do
+    run.observations
+    |> Enum.find_value(& &1.failure_category)
   end
 
   defp schedule_scope(%Monitor{schedule_updated_by_user_id: nil}),
@@ -656,6 +882,10 @@ defmodule SilentRegression.MonitorOperations do
     options
     |> Keyword.get(:at, DateTime.utc_now())
     |> DateTime.truncate(:second)
+  end
+
+  defp recovery_time(options) do
+    Keyword.get(options, :at, DateTime.utc_now())
   end
 
   defp state_time(at), do: DateTime.truncate(at, :second)

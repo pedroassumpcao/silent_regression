@@ -9,9 +9,10 @@ defmodule SilentRegression.MonitorOperationsTest do
   alias SilentRegression.Accounts.Scope
   alias SilentRegression.Audit
   alias SilentRegression.Captures
-  alias SilentRegression.Captures.{CaptureRun, ProviderAttempt}
+  alias SilentRegression.Captures.{CaptureObservation, CaptureRun, ProviderAttempt}
   alias SilentRegression.Captures.Workers.ObservationWorker
   alias SilentRegression.MonitorOperations
+  alias SilentRegression.MonitorOperations.AuthenticationRecovery
   alias SilentRegression.MonitorOperations.Workers.DispatcherWorker
   alias SilentRegression.Monitors
   alias SilentRegression.Monitors.Monitor
@@ -315,8 +316,240 @@ defmodule SilentRegression.MonitorOperationsTest do
     end
   end
 
+  describe "authentication breaker recovery" do
+    test "validates exact access, runs one probe, and preserves evidence across resume and retrip",
+         %{
+           fixture: fixture,
+           scope: scope
+         } do
+      trip_authentication_breaker(scope, fixture)
+      initial_failure_run_ids = authentication_failure_run_ids(fixture.monitor.id)
+
+      assert length(initial_failure_run_ids) == 2
+      replace_secret(fixture.credential.id, "sk-test-recovery-valid")
+
+      assert {:ok, %{recovery: recovery, run: probe}} =
+               MonitorOperations.authorize_authentication_recovery(scope, fixture.monitor.id)
+
+      assert recovery.epoch == 1
+      assert recovery.provider_credential_id == fixture.credential.id
+      assert recovery.requested_model == fixture.version.requested_model
+      assert recovery.validation_request_id == "fake_openai_validation_request"
+
+      assert DateTime.after?(
+               recovery.credential_validated_at,
+               breaker_tripped_at(fixture.monitor.id)
+             )
+
+      assert probe.kind == :authentication_probe
+      assert probe.samples_per_case == 1
+      assert probe.retry_limit == 0
+      assert probe.planned_call_count == 1
+      assert probe.maximum_call_count == 1
+      assert probe.baseline_snapshot_id == fixture.baseline.id
+
+      assert Repo.aggregate(
+               from(observation in CaptureObservation,
+                 where: observation.capture_run_id == ^probe.id
+               ),
+               :count
+             ) == 1
+
+      assert Repo.get!(Monitor, fixture.monitor.id).state == :paused
+      assert [job] = jobs_for_run(probe.id)
+      assert :ok = perform_job(ObservationWorker, job.args)
+      assert {:ok, %{status: :succeeded}} = Captures.get_run(scope, probe.id)
+
+      assert Repo.aggregate(
+               from(attempt in ProviderAttempt, where: attempt.capture_run_id == ^probe.id),
+               :count
+             ) == 1
+
+      assert {:ok, state} = MonitorOperations.get_state(scope, fixture.monitor.id)
+      refute state.authentication_recovery.required?
+      assert state.authentication_recovery.status == :succeeded
+      assert state.authentication_recovery.capture_run_id == probe.id
+      assert state.authentication_recovery.validation_call_count == 1
+      assert state.authentication_recovery.maximum_call_count == 1
+      assert state.last_run.id in initial_failure_run_ids
+
+      assert {:ok, resumed} = MonitorOperations.resume(scope, fixture.monitor.id)
+      assert resumed.state == :active
+      assert resumed.pause_reason == nil
+
+      replace_secret(fixture.credential.id, "sk-test-authentication-error")
+
+      for _attempt <- 1..2 do
+        assert {:ok, run} = MonitorOperations.run_now(scope, fixture.monitor.id)
+        assert [job] = jobs_for_run(run.id)
+        assert :ok = perform_job(ObservationWorker, job.args)
+      end
+
+      assert {:ok, %{paused: 1}} = MonitorOperations.sweep_ineligible()
+      assert {:ok, retripped} = MonitorOperations.get_state(scope, fixture.monitor.id)
+      assert retripped.authentication_recovery.required?
+      assert retripped.authentication_recovery.status == :ready
+      assert retripped.authentication_recovery.epoch == 1
+
+      assert Repo.aggregate(
+               from(run in CaptureRun,
+                 where:
+                   run.monitor_id == ^fixture.monitor.id and
+                     run.id in ^initial_failure_run_ids
+               ),
+               :count
+             ) == 2
+
+      assert Repo.aggregate(
+               from(recovery in AuthenticationRecovery,
+                 where: recovery.monitor_id == ^fixture.monitor.id
+               ),
+               :count
+             ) == 1
+    end
+
+    test "a failed one-call probe stays paused and a new epoch can retry", %{
+      fixture: fixture,
+      scope: scope
+    } do
+      trip_authentication_breaker(scope, fixture)
+      replace_secret(fixture.credential.id, "sk-test-probe-completion-authentication-error")
+
+      assert {:ok, %{recovery: first, run: first_probe}} =
+               MonitorOperations.authorize_authentication_recovery(scope, fixture.monitor.id)
+
+      assert first.epoch == 1
+      assert [job] = jobs_for_run(first_probe.id)
+      assert :ok = perform_job(ObservationWorker, job.args)
+      assert {:ok, %{status: :failed}} = Captures.get_run(scope, first_probe.id)
+
+      assert Repo.aggregate(
+               from(attempt in ProviderAttempt, where: attempt.capture_run_id == ^first_probe.id),
+               :count
+             ) == 1
+
+      assert {:ok, failed_state} = MonitorOperations.get_state(scope, fixture.monitor.id)
+      assert failed_state.authentication_recovery.required?
+      assert failed_state.authentication_recovery.status == :failed
+      assert failed_state.authentication_recovery.failure_category == :authentication
+
+      assert {:error, :repeated_authentication_failures} =
+               MonitorOperations.resume(scope, fixture.monitor.id)
+
+      replace_secret(fixture.credential.id, "sk-test-recovery-valid")
+
+      assert {:ok, %{recovery: second, run: second_probe}} =
+               MonitorOperations.authorize_authentication_recovery(scope, fixture.monitor.id)
+
+      assert second.epoch == 2
+      assert second.capture_run_id != first.capture_run_id
+      assert [job] = jobs_for_run(second_probe.id)
+      assert :ok = perform_job(ObservationWorker, job.args)
+
+      assert {:ok, recovered_state} = MonitorOperations.get_state(scope, fixture.monitor.id)
+      refute recovered_state.authentication_recovery.required?
+      assert recovered_state.authentication_recovery.status == :succeeded
+
+      assert Repo.aggregate(
+               from(recovery in AuthenticationRecovery,
+                 where: recovery.monitor_id == ^fixture.monitor.id
+               ),
+               :count
+             ) == 2
+    end
+
+    test "only an owner can authorize recovery and unavailable recovery does not revalidate", %{
+      fixture: fixture,
+      scope: owner_scope
+    } do
+      before_validation =
+        ProviderCredentials.exact_model_validation(
+          Repo.get!(ProviderCredential, fixture.credential.id),
+          fixture.version.requested_model
+        )
+
+      assert {:error, :authentication_recovery_unavailable} =
+               MonitorOperations.authorize_authentication_recovery(
+                 owner_scope,
+                 fixture.monitor.id
+               )
+
+      after_validation =
+        ProviderCredentials.exact_model_validation(
+          Repo.get!(ProviderCredential, fixture.credential.id),
+          fixture.version.requested_model
+        )
+
+      assert after_validation.validated_at == before_validation.validated_at
+
+      trip_authentication_breaker(owner_scope, fixture)
+      member = invite_and_accept_member(owner_scope)
+      member_scope = Scope.for_workspace(member.user, member.workspace, member.membership)
+
+      assert {:error, :owner_required} =
+               MonitorOperations.authorize_authentication_recovery(
+                 member_scope,
+                 fixture.monitor.id
+               )
+
+      refute Repo.exists?(
+               from(recovery in AuthenticationRecovery,
+                 where: recovery.monitor_id == ^fixture.monitor.id
+               )
+             )
+    end
+  end
+
   defp jobs_for_run(run_id) do
     all_enqueued(worker: ObservationWorker)
     |> Enum.filter(&(&1.args["capture_run_id"] == run_id))
+  end
+
+  defp trip_authentication_breaker(scope, fixture) do
+    assert {:ok, _monitor} =
+             MonitorOperations.configure(scope, fixture.monitor.id, %{cadence: :manual})
+
+    replace_secret(fixture.credential.id, "sk-test-authentication-error")
+
+    for _attempt <- 1..2 do
+      assert {:ok, run} = MonitorOperations.run_now(scope, fixture.monitor.id)
+      assert [job] = jobs_for_run(run.id)
+      assert :ok = perform_job(ObservationWorker, job.args)
+      assert {:ok, %{status: :failed}} = Captures.get_run(scope, run.id)
+    end
+
+    assert {:ok, %{paused: 1}} = MonitorOperations.sweep_ineligible()
+
+    assert Repo.get!(Monitor, fixture.monitor.id).pause_reason ==
+             :repeated_authentication_failures
+  end
+
+  defp replace_secret(credential_id, secret) do
+    ProviderCredential
+    |> Repo.get!(credential_id)
+    |> Ecto.Changeset.change(secret: secret)
+    |> Repo.update!()
+  end
+
+  defp authentication_failure_run_ids(monitor_id) do
+    CaptureRun
+    |> where(
+      [run],
+      run.monitor_id == ^monitor_id and run.kind == :manual and run.status == :failed
+    )
+    |> select([run], run.id)
+    |> Repo.all()
+  end
+
+  defp breaker_tripped_at(monitor_id) do
+    CaptureRun
+    |> where(
+      [run],
+      run.monitor_id == ^monitor_id and run.kind == :manual and run.status == :failed
+    )
+    |> order_by([run], desc: run.completed_at)
+    |> select([run], run.completed_at)
+    |> limit(1)
+    |> Repo.one!()
   end
 end

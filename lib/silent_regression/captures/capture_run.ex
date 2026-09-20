@@ -18,7 +18,7 @@ defmodule SilentRegression.Captures.CaptureRun do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
-  @kinds [:baseline, :manual, :scheduled]
+  @kinds [:baseline, :manual, :scheduled, :authentication_probe]
   @statuses [
     :planned,
     :queued,

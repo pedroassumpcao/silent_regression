@@ -143,6 +143,13 @@ defmodule SilentRegression.ProviderCredentials do
 
   def model_access_verified?(%ProviderCredential{} = credential, model)
       when is_binary(model) do
+    match?(%ModelValidation{}, exact_model_validation(credential, model))
+  end
+
+  def model_access_verified?(_credential, _model), do: false
+
+  def exact_model_validation(%ProviderCredential{} = credential, model)
+      when is_binary(model) do
     ModelValidation
     |> where(
       [validation],
@@ -151,10 +158,10 @@ defmodule SilentRegression.ProviderCredentials do
         validation.requested_model == ^model and validation.returned_model == ^model and
         validation.status == :succeeded
     )
-    |> Repo.exists?()
+    |> Repo.one()
   end
 
-  def model_access_verified?(_credential, _model), do: false
+  def exact_model_validation(_credential, _model), do: nil
 
   def verified_models(%ProviderCredential{} = credential) do
     ModelValidation
@@ -692,9 +699,10 @@ defmodule SilentRegression.ProviderCredentials do
     Repo.transaction(fn ->
       with %ProviderCredential{} = credential <- lock_credential(workspace_id, credential_id),
            :ok <- ensure_active(credential),
-           at <- DateTime.utc_now(:second),
-           {:ok, credential} <- update_validation(credential, result, at),
-           :ok <- upsert_model_validation(credential, user, result, at) do
+           validated_at <- DateTime.utc_now(),
+           {:ok, credential} <-
+             update_validation(credential, result, DateTime.truncate(validated_at, :second)),
+           :ok <- upsert_model_validation(credential, user, result, validated_at) do
         record_validation_event!(credential, user.id, result)
         to_safe_metadata(credential)
       else

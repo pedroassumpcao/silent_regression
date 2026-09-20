@@ -59,6 +59,21 @@ defmodule SilentRegression.Providers.FakeAnthropic do
      }}
   end
 
+  defp fake_completion(
+         _provider,
+         "sk-test-probe-completion-authentication-error",
+         request
+       ) do
+    {:error,
+     %Failure{
+       category: :authentication,
+       message: "The fake adapter rejected the completion after validation.",
+       requested_model: request.requested_model,
+       attempts: 1,
+       latency_ms: 1
+     }}
+  end
+
   defp fake_completion(provider, secret, request) do
     request_text = Jason.encode!(request.request_artifact)
 

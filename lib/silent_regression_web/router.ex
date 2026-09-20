@@ -95,6 +95,11 @@ defmodule SilentRegressionWeb.Router do
     post "/monitors/:monitor_id/operations/run-now", MonitorOperationsController, :run_now
     post "/monitors/:monitor_id/operations/pause", MonitorOperationsController, :pause
     post "/monitors/:monitor_id/operations/resume", MonitorOperationsController, :resume
+
+    post "/monitors/:monitor_id/operations/authentication-recovery",
+         MonitorOperationsController,
+         :authorize_authentication_recovery
+
     get "/monitors/:monitor_id/results", RunResultController, :index
     get "/monitors/:monitor_id/runs/:run_id", RunResultController, :show
     get "/monitors/:monitor_id/runs/:run_id/diagnostic", RunResultController, :diagnostic

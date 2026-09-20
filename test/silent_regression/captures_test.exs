@@ -91,6 +91,42 @@ defmodule SilentRegression.CapturesTest do
 
       assert first.status == :planned
     end
+
+    test "authentication probes ignore wider caller limits and cannot execute without recovery evidence",
+         %{
+           scope: scope
+         } do
+      fixture =
+        baseline_ready_monitor_fixture(scope, %{
+          cases: [successful_case(), case_with_label_expectation("approved")]
+        })
+
+      assert {:ok, run} =
+               Captures.plan_run(scope, fixture.monitor.id, %{
+                 identity_key: "unauthorized-authentication-probe",
+                 kind: :authentication_probe,
+                 samples_per_case: 5,
+                 retry_limit: 5,
+                 maximum_call_count: 50
+               })
+
+      assert run.kind == :authentication_probe
+      assert run.samples_per_case == 1
+      assert run.retry_limit == 0
+      assert run.planned_call_count == 1
+      assert run.maximum_call_count == 1
+      assert length(run.observations) == 1
+
+      assert {:ok, _queued} = Captures.enqueue_run(scope, run.id)
+      assert :ok = perform_job(ObservationWorker, worker_args(run))
+      assert {:ok, cancelled} = Captures.get_run(scope, run.id)
+      assert cancelled.status == :cancelled
+
+      assert Repo.aggregate(
+               from(attempt in ProviderAttempt, where: attempt.capture_run_id == ^run.id),
+               :count
+             ) == 0
+    end
   end
 
   describe "enqueue_run/2" do

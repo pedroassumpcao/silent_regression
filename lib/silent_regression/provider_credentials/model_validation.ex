@@ -35,7 +35,7 @@ defmodule SilentRegression.ProviderCredentials.ModelValidation do
     field :failure_category, Ecto.Enum, values: @failure_categories
     field :provider_request_id, :string
     field :attempts, :integer
-    field :validated_at, :utc_datetime
+    field :validated_at, :utc_datetime_usec
 
     belongs_to :workspace, Workspace
     belongs_to :provider_credential, ProviderCredential

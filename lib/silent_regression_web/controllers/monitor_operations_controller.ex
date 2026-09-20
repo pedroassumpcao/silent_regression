@@ -2,6 +2,7 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
   use SilentRegressionWeb, :controller
 
   alias SilentRegression.MonitorOperations
+  alias SilentRegression.Providers.Failure
   alias SilentRegressionWeb.RateLimit
 
   def show(conn, %{"monitor_id" => monitor_id}) do
@@ -92,6 +93,33 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
     end
   end
 
+  def authorize_authentication_recovery(conn, %{"monitor_id" => monitor_id}) do
+    case RateLimit.check(conn, :run_authorization, rate_subject(conn, monitor_id)) do
+      :ok ->
+        case MonitorOperations.authorize_authentication_recovery(
+               conn.assigns.current_scope,
+               monitor_id
+             ) do
+          {:ok, _result} ->
+            conn
+            |> put_flash(
+              :info,
+              "Credential access was verified and the one-call recovery probe was queued."
+            )
+            |> redirect(to: operations_path(conn, monitor_id))
+
+          {:error, %Failure{} = failure} ->
+            operation_failed(conn, monitor_id, failure.message)
+
+          {:error, reason} ->
+            handle_operation_error(conn, monitor_id, reason)
+        end
+
+      {:error, state} ->
+        RateLimit.reject(conn, state)
+    end
+  end
+
   defp render_operations(conn, state) do
     monitor = state.monitor
     version = monitor.active_version
@@ -101,6 +129,7 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
     |> assign(:page_title, "Monitor operations · #{monitor.name}")
     |> render_inertia("Monitors/Operations", %{
       approved_baseline: state.approved_baseline?,
+      authentication_recovery: authentication_recovery_prop(state.authentication_recovery),
       can_manage: state.can_manage?,
       last_run: run_prop(state.last_run),
       monitor: %{
@@ -148,6 +177,23 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
       started_at: run.started_at,
       completed_at: run.completed_at,
       inserted_at: run.inserted_at
+    }
+  end
+
+  defp authentication_recovery_prop(recovery) do
+    %{
+      required: recovery.required?,
+      status: recovery.status,
+      tripped_at: recovery.tripped_at,
+      epoch: recovery.epoch,
+      authorized_at: recovery.authorized_at,
+      credential_validated_at: recovery.credential_validated_at,
+      capture_run_id: recovery.capture_run_id,
+      probe_status: recovery.probe_status,
+      failure_category: recovery.failure_category,
+      validation_call_count: recovery.validation_call_count,
+      maximum_call_count: recovery.maximum_call_count,
+      retry_limit: recovery.retry_limit
     }
   end
 
@@ -216,6 +262,22 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
       conn,
       monitor_id,
       "Repeated provider authentication failures must be resolved first."
+    )
+  end
+
+  defp handle_operation_error(conn, monitor_id, :authentication_recovery_unavailable) do
+    operation_failed(
+      conn,
+      monitor_id,
+      "Authentication recovery is available only while this breaker is open and the monitor is paused."
+    )
+  end
+
+  defp handle_operation_error(conn, monitor_id, :fresh_model_validation_required) do
+    operation_failed(
+      conn,
+      monitor_id,
+      "Fresh exact-model credential validation is required after the latest breaker trip."
     )
   end
 

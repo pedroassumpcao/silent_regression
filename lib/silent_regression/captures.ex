@@ -22,6 +22,7 @@ defmodule SilentRegression.Captures do
 
   alias SilentRegression.Captures.Workers.ObservationWorker
   alias SilentRegression.ContractAuthoring.ContractVersion
+  alias SilentRegression.MonitorOperations.AuthenticationRecovery
   alias SilentRegression.Monitors.{CaseVersion, Monitor, MonitorVersion}
   alias SilentRegression.PilotPolicies
   alias SilentRegression.ProviderCredentials.ProviderCredential
@@ -48,6 +49,7 @@ defmodule SilentRegression.Captures do
         with {:ok, resources} <- planning_resources(workspace_id, monitor_id),
              {:ok, plan} <- normalize_plan(attrs, length(resources.cases)),
              resources <- attach_baseline_snapshot(scope, monitor_id, resources, plan),
+             resources <- select_plan_cases(resources, plan),
              {:ok, run} <- find_or_insert_run(resources, user, plan) do
           Repo.preload(run,
             observations:
@@ -220,8 +222,27 @@ defmodule SilentRegression.Captures do
 
   defp normalize_plan(attrs, case_count) when case_count > 0 do
     with {:ok, identity_key} <- identity_key(value(attrs, :identity_key)),
-         {:ok, kind} <- run_kind(value(attrs, :kind)),
-         {:ok, samples_per_case} <-
+         {:ok, kind} <- run_kind(value(attrs, :kind)) do
+      normalize_plan(kind, identity_key, attrs, case_count)
+    end
+  end
+
+  defp normalize_plan(_attrs, _case_count), do: {:error, :capture_not_ready}
+
+  defp normalize_plan(:authentication_probe, identity_key, _attrs, _case_count) do
+    {:ok,
+     %{
+       identity_key: identity_key,
+       kind: :authentication_probe,
+       samples_per_case: 1,
+       retry_limit: 0,
+       planned_call_count: 1,
+       maximum_call_count: 1
+     }}
+  end
+
+  defp normalize_plan(kind, identity_key, attrs, case_count) do
+    with {:ok, samples_per_case} <-
            bounded_integer(
              value(attrs, :samples_per_case, 1),
              1,
@@ -251,7 +272,15 @@ defmodule SilentRegression.Captures do
     end
   end
 
-  defp normalize_plan(_attrs, _case_count), do: {:error, :capture_not_ready}
+  defp select_plan_cases(resources, %{kind: :authentication_probe}) do
+    Map.update!(resources, :cases, fn cases ->
+      cases
+      |> Enum.sort_by(&{&1.position, &1.id})
+      |> Enum.take(1)
+    end)
+  end
+
+  defp select_plan_cases(resources, _plan), do: resources
 
   defp find_or_insert_run(resources, user, plan) do
     case run_by_identity(resources.workspace_id, plan.identity_key, lock: true) do
@@ -358,7 +387,7 @@ defmodule SilentRegression.Captures do
   end
 
   defp attach_baseline_snapshot(scope, monitor_id, resources, %{kind: kind})
-       when kind in [:manual, :scheduled] do
+       when kind in [:manual, :scheduled, :authentication_probe] do
     baseline_snapshot =
       case Baselines.current_compatible(scope, monitor_id) do
         {:ok, snapshot} -> snapshot
@@ -400,6 +429,10 @@ defmodule SilentRegression.Captures do
         cancel_ineligible_run!(run)
         :done
 
+      run.kind == :authentication_probe and not authentication_probe_allowed?(run) ->
+        cancel_ineligible_run!(run)
+        :done
+
       started_attempt = started_attempt(observation.id) ->
         handle_started_attempt!(run, observation, started_attempt)
 
@@ -437,6 +470,42 @@ defmodule SilentRegression.Captures do
         :active -> Baselines.capture_run_compatible?(run)
         _state -> false
       end
+  end
+
+  defp authentication_probe_allowed?(run) do
+    recovery_exists? =
+      AuthenticationRecovery
+      |> where(
+        [recovery],
+        recovery.workspace_id == ^run.workspace_id and recovery.monitor_id == ^run.monitor_id and
+          recovery.provider_credential_id == ^run.provider_credential_id and
+          recovery.capture_run_id == ^run.id
+      )
+      |> Repo.exists?()
+
+    monitor_paused? =
+      Monitor
+      |> where(
+        [monitor],
+        monitor.id == ^run.monitor_id and monitor.workspace_id == ^run.workspace_id and
+          monitor.active_version_id == ^run.monitor_version_id and
+          monitor.provider_credential_id == ^run.provider_credential_id and
+          monitor.state == :paused
+      )
+      |> Repo.exists?()
+
+    credential_valid? =
+      ProviderCredential
+      |> where(
+        [credential],
+        credential.id == ^run.provider_credential_id and
+          credential.workspace_id == ^run.workspace_id and credential.provider == ^run.provider and
+          credential.status == :valid
+      )
+      |> Repo.exists?()
+
+    recovery_exists? and monitor_paused? and credential_valid? and
+      Baselines.capture_run_compatible?(run)
   end
 
   defp cancel_ineligible_run!(run) do
@@ -1125,6 +1194,10 @@ defmodule SilentRegression.Captures do
   defp run_kind(value) when value in [:baseline, "baseline"], do: {:ok, :baseline}
   defp run_kind(value) when value in [:manual, "manual"], do: {:ok, :manual}
   defp run_kind(value) when value in [:scheduled, "scheduled"], do: {:ok, :scheduled}
+
+  defp run_kind(value) when value in [:authentication_probe, "authentication_probe"],
+    do: {:ok, :authentication_probe}
+
   defp run_kind(_value), do: {:error, :invalid_run_kind}
 
   defp bounded_integer(value, minimum, maximum)
