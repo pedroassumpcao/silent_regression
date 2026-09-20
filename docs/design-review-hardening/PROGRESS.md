@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate B — Recoverable monitoring
-- Current task: Task 19 — credential successor rebinding (in progress)
+- Current task: Task 20 — authentication breaker recovery (not started)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -16,7 +16,7 @@
 | 16 | Provider-native request artifacts | Complete |
 | 17 | Case-specific expectations | Complete |
 | 18 | Contract proof coverage, severity, and bounded rescore | Complete |
-| 19 | Credential successor rebinding | In progress |
+| 19 | Credential successor rebinding | Complete (`b5ae9f5`, `eaf97fd`) |
 | 20 | Authentication breaker recovery | Not started |
 | 21 | Temporary capacity and coverage state | Not started |
 | 22 | Successor workflow configuration | Not started |
@@ -150,12 +150,12 @@ recovery. Task 18 and Gate A are complete.
 - [x] Define staged successor activation, durable per-model validation, atomic impact locking,
   in-flight-work blockers, historical provenance preservation, and conservative reference
   invalidation.
-- [ ] Add the per-model validation schema/backfill and route readiness through it.
-- [ ] Implement staged rotation and transactional successor activation.
-- [ ] Expose impact and recovery guidance through authenticated workspace product flows.
-- [ ] Prove rotation, multi-model validation, rebinding, replacement reference capture, schedule
+- [x] Add the per-model validation schema/backfill and route readiness through it.
+- [x] Implement staged rotation and transactional successor activation.
+- [x] Expose impact and recovery guidance through authenticated workspace product flows.
+- [x] Prove rotation, multi-model validation, rebinding, replacement reference capture, schedule
   activation, and bounded fake-provider execution.
-- [ ] Run migration audits and all verification gates; record focused commits.
+- [x] Run migration audits and all verification gates; record focused commits.
 
 Decisions:
 
@@ -167,3 +167,22 @@ Decisions:
   old reference captured with different secret material.
 - Pending captures block activation; Task 19 will not silently cancel already-authorized work.
 - Existing already-superseded rotation lineages remain eligible for recovery without a data reset.
+- Neither side of a staged rotation is offered to new monitor setup before activation. Revoking an
+  unactivated successor releases the predecessor so an owner can retry with a fresh identity.
+
+Local implementation commits:
+
+- `640cb8a` — Task 19 research decisions and execution plan
+- `b5ae9f5` — per-model proof, staged rotation, atomic activation, compatibility, and lifecycle tests
+- `eaf97fd` — affected-monitor review, activation confirmation, and reference-recovery guidance
+
+The additive migration audit found all 4 existing credential model summaries represented by 4
+per-model rows, including 3 exact successful proofs. All 7 reviewed references and 11 capture runs
+retain a credential identity, and there are zero duplicate live successors. No data wipe was needed.
+
+Verification passed on 2026-09-20 (America/Chicago): `mix precommit` with 633 Elixir tests, 51
+frontend tests with TypeScript checking, and `mix assets.build`. Focused lifecycle coverage proves
+multi-model validation, no-call blocking for active runs and pending reference decisions, atomic
+future-only rebinding, historical provenance retention, replacement-reference approval, schedule
+reactivation, one-attempt bounded execution, staged-setup exclusion, revoked-successor retry, and
+legacy-lineage recovery. Task 19 is complete; Task 20 is next.

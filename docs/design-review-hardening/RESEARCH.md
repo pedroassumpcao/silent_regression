@@ -242,7 +242,7 @@ data provides valuable migration and compatibility coverage.
 | --- | --- | --- |
 | Request fidelity | Add request mode/schema and provider-native template data to `MonitorVersion`; exact fields finalized in Task 16 | Backfill existing versions as `legacy_wrapped_v1`; freeze their current fingerprints and behavior |
 | Case expectations | Add versioned expectation data/schema identity to `CaseVersion`, and expectation provenance to evaluations/results if needed | Existing cases mean `no_case_expectation`; no inferred answers |
-| Credential replacement | Existing credential and monitor references may be sufficient; an explicit replacement audit/link may be added | Update only future execution reference in a transaction; keep historical IDs |
+| Credential replacement | Add durable per-credential/model validation proof; retain credential lineage and the existing monitor reference | Backfill exact legacy model checks, atomically update only future monitor references, and keep historical IDs |
 | Auth recovery | Add a breaker epoch/reset event or equivalent durable state | Existing failure history remains evidence; only the evaluation window changes |
 | Capacity coverage | Add explicit waiting/retry/coverage state or events if current monitor fields cannot represent it cleanly | Backfill active/paused monitors conservatively from current state |
 | Successor configuration | Existing immutable versions are reusable; add draft/origin/motivation linkage where required | Copy active version and cases into a draft, then activate atomically |

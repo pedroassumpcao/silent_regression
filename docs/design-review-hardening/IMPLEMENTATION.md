@@ -90,6 +90,10 @@ complete.
 6. Add context, controller, frontend, migration/backfill, concurrency/blocker, and full fake-provider
    lifecycle tests. Run frontend checks, `mix precommit`, and the production asset build.
 
+Completion: implemented in `b5ae9f5` and `eaf97fd`; all verification gates passed. Staged
+successors are unavailable to new monitor setup until activation, and revoking an unactivated
+successor releases the predecessor for a safe retry.
+
 ### Task 20: authentication breaker recovery
 
 - Persist a recovery epoch/event.

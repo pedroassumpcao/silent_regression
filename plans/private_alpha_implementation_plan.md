@@ -1,10 +1,10 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–18 complete; Task 19 is in progress; Gate A is complete and Gates B–D block the first design-partner pilot
+> **Status:** Tasks 1–19 complete; Task 20 is next; Gate A is complete and Gates B–D block the first design-partner pilot
 >
-> **Progress:** 18 of 27 tasks complete; Task 19 is in progress
+> **Progress:** 19 of 27 tasks complete; Task 20 is not started
 >
-> **Last revised:** 2026-09-19
+> **Last revised:** 2026-09-20
 >
 > **Release target:** Invite-only design-partner alpha
 >
@@ -999,7 +999,7 @@ already supported by the engine.
 
 ### Task 19 — Credential successor rebinding
 
-**Status:** In progress
+**Status:** Complete
 
 **Gate:** B — Recoverable monitoring
 
@@ -1007,12 +1007,12 @@ already supported by the engine.
 
 **Checklist:**
 
-- [ ] Show monitors affected by a superseded credential.
-- [ ] Validate the successor against each affected monitor's requested provider/model requirements.
-- [ ] Add an owner-authorized, transactional future-reference replacement operation.
-- [ ] Preserve historical credential IDs and audit the replacement relationship.
-- [ ] Apply the conservative reviewed-reference compatibility policy and show any replacement need.
-- [ ] Test rotation through validation, rebinding, resume, and bounded fake-provider execution.
+- [x] Show monitors affected by a superseded credential.
+- [x] Validate the successor against each affected monitor's requested provider/model requirements.
+- [x] Add an owner-authorized, transactional future-reference replacement operation.
+- [x] Preserve historical credential IDs and audit the replacement relationship.
+- [x] Apply the conservative reviewed-reference compatibility policy and show any replacement need.
+- [x] Test rotation through validation, rebinding, resume, and bounded fake-provider execution.
 
 **Implementation decision:** Rotation is a staged successor operation. Creating the successor keeps
 the predecessor usable; exact model checks are persisted per credential/model; owner activation
@@ -1020,7 +1020,8 @@ validates every affected active/draft model and atomically moves only future mon
 Credential identity conservatively invalidates the reviewed reference, so active monitors pause for
 a replacement reference and ordinary schedule activation. In-progress runs or pending reference
 captures block cutover. Historical run/reference credential IDs and legacy rotation lineages remain
-unchanged and recoverable.
+unchanged and recoverable. New monitor setup cannot select either side while replacement is pending;
+revoking an unactivated successor releases the predecessor for a fresh replacement attempt.
 
 ### Task 20 — Authentication-breaker recovery
 
@@ -1276,6 +1277,7 @@ The product is ready for the first external design partner only when:
 | 2026-09-16 | Approve the closed-alpha retention, notification, key rotation, and usage boundaries | Local email until deployment, Resend in production, 30-day closed retention and backup expiry, seven-day deletion SLA, versioned Cloak keys, and 20-run/200-call daily workspace caps define a controlled pilot without adding general SaaS machinery | 14 |
 | 2026-09-19 | Accept the Sol/Astra review recommendations and require Gates A–D before the first pilot | Request fidelity, case correctness, ordinary recovery, alert recurrence, product truth, reproducibility, and hosted controls are core to the narrow promise; semantic judges, billing, and broader scope remain deferred | 15–27 |
 | 2026-09-19 | Preserve local history through additive migrations | Existing runs, references, alerts, and reviews are useful compatibility evidence; legacy request behavior must be frozen and labeled rather than silently transformed | 16–23 |
+| 2026-09-20 | Stage credential successors and activate future references atomically | Per-model access proof, explicit impact review, in-flight work blockers, conservative reference replacement, and retryable staged identities restore monitoring without rewriting historical runs or references | 19 |
 
 ## 16. Session log
 
@@ -2013,6 +2015,33 @@ The product is ready for the first external design partner only when:
   625 Elixir tests, 50 frontend tests, TypeScript checking, and `mix assets.build`.
 - Focused commits: `fd2194d`, `67e20fb`, and `9d1cda5`. Task 18 and Gate A are complete; Task 19 is
   next.
+
+### 2026-09-20 — Task 19 complete
+
+- Changed credential rotation into staged replacement: the predecessor stays usable until an owner
+  reviews impact and activates a successor that passes every distinct active/draft model check.
+- Added durable per-credential/model validation proof and backfilled all four existing validation
+  summaries. Readiness no longer treats one last successful model check as proof for every monitor.
+- Added owner-only activation under the authenticated workspace route. It performs only
+  non-generative metadata checks, locks both credential identities and affected monitors, rejects
+  active runs or pending reference decisions, rechecks impact, and atomically changes only future
+  monitor references.
+- Kept reviewed references conservative: credential identity is now an explicit compatibility
+  field, active monitors pause as incompatible after cutover, and the existing baseline plus
+  schedule flows restore service. Historical reference and run credential IDs remain unchanged.
+- Added affected-monitor/model review, exact validation badges, activation consequences, and direct
+  replacement-baseline recovery links on the credential page. Both sides of a pending rotation are
+  excluded from new monitor setup.
+- Added safe retry semantics: revoking an unactivated successor releases the predecessor for a new
+  successor while retaining the revoked credential and audit history.
+- Migration audit: 4 credential summaries became 4 per-model rows, including 3 exact successful
+  proofs; all 7 reviewed references and 11 capture runs retain credential IDs; zero duplicate live
+  successors exist. No data wipe was needed.
+- Verification passed with `mix precommit` (633 Elixir tests), frontend TypeScript and 51 tests, and
+  `mix assets.build`. Focused coverage includes multi-model cutover, no-call blockers, historical
+  provenance, reference replacement, schedule reactivation, bounded execution, staged setup,
+  revoked-successor retry, and legacy lineage recovery.
+- Focused commits: `640cb8a`, `b5ae9f5`, and `eaf97fd`. Task 20 is next.
 
 ## 17. References
 
