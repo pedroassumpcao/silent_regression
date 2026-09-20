@@ -51,11 +51,21 @@ deterministic product wedge. The authoritative task status remains in
 
 ### Task 18: contract proof coverage, severity, and bounded rescore
 
-- Compute rule-level positive/negative proof coverage.
-- Block approval on uncovered critical rules unless an owner records an explicit waiver.
-- Expose supported rule severity in authoring, fixtures, readiness, and evidence.
-- Pin the historical observation cutoff and move large rescoring work into bounded durable batches;
-  keep the prior contract active until successful completion.
+1. Add a pure coverage analyzer for the bounded flat authoring shape. Report positive and negative
+   matching fixtures for the root and every leaf, effective severity, proof status, and blockers.
+2. Add owner-attributed coverage waivers tied to exact rule fingerprints. Allow upsert/removal only
+   while the contract is a draft, invalidate stale waivers on semantic edits, and include the exact
+   proof snapshot in approval evidence without changing behavior compatibility fingerprints.
+3. Expose `critical` and `warning` severity in the structured rule editor, rule/fixture results,
+   coverage matrix, readiness blockers, and sealed review. Keep nested composite authoring rejected.
+4. Add durable rescore runs and pinned observation items. Seal a successor as `pending_rescore`,
+   enqueue one unique serial worker, process bounded batches idempotently, and persist progress or a
+   safe failure reason.
+5. Activate atomically only after every pinned item succeeds: retire the prior approved contract,
+   approve the candidate, and write the immutable rescore summary. Keep the prior contract active
+   throughout pending or failed rescoring.
+6. Add context, constraint, controller, worker/manual-mode, migration/backfill, alert-severity, and
+   frontend tests. Run `mix precommit`, frontend checks, and the production asset build.
 
 ## Gate B — Recoverable monitoring
 

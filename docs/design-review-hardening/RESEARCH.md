@@ -156,6 +156,42 @@ The pointer and typed-value rules follow [RFC 6901](https://www.rfc-editor.org/i
 the JSON value/enum model documented by
 [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/json-schema-validation).
 
+### Contract proof coverage, severity, and bounded activation
+
+Task 18 keeps the existing bounded flat `all` authoring shape. It does not expose the engine's
+general nested `all`/`any`/`not` expression tree. For the authored shape, proof coverage is explicit
+for the aggregate root and every leaf rule:
+
+- positive coverage means at least one complete, evaluator-confirmed fixture makes the rule pass;
+- negative coverage means at least one complete, evaluator-confirmed fixture makes the rule fail;
+- a critical leaf requires both positive and negative proof before approval;
+- a warning leaf shows the same coverage facts, but missing proof is advisory rather than blocking;
+  and
+- an owner may waive missing proof for one critical rule only with a bounded rationale tied to the
+  exact rule fingerprint. Any semantic edit invalidates that waiver.
+
+The root `all` branch is reported for transparency but is derived from its children. Existing
+known-valid/known-invalid requirements remain, while the rule matrix prevents a single negative
+fixture from implying proof for untouched leaves. Coverage is computed only from fixtures whose
+overall and per-rule judgments exactly match evaluator output.
+
+Severity remains deterministic policy rather than a score. Missing `severity` means `critical` for
+legacy compatibility. Authoring exposes `critical` and `warning`; captured rule evidence retains the
+configured value; decisive critical failures create critical alerts and warning-only failures create
+warning alerts. Severity does not turn a failed rule into a pass or suppress immutable evidence.
+
+Historical rescore activation uses a durable, pinned work set rather than a growing timestamp-only
+query. An owner approval request seals the candidate, creates a rescore run, materializes the exact
+successful observation IDs visible at that boundary, and enqueues one serial Oban worker. The worker
+processes a bounded batch, persists progress after every item, and snoozes itself until the pinned set
+is complete. Only a successful final transaction retires the prior approved contract and activates
+the candidate. Failure leaves the prior contract active and the failed candidate immutable. Initial
+approval with no historical observations remains synchronous because there is no rescore work.
+
+This uses Oban Basic features already in the repository. Individual insertion is retained where
+uniqueness matters because bulk unique enforcement is an Oban Pro capability; no Pro-only workflow
+or batch dependency is introduced.
+
 ### Recoverable operations
 
 - Credential replacement is owner-authorized, validates affected models, updates future monitor
