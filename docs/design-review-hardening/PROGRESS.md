@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate A — Product truth
-- Current task: Task 17 — case-specific expectations (not started)
+- Current task: Task 17 — case-specific expectations (in progress)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | 15 | Review program and truthful public evidence | Complete (`d49b997`) |
 | 16 | Provider-native request artifacts | Complete |
-| 17 | Case-specific expectations | Not started |
+| 17 | Case-specific expectations | In progress |
 | 18 | Contract proof coverage, severity, and bounded rescore | Not started |
 | 19 | Credential successor rebinding | Not started |
 | 20 | Authentication breaker recovery | Not started |
@@ -69,3 +69,15 @@ contract, 32 input tokens, 5 output tokens, and 2,342 ms latency. The separately
 Anthropic `claude-haiku-4-5-20251001` smoke also passed in one call and one attempt with exact model
 provenance, a complete response, a passing contract, 30 input tokens, 4 output tokens, and 800 ms
 latency. Task 16 is complete.
+
+## Task 17 log
+
+- [x] Reconfirm the accepted case-specific correctness boundary and inspect case, capture,
+  evaluator, rescore, setup/import, result, and alert paths.
+- [x] Finalize the bounded expectation schema and legacy/import compatibility policy.
+- [ ] Implement expectation parsing, evaluation, fingerprints, and fixtures.
+- [ ] Add additive immutable persistence and legacy backfills.
+- [ ] Bind capture and historical-rescore evaluation to exact case expectations.
+- [ ] Extend setup/import and review authoring.
+- [ ] Present expectation evidence separately in results and alerts.
+- [ ] Run all verification gates and record focused commits.

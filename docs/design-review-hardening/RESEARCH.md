@@ -118,6 +118,41 @@ Evaluation must bind an observation to the exact case expectation fingerprint. E
 not executable code, regular expressions, or semantic scoring. Generic contract rules remain
 useful for invariants shared by every case.
 
+#### Task 17 schema decision
+
+Case expectations are an optional, immutable layer beside the shared contract. Every case records
+one of two explicit schema identities: `no_case_expectation` with an empty payload, or
+`case_expectation_v1` with a bounded `checks` array. Every configured check has a stable ID and one
+of five types:
+
+- `label` compares the normalized whole output with one or more allowed case-specific labels;
+- `json_value` resolves an RFC 6901 JSON Pointer and compares the typed value with one or more
+  alternatives using explicit strict or mathematical numeric equality;
+- `json_number` resolves a pointer and compares a numeric value with a target and non-negative
+  tolerance;
+- `source_ids` verifies required and allowed bracketed source identifiers, with an explicit
+  at-least-one option; and
+- `abstention` records whether an approved abstention alternative must be present or absent.
+
+The schema excludes regular expressions, scripts, semantic similarity, arbitrary predicates, and
+cross-case state. Payload size, check count, identifiers, pointers, alternatives, and evidence are
+bounded. The expectation fingerprint covers the schema identity and normalized payload; the case
+fingerprint for newly created versions covers that expectation fingerprint as behavior. Existing
+case fingerprints remain untouched so historical provenance stays reproducible.
+
+Capture evaluation keeps the shared-contract result and case-expectation result separate, while its
+top-level status fails if either configured deterministic layer fails and becomes an evaluator error
+if either layer cannot be evaluated safely. Historical contract rescoring reuses the immutable case
+expectation attached to each observation.
+
+Case import schema v1 remains accepted and produces `no_case_expectation`. Import schema v2 accepts
+the optional expectation payload. Manual setup places a validated expectation JSON editor beside
+each representative case; omission is deliberate and visibly labeled, never inferred from inputs.
+
+The pointer and typed-value rules follow [RFC 6901](https://www.rfc-editor.org/info/rfc6901/) and
+the JSON value/enum model documented by
+[JSON Schema 2020-12](https://json-schema.org/draft/2020-12/json-schema-validation).
+
 ### Recoverable operations
 
 - Credential replacement is owner-authorized, validates affected models, updates future monitor

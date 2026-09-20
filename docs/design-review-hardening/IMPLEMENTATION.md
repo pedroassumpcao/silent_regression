@@ -34,9 +34,20 @@ deterministic product wedge. The authoritative task status remains in
 
 ### Task 17: case-specific expectations
 
-- Finalize the bounded expectation schema and migration.
-- Extend setup/import and evaluation to bind each case to exact expected outcomes.
-- Add conformance, held-out, historical-rescore, and UI evidence coverage.
+1. Add the bounded `case_expectation_v1` parser/evaluator, explicit `no_case_expectation` state,
+   stable fingerprints, and conformance/held-out fixtures for every supported check type.
+2. Add expectation schema, payload, and fingerprint to immutable case versions; add separate
+   contract and expectation provenance/results to immutable capture evaluations; preserve legacy
+   case fingerprints and historical rows through additive backfills.
+3. Thread expectations through case normalization, version creation, capture evaluation, and
+   historical contract rescoring. Make the top-level deterministic status reflect both layers while
+   retaining distinct evidence and alert findings.
+4. Keep case import v1 compatible and add v2 expectation imports. Add validated manual expectation
+   authoring, explicit no-expectation labels, and exact review summaries beside each case.
+5. Expose shared-contract and case-expectation outcomes separately in run evidence, with focused
+   controller/frontend coverage and an end-to-end classifier/extraction regression proof.
+6. Run migration checks against existing local history, all backend/frontend/build gates, update the
+   authoritative plan, and commit focused checkpoints.
 
 ### Task 18: contract proof coverage, severity, and bounded rescore
 

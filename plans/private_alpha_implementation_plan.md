@@ -2,7 +2,7 @@
 
 > **Status:** Tasks 1–16 complete; design-review hardening is in progress and Gates A–D block the first design-partner pilot
 >
-> **Progress:** 16 of 27 tasks complete; Task 17 is next
+> **Progress:** 16 of 27 tasks complete; Task 17 in progress
 >
 > **Last revised:** 2026-09-19
 >
@@ -314,7 +314,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 14 | Onboarding telemetry, notifications, security, and pilot readiness | 2–13 | Complete | `9e40ee9`, `f45a06e`, `1ab2387`, `57d031d`, `0aacfcd`, `fe3e7e5`, `babfbf6`, `227e778`, `985481b`, `0824532` |
 | 15 | Design-review program and truthful public evidence | 1–14 | Complete | `d49b997` |
 | 16 | Provider-native request artifacts | 15 | Complete | `20aa6e2`, `ffb1675`, `7123ea7`, `a6b909f`, `d26177a`, `1805ee7`, `38eec36` |
-| 17 | Case-specific deterministic expectations | 16 | Not started | — |
+| 17 | Case-specific deterministic expectations | 16 | In progress | — |
 | 18 | Contract proof coverage, severity, and bounded rescore | 17 | Not started | — |
 | 19 | Credential successor rebinding | 16 | Not started | — |
 | 20 | Authentication-breaker recovery | 19 | Not started | — |
@@ -949,7 +949,7 @@ Anthropic `claude-haiku-4-5-20251001` smoke passed the same gates in one call an
 
 ### Task 17 — Case-specific deterministic expectations
 
-**Status:** Not started
+**Status:** In progress
 
 **Gate:** A — Product truth
 
