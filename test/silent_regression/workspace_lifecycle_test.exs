@@ -7,6 +7,9 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
   import SilentRegression.WorkspacesFixtures
 
   alias SilentRegression.Accounts.{Scope, User}
+  alias SilentRegression.Captures
+  alias SilentRegression.MonitorOperations
+  alias SilentRegression.MonitorOperations.AuthenticationRecovery
   alias SilentRegression.Monitors.Monitor
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
@@ -107,7 +110,10 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
     test "explicit deletion is irreversible and purge removes customer data but keeps a receipt" do
       scope = workspace_scope_fixture()
       fixture = approved_baseline_fixture(scope)
+      recovery = authentication_recovery_fixture(scope, fixture)
       at = ~U[2026-09-16 12:00:00Z]
+
+      assert Repo.get!(AuthenticationRecovery, recovery.id)
 
       assert {:ok, %{receipt: receipt}} =
                WorkspaceLifecycle.close_workspace(
@@ -132,6 +138,7 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
       assert Repo.get(User, scope.user.id) == nil
       assert Repo.get(Monitor, fixture.monitor.id) == nil
       assert Repo.get(ProviderCredential, fixture.credential.id) == nil
+      assert Repo.get(AuthenticationRecovery, recovery.id) == nil
 
       assert %{status: :completed, completed_at: ^at} =
                Repo.get!(DeletionReceipt, receipt.id)
@@ -162,5 +169,34 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
       assert Repo.get!(User, first_scope.user.id).id == second.user.id
       assert Repo.get!(Workspace, second.workspace.id).status == :active
     end
+  end
+
+  defp authentication_recovery_fixture(scope, fixture) do
+    assert {:ok, _monitor} =
+             MonitorOperations.configure(scope, fixture.monitor.id, %{cadence: :manual})
+
+    replace_secret(fixture.credential.id, "sk-test-authentication-error")
+
+    for _attempt <- 1..2 do
+      assert {:ok, run} = MonitorOperations.run_now(scope, fixture.monitor.id)
+      assert {:ok, run} = Captures.get_run(scope, run.id)
+      [observation] = run.observations
+      assert :ok = Captures.execute_observation(run.id, observation.id)
+    end
+
+    assert {:ok, %{paused: 1}} = MonitorOperations.sweep_ineligible()
+    replace_secret(fixture.credential.id, "sk-test-recovery-valid")
+
+    assert {:ok, %{recovery: recovery}} =
+             MonitorOperations.authorize_authentication_recovery(scope, fixture.monitor.id)
+
+    recovery
+  end
+
+  defp replace_secret(credential_id, secret) do
+    ProviderCredential
+    |> Repo.get!(credential_id)
+    |> Ecto.Changeset.change(secret: secret)
+    |> Repo.update!()
   end
 end
