@@ -13,6 +13,7 @@ defmodule SilentRegression.MonitorSetups.Setup do
   alias SilentRegression.Accounts.User
   alias SilentRegression.Monitors.{Monitor, MonitorVersion}
   alias SilentRegression.ProviderCredentials.ProviderCredential
+  alias SilentRegression.Reviews.ReviewDecision
   alias SilentRegression.Workspaces.Workspace
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -40,6 +41,8 @@ defmodule SilentRegression.MonitorSetups.Setup do
     belongs_to :monitor, Monitor
     belongs_to :provider_credential, ProviderCredential
     belongs_to :completed_monitor_version, MonitorVersion
+    belongs_to :source_monitor_version, MonitorVersion
+    belongs_to :motivating_review_decision, ReviewDecision
     belongs_to :created_by_user, User
 
     timestamps(type: :utc_datetime)
@@ -73,6 +76,45 @@ defmodule SilentRegression.MonitorSetups.Setup do
     )
     |> validate_required([:provider_credential_id, :provider, :requested_model])
     |> validate_length(:requested_model, min: 1, max: 200)
+    |> add_constraints()
+  end
+
+  def successor_changeset(
+        setup,
+        %Workspace{} = workspace,
+        %Monitor{} = monitor,
+        %MonitorVersion{} = source,
+        %ProviderCredential{} = credential,
+        %User{} = user,
+        attrs
+      ) do
+    setup
+    |> change(
+      Map.merge(attrs, %{
+        status: :in_progress,
+        workspace_id: workspace.id,
+        monitor_id: monitor.id,
+        source_monitor_version_id: source.id,
+        provider_credential_id: credential.id,
+        created_by_user_id: user.id
+      })
+    )
+    |> validate_required([
+      :status,
+      :workspace_id,
+      :monitor_id,
+      :source_monitor_version_id,
+      :provider_credential_id,
+      :provider,
+      :requested_model,
+      :request_mode,
+      :request_schema_version,
+      :request_template,
+      :response_format,
+      :generation_config,
+      :cases,
+      :created_by_user_id
+    ])
     |> add_constraints()
   end
 
@@ -118,12 +160,17 @@ defmodule SilentRegression.MonitorSetups.Setup do
     |> foreign_key_constraint(:monitor_id)
     |> foreign_key_constraint(:provider_credential_id)
     |> foreign_key_constraint(:completed_monitor_version_id)
+    |> foreign_key_constraint(:source_monitor_version_id)
+    |> foreign_key_constraint(:motivating_review_decision_id)
     |> foreign_key_constraint(:created_by_user_id)
-    |> unique_constraint(:monitor_id)
+    |> unique_constraint(:monitor_id, name: :monitor_setups_one_in_progress_index)
     |> check_constraint(:status, name: :monitor_setups_status_check)
     |> check_constraint(:provider, name: :monitor_setups_provider_check)
     |> check_constraint(:request_mode, name: :monitor_setups_request_mode_check)
     |> check_constraint(:request_schema_version, name: :monitor_setups_request_schema_check)
     |> check_constraint(:status, name: :monitor_setups_completion_check)
+    |> check_constraint(:source_monitor_version_id,
+      name: :monitor_setups_successor_origin_check
+    )
   end
 end

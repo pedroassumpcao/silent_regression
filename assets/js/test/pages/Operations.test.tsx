@@ -88,6 +88,7 @@ describe("OperationsView", () => {
     expect(screen.getByRole("button", { name: /daily/i })).toBeEnabled()
     expect(screen.getByRole("button", { name: "Activate monitor" })).toBeEnabled()
     expect(screen.getByRole("button", { name: "Run now" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Revise configuration" })).toBeDisabled()
     expect(screen.getByText(/only owners can authorize schedule changes and provider spend/i)).toBeInTheDocument()
   })
 
@@ -103,6 +104,7 @@ describe("OperationsView", () => {
     )
 
     expect(screen.getByRole("progressbar", { name: "Workspace authorized-run envelope" })).toHaveAttribute("aria-valuenow", "5")
+    expect(screen.getByRole("button", { name: "Revise configuration" })).toBeEnabled()
     await user.click(screen.getByRole("button", { name: "Run now" }))
 
     expect(screen.getByRole("dialog")).toBeInTheDocument()

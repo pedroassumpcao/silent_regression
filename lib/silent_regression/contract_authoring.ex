@@ -911,6 +911,8 @@ defmodule SilentRegression.ContractAuthoring do
         [setup],
         setup.monitor_id == ^monitor.id and setup.status == :completed
       )
+      |> order_by([setup], desc: setup.completed_at, desc: setup.id)
+      |> limit(1)
       |> select([setup], setup.completed_monitor_version_id)
       |> Repo.one()
 

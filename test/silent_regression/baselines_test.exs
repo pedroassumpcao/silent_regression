@@ -289,8 +289,7 @@ defmodule SilentRegression.BaselinesTest do
                  valid_version_attributes(%{system_prompt: "Changed after approval."})
                )
 
-      assert {:error, :incompatible_baseline} =
-               Baselines.current_compatible(scope, fixture.monitor.id)
+      assert {:ok, _approved} = Baselines.current_compatible(scope, fixture.monitor.id)
     end
 
     test "an incompatible approved baseline can be replaced without losing its history", %{

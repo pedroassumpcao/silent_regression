@@ -76,13 +76,22 @@ defmodule SilentRegressionWeb.MonitorSetupController do
 
   def complete(conn, %{"monitor_id" => monitor_id}) do
     case MonitorSetups.complete(conn.assigns.current_scope, monitor_id) do
-      {:ok, %{monitor: monitor}} ->
-        conn
-        |> put_flash(
-          :info,
-          "Workflow setup complete. Define and prove its deterministic contract next."
-        )
-        |> redirect(to: setup_path(conn, monitor.id, :review))
+      {:ok, %{monitor: monitor, setup: setup}} ->
+        if setup.source_monitor_version_id do
+          conn
+          |> put_flash(
+            :info,
+            "Successor snapshot locked. Review its activation impact before changing execution."
+          )
+          |> redirect(to: successor_path(conn, monitor.id))
+        else
+          conn
+          |> put_flash(
+            :info,
+            "Workflow setup complete. Define and prove its deterministic contract next."
+          )
+          |> redirect(to: setup_path(conn, monitor.id, :review))
+        end
 
       {:error, :not_found} ->
         send_resp(conn, :not_found, "Not found")
@@ -205,6 +214,8 @@ defmodule SilentRegressionWeb.MonitorSetupController do
       generation_config: setup.generation_config,
       cases: Enum.map(MonitorSetups.stored_cases(setup), &case_prop/1),
       completed_monitor_version_id: setup.completed_monitor_version_id,
+      is_successor: not is_nil(setup.source_monitor_version_id),
+      source_monitor_version_id: setup.source_monitor_version_id,
       completed_at: setup.completed_at,
       updated_at: setup.updated_at
     }
@@ -346,6 +357,10 @@ defmodule SilentRegressionWeb.MonitorSetupController do
 
   defp setup_path(conn, monitor_id, step) do
     ~p"/app/#{conn.assigns.current_scope.workspace.slug}/monitors/#{monitor_id}/setup/#{step}"
+  end
+
+  defp successor_path(conn, monitor_id) do
+    ~p"/app/#{conn.assigns.current_scope.workspace.slug}/monitors/#{monitor_id}/successor"
   end
 
   defp setup_resume_path(conn, monitor_id) do

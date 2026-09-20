@@ -85,6 +85,8 @@ type Setup = {
   }
   cases: SetupCase[]
   completedMonitorVersionId: string | null
+  isSuccessor: boolean
+  sourceMonitorVersionId: string | null
   completedAt: string | null
   updatedAt: string
 }
@@ -1058,11 +1060,13 @@ function ReviewStep({
     <div className="grid gap-6 lg:grid-cols-[1fr_0.42fr]">
       <Card id="monitor-review-card" className="border-primary/15">
         <CardHeader>
-          <CardTitle>{complete ? "Setup snapshot is locked" : "Review before finishing"}</CardTitle>
+          <CardTitle>{complete ? "Setup snapshot is locked" : setup.isSuccessor ? "Review the successor draft" : "Review before finishing"}</CardTitle>
           <CardDescription>
             {complete
               ? "This complete configuration was promoted into immutable monitor history."
-              : "Finishing creates an immutable configuration version. It still does not call the provider."}
+              : setup.isSuccessor
+                ? "Finishing creates an immutable candidate without changing active execution."
+                : "Finishing creates an immutable configuration version. It still does not call the provider."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -1161,15 +1165,17 @@ function ReviewStep({
             <div className="space-y-4">
               <Alert id="setup-complete-state" className="border-success/25 bg-success/5">
                 <CheckCircle2 />
-                <AlertTitle>Configuration ready for contract authoring</AlertTitle>
+                <AlertTitle>{setup.isSuccessor ? "Successor ready for activation review" : "Configuration ready for contract authoring"}</AlertTitle>
                 <AlertDescription>
-                  Define and validate the deterministic rules this exact monitor version must enforce. Authoring and fixture evaluation make zero provider calls.
+                  {setup.isSuccessor
+                    ? "The active configuration is still unchanged. Review exact-model proof, changed areas, and replacement-reference impact before activation."
+                    : "Define and validate the deterministic rules this exact monitor version must enforce. Authoring and fixture evaluation make zero provider calls."}
                 </AlertDescription>
               </Alert>
               <div className="flex justify-end">
-                <Button id="start-contract-authoring" asChild>
-                  <Link href={`/app/${workspaceSlug}/monitors/${setup.monitor.id}/contract`}>
-                    Define deterministic contract <ArrowRight />
+                <Button id={setup.isSuccessor ? "review-successor-activation" : "start-contract-authoring"} asChild>
+                  <Link href={setup.isSuccessor ? `/app/${workspaceSlug}/monitors/${setup.monitor.id}/successor` : `/app/${workspaceSlug}/monitors/${setup.monitor.id}/contract`}>
+                    {setup.isSuccessor ? "Review successor activation" : "Define deterministic contract"} <ArrowRight />
                   </Link>
                 </Button>
               </div>
@@ -1180,7 +1186,7 @@ function ReviewStep({
                 <SaveAndExit basePath={basePath} step="review" />
                 <Button id="complete-monitor-setup" type="submit" disabled={form.processing}>
                   {form.processing ? <LoaderCircle className="animate-spin" /> : <LockKeyhole />}
-                  Finish and lock setup
+                  {setup.isSuccessor ? "Lock successor candidate" : "Finish and lock setup"}
                 </Button>
               </div>
             </form>

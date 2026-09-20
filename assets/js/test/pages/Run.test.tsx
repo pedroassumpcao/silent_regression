@@ -276,6 +276,38 @@ describe("RunView", () => {
     expect(screen.getByRole("button", { name: /start contract revision/i })).toBeEnabled()
   })
 
+  it("offers a linked configuration successor for reviewed prompt, case, or provider work", () => {
+    const observation = props.result.observations[0]
+
+    render(<RunView {...props} flash={{}} result={{
+      ...props.result,
+      alerts: [],
+      reviews: [{
+        id: "review-id",
+        reviewKey: "observation:observation-id",
+        subjectKind: "observation",
+        classification: "passed_but_should_have_failed",
+        action: "case_change",
+        rationale: { text: "Add the missing case.", truncated: false, originalBytes: 21 },
+        reviewedAt: "2026-09-20T18:06:00Z",
+        reviewedBy: "reviewer@acme.example",
+        current: true,
+        supersedesId: null,
+        captureRunId: "run-id",
+        resultAlertId: null,
+        captureObservationId: observation.id,
+        captureEvaluationId: "evaluation-id",
+        captureRuleResultId: null,
+        contractVersionId: "contract-version-id",
+        baselineSnapshotId: "baseline-id",
+      }],
+      reviewSummary: { currentCount: 1, classificationCounts: { passed_but_should_have_failed: 1 }, actionCounts: { case_change: 1 }, changedJudgmentCount: 0, supersededCount: 0 },
+    }} />)
+
+    expect(screen.getByRole("button", { name: "Revise configuration" })).toBeEnabled()
+    expect(screen.queryByRole("button", { name: /start contract revision/i })).not.toBeInTheDocument()
+  })
+
   it("blocks relative interpretation when provenance differs", () => {
     render(<RunView {...props} flash={{}} result={{ ...props.result, provenance: { ...props.result.provenance, compatible: false, mismatches: ["contract_fingerprint"] } }} />)
 

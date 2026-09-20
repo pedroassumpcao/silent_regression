@@ -109,9 +109,10 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
   if (!workspace) return null
 
   const summary = result.summary
-  const resultsPath = `/app/${workspace.slug}/monitors/${monitor.id}/results`
+  const monitorPath = `/app/${workspace.slug}/monitors/${monitor.id}`
+  const resultsPath = `${monitorPath}/results`
   const alertsPath = `/app/${workspace.slug}/alerts`
-  const runPath = `/app/${workspace.slug}/monitors/${monitor.id}/runs/${summary.id}`
+  const runPath = `${monitorPath}/runs/${summary.id}`
   const terminal = !["planned", "queued", "running"].includes(summary.status)
   const contractFailures = summary.contractEvaluationCounts.fail || 0
   const expectationFailures = summary.caseExpectationCounts.fail || 0
@@ -159,6 +160,13 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
   const startContractRevision = (review: ReviewDecision) => {
     setProcessingReview(true)
     router.post(`${runPath}/reviews/${review.id}/contract-revision`, {}, {
+      onFinish: () => setProcessingReview(false),
+    })
+  }
+
+  const startConfigurationSuccessor = (review: ReviewDecision) => {
+    setProcessingReview(true)
+    router.post(`${monitorPath}/successor`, { review_id: review.id }, {
       onFinish: () => setProcessingReview(false),
     })
   }
@@ -271,6 +279,7 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
                       <div className="flex flex-wrap gap-2">
                         <Button id={`review-alert-${alert.id}`} size="sm" variant="outline" disabled={processingReview} onClick={() => openReview("alert", alert.id, alert.title, alert.category === "operational_anomaly" ? "operational_anomaly" : "confirmed_regression")}><MessageSquare /> {review ? "Revise judgment" : "Record judgment"}</Button>
                         {review?.action === "contract_revision" && <Button id={`start-contract-revision-${review.id}`} size="sm" variant="outline" disabled={processingReview} onClick={() => startContractRevision(review)}><GitBranch /> Start contract revision</Button>}
+                        {review && successorAction(review.action) && <Button id={`start-configuration-successor-${review.id}`} size="sm" variant="outline" disabled={processingReview} onClick={() => startConfigurationSuccessor(review)}><GitBranch /> Revise configuration</Button>}
                         {alert.status === "open" && <Button id={`acknowledge-alert-${alert.id}`} size="sm" disabled={processingAlert !== null} onClick={() => mutateAlert(alert, "acknowledge")}>{processingAlert === alert.id ? <LoaderCircle className="animate-spin" /> : <FileCheck2 />} Acknowledge</Button>}
                         {alert.status === "acknowledged" && canResolve && <Button id={`resolve-alert-${alert.id}`} size="sm" disabled={processingAlert !== null || !review} onClick={() => setResolveAlert(alert)}><LockKeyhole /> Resolve</Button>}
                         {alert.status === "acknowledged" && !canResolve && <Badge variant="outline">Owner resolution required</Badge>}
@@ -314,7 +323,7 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
             <Card id="observations-empty"><CardContent className="py-8 text-center text-sm text-muted-foreground">No observations have been captured yet.</CardContent></Card>
           ) : result.observations.map(observation => {
             const review = currentReview("observation", observation.id)
-            return <ObservationCard key={observation.id} observation={observation} review={review} history={result.reviews.filter(item => item.reviewKey === `observation:${observation.id}`)} onReview={() => openReview("observation", observation.id, `${observation.case.name} · sample ${observation.sampleIndex + 1}`, "passed_but_should_have_failed")} onStartContractRevision={startContractRevision} processingReview={processingReview} />
+            return <ObservationCard key={observation.id} observation={observation} review={review} history={result.reviews.filter(item => item.reviewKey === `observation:${observation.id}`)} onReview={() => openReview("observation", observation.id, `${observation.case.name} · sample ${observation.sampleIndex + 1}`, "passed_but_should_have_failed")} onStartContractRevision={startContractRevision} onStartConfigurationSuccessor={startConfigurationSuccessor} processingReview={processingReview} />
           })}
         </section>
 
@@ -406,12 +415,13 @@ function FingerprintRow({ name, value }: { name: string; value: string }) {
   return <div className="grid gap-1 sm:grid-cols-[7rem_1fr]"><dt className="text-muted-foreground">{name}</dt><dd className="break-all font-mono text-foreground" title={value}>{value.length > 40 ? shortId(value) : value}</dd></div>
 }
 
-function ObservationCard({ observation, review, history, onReview, onStartContractRevision, processingReview }: {
+function ObservationCard({ observation, review, history, onReview, onStartContractRevision, onStartConfigurationSuccessor, processingReview }: {
   observation: Observation
   review: ReviewDecision | null
   history: ReviewDecision[]
   onReview: () => void
   onStartContractRevision: (review: ReviewDecision) => void
+  onStartConfigurationSuccessor: (review: ReviewDecision) => void
   processingReview: boolean
 }) {
   const contractFailures = observation.evaluations.flatMap(evaluation => evaluation.ruleResults).filter(result => result.status !== "pass").length
@@ -450,6 +460,7 @@ function ObservationCard({ observation, review, history, onReview, onStartContra
           <div className="flex flex-wrap gap-2">
             <Button id={`review-observation-${observation.id}`} type="button" size="sm" variant="outline" disabled={processingReview} onClick={onReview}><MessageSquare /> {review ? "Revise judgment" : "Report missed regression"}</Button>
             {review?.action === "contract_revision" && <Button id={`start-contract-revision-${review.id}`} type="button" size="sm" variant="outline" disabled={processingReview} onClick={() => onStartContractRevision(review)}><GitBranch /> Start contract revision</Button>}
+            {review && successorAction(review.action) && <Button id={`start-configuration-successor-${review.id}`} type="button" size="sm" variant="outline" disabled={processingReview} onClick={() => onStartConfigurationSuccessor(review)}><GitBranch /> Revise configuration</Button>}
           </div>
         </div>
 
@@ -463,6 +474,10 @@ function ObservationCard({ observation, review, history, onReview, onStartContra
       </CardContent>
     </Card>
   )
+}
+
+function successorAction(action: ReviewAction) {
+  return ["prompt_change", "case_change", "provider_change"].includes(action)
 }
 
 function ReviewStatus({ decision, history }: { decision: ReviewDecision | null; history: ReviewDecision[] }) {

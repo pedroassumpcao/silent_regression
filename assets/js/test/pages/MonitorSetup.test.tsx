@@ -143,6 +143,8 @@ const baseProps: MonitorSetupProps = {
       },
     ],
     completedMonitorVersionId: null,
+    isSuccessor: false,
+    sourceMonitorVersionId: null,
     completedAt: null,
     updatedAt: "2026-09-15T03:00:00Z",
   },

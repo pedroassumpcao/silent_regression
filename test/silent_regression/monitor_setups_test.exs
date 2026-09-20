@@ -1,8 +1,24 @@
 defmodule SilentRegression.MonitorSetupsTest do
   use SilentRegression.DataCase, async: true
 
-  alias SilentRegression.{MonitorSetups, Monitors, ProductAnalytics, ProviderCredentials, Repo}
+  import Ecto.Query
+  import SilentRegression.ContractAuthoringFixtures
+
+  alias SilentRegression.{
+    Baselines,
+    Captures,
+    MonitorOperations,
+    MonitorSetups,
+    Monitors,
+    ProductAnalytics,
+    ProviderCredentials,
+    Repo,
+    Reviews
+  }
+
+  alias SilentRegression.ContractAuthoring.ContractVersion
   alias SilentRegression.MonitorSetups.Setup
+  alias SilentRegression.Monitors.{CaseVersion, Monitor, MonitorVersion}
 
   alias SilentRegression.{
     MonitorSetupsFixtures,
@@ -490,6 +506,171 @@ defmodule SilentRegression.MonitorSetupsTest do
 
       assert %{status: [_message]} = errors_on(changeset)
       assert Repo.get!(Setup, setup.id).status == :in_progress
+    end
+  end
+
+  describe "configuration successors" do
+    test "a reviewed missed regression adds a case and returns through replacement reference", %{
+      scope: scope
+    } do
+      fixture = operational_monitor_fixture(scope)
+      source_monitor = Repo.get!(Monitor, fixture.monitor.id)
+      source_version = Repo.get!(MonitorVersion, source_monitor.active_version_id)
+      source_contract = Repo.get!(ContractVersion, fixture.contract.id)
+      source_credential_id = source_monitor.provider_credential_id
+
+      assert {:ok, planned_run} = MonitorOperations.run_now(scope, fixture.monitor.id)
+      assert {:ok, run} = Captures.get_run(scope, planned_run.id)
+
+      Enum.each(run.observations, fn item ->
+        assert :ok = Captures.execute_observation(run.id, item.id)
+      end)
+
+      [observation] = run.observations
+
+      assert {:ok, review} =
+               Reviews.submit_review(scope, %{
+                 subject_kind: :observation,
+                 subject_id: observation.id,
+                 classification: :passed_but_should_have_failed,
+                 action: :case_change,
+                 rationale: "Add the missing refund-policy case.",
+                 reviewed_at: DateTime.utc_now(),
+                 expected_current_id: nil
+               })
+
+      assert {:ok, setup} =
+               MonitorSetups.start_successor(scope, fixture.monitor.id, review.id)
+
+      assert setup.status == :in_progress
+      assert setup.source_monitor_version_id == source_version.id
+      assert setup.motivating_review_decision_id == review.id
+      assert setup.provider_credential_id == source_credential_id
+
+      active_during_edit = Repo.get!(Monitor, fixture.monitor.id)
+      assert active_during_edit.active_version_id == source_version.id
+      assert active_during_edit.state == :active
+      assert active_during_edit.draft_version_id == nil
+      assert {:ok, _baseline} = Baselines.current_compatible(scope, fixture.monitor.id)
+
+      cases =
+        MonitorSetups.stored_cases(setup) ++
+          [
+            %{
+              case_key: "refund-policy",
+              name: "Refund policy answer",
+              input_variables_json: Jason.encode!(%{question: "Is this refundable?"}),
+              frozen_context: "The purchase is refundable.",
+              expectation_json:
+                Jason.encode!(%{
+                  checks: [
+                    %{id: "route", type: "label", allowed_values: ["approved"]}
+                  ]
+                }),
+              status: "active"
+            }
+          ]
+
+      assert {:ok, _setup} = MonitorSetups.update_cases(scope, fixture.monitor.id, cases)
+      assert {:ok, completed} = MonitorSetups.complete(scope, fixture.monitor.id)
+      candidate = completed.version
+
+      assert candidate.status == :draft
+      assert candidate.predecessor_id == source_version.id
+
+      assert Repo.aggregate(
+               from(case_version in CaseVersion,
+                 where: case_version.monitor_version_id == ^candidate.id
+               ),
+               :count
+             ) == 2
+
+      still_active = Repo.get!(Monitor, fixture.monitor.id)
+      assert still_active.active_version_id == source_version.id
+      assert still_active.draft_version_id == candidate.id
+      assert still_active.provider_credential_id == source_credential_id
+      assert still_active.state == :active
+      assert Repo.get!(ContractVersion, source_contract.id).status == :approved
+      assert {:ok, _baseline} = Baselines.current_compatible(scope, fixture.monitor.id)
+
+      assert {:ok, state} = MonitorSetups.successor_state(scope, fixture.monitor.id)
+      assert state.setup.motivating_review_decision_id == review.id
+      assert state.preview.activation_ready?
+      assert state.preview.changes == [:cases]
+
+      assert {:error, :stale_preview} =
+               MonitorSetups.activate_successor(scope, fixture.monitor.id, "stale")
+
+      assert Repo.get!(Monitor, fixture.monitor.id).active_version_id == source_version.id
+
+      assert {:ok, activated} =
+               MonitorSetups.activate_successor(
+                 scope,
+                 fixture.monitor.id,
+                 state.preview.fingerprint
+               )
+
+      assert activated.monitor.state == :baseline_pending
+      assert activated.monitor.active_version_id == candidate.id
+      assert activated.monitor.draft_version_id == nil
+      assert activated.monitor.cadence == :manual
+      assert Repo.get!(MonitorVersion, source_version.id).status == :superseded
+      assert Repo.get!(ContractVersion, source_contract.id).status == :retired
+      assert activated.contract_version.status == :approved
+      assert activated.contract_version.monitor_version_id == candidate.id
+
+      assert activated.contract_version.contract_fingerprint ==
+               source_contract.contract_fingerprint
+
+      assert activated.contract_version.proof_fingerprint == source_contract.proof_fingerprint
+
+      assert {:error, :incompatible_baseline} =
+               Baselines.current_compatible(scope, fixture.monitor.id)
+
+      assert {:ok, preflight} = Baselines.preflight(scope, fixture.monitor.id)
+
+      assert {:ok, snapshot} =
+               Baselines.authorize(scope, fixture.monitor.id, %{
+                 authorization_key: Ecto.UUID.generate(),
+                 samples_per_case: preflight.samples_per_case,
+                 preview_fingerprint: preflight.preview_fingerprint
+               })
+
+      Enum.each(snapshot.capture_run.observations, fn item ->
+        assert :ok = Captures.execute_observation(snapshot.capture_run.id, item.id)
+      end)
+
+      assert {:ok, _approved} =
+               Baselines.approve(scope, fixture.monitor.id, %{approval_mode: :normal})
+
+      assert {:ok, restored} =
+               MonitorOperations.configure(scope, fixture.monitor.id, %{cadence: :manual})
+
+      assert restored.state == :active
+      assert restored.active_version_id == candidate.id
+    end
+
+    test "only owners can start or activate and foreign workspaces cannot inspect", %{
+      scope: owner_scope,
+      other_scope: other_scope
+    } do
+      fixture = operational_monitor_fixture(owner_scope)
+      member = WorkspacesFixtures.invite_and_accept_member(owner_scope)
+
+      member_scope =
+        SilentRegression.Accounts.Scope.for_workspace(
+          member.user,
+          member.workspace,
+          member.membership
+        )
+
+      assert {:error, :owner_required} =
+               MonitorSetups.start_successor(member_scope, fixture.monitor.id)
+
+      assert {:ok, _setup} = MonitorSetups.start_successor(owner_scope, fixture.monitor.id)
+
+      assert {:error, :not_found} =
+               MonitorSetups.successor_state(other_scope, fixture.monitor.id)
     end
   end
 

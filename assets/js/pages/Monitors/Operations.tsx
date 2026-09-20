@@ -9,6 +9,7 @@ import {
   CirclePause,
   Clock3,
   Gauge,
+  GitBranchPlus,
   KeyRound,
   LoaderCircle,
   Play,
@@ -226,6 +227,16 @@ export function OperationsView({
               </div>
               <Button asChild variant="outline" size="sm">
                 <Link href={resultsPath}>View results</Link>
+              </Button>
+              <Button
+                id="start-configuration-successor"
+                variant="outline"
+                size="sm"
+                disabled={!canManage || processing !== null || (!active && !paused)}
+                onClick={() => mutate("successor", `/app/${workspace.slug}/monitors/${monitor.id}/successor`)}
+              >
+                {processing === "successor" ? <LoaderCircle className="animate-spin" /> : <GitBranchPlus />}
+                Revise configuration
               </Button>
             </div>
           </div>

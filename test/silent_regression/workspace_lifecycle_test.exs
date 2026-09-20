@@ -10,6 +10,8 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
   alias SilentRegression.Captures
   alias SilentRegression.MonitorOperations
   alias SilentRegression.MonitorOperations.AuthenticationRecovery
+  alias SilentRegression.MonitorSetups
+  alias SilentRegression.MonitorSetups.Setup
   alias SilentRegression.Monitors.Monitor
   alias SilentRegression.Notifications
   alias SilentRegression.Notifications.Delivery
@@ -112,6 +114,13 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
     test "explicit deletion is irreversible and purge removes customer data but keeps a receipt" do
       scope = workspace_scope_fixture()
       fixture = approved_baseline_fixture(scope)
+
+      assert {:ok, _monitor} =
+               MonitorOperations.configure(scope, fixture.monitor.id, %{cadence: :manual})
+
+      assert {:ok, successor_setup} =
+               MonitorSetups.start_successor(scope, fixture.monitor.id)
+
       recovery = authentication_recovery_fixture(scope, fixture)
       at = ~U[2026-09-16 12:00:00Z]
 
@@ -153,6 +162,7 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
       assert Repo.get(ProviderCredential, fixture.credential.id) == nil
       assert Repo.get(AuthenticationRecovery, recovery.id) == nil
       assert Repo.get(Delivery, delivery.id) == nil
+      assert Repo.get(Setup, successor_setup.id) == nil
 
       assert %{status: :completed, completed_at: ^at} =
                Repo.get!(DeletionReceipt, receipt.id)

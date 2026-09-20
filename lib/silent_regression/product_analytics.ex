@@ -16,6 +16,8 @@ defmodule SilentRegression.ProductAnalytics do
     "monitor_setup.step_completed" => ["step", "completed_count", "total_count"],
     "monitor_setup.left" => ["step", "completed_count", "total_count"],
     "monitor_setup.completed" => ["completed_count", "total_count"],
+    "monitor_successor.started" => ["motivated_by_review"],
+    "monitor_successor.activated" => ["replacement_reference_required"],
     "baseline.approved" => ["approval_mode"],
     "schedule.activated" => ["cadence", "activation_kind"],
     "review.recorded" => ["subject_kind", "classification", "action", "superseded"],
@@ -154,6 +156,10 @@ defmodule SilentRegression.ProductAnalytics do
           value in @review_actions
 
         {"superseded", value} ->
+          is_boolean(value)
+
+        {key, value}
+        when key in ["motivated_by_review", "replacement_reference_required"] ->
           is_boolean(value)
 
         {"stage", value} ->

@@ -237,6 +237,46 @@ defmodule SilentRegression.Monitors.Monitor do
     |> add_error(:state, "cannot prepare a replacement baseline from #{monitor.state}")
   end
 
+  def successor_activation_changeset(
+        %__MODULE__{state: state} = monitor,
+        %MonitorVersion{status: version_status} = version,
+        %ProviderCredential{} = credential,
+        at
+      )
+      when state in [:active, :paused] and version_status in [:draft, :active] do
+    monitor
+    |> change(
+      active_version_id: version.id,
+      draft_version_id: nil,
+      provider_credential_id: credential.id,
+      state: :baseline_pending,
+      state_changed_at: at,
+      cadence: :manual,
+      next_run_at: nil,
+      last_scheduled_at: nil,
+      schedule_updated_at: nil,
+      schedule_updated_by_user_id: nil,
+      pause_reason: nil,
+      capacity_wait_reason: nil,
+      capacity_retry_at: nil,
+      capacity_intended_at: nil,
+      coverage_interrupted_at: nil
+    )
+    |> validate_schedule()
+    |> add_constraints()
+  end
+
+  def successor_activation_changeset(
+        %__MODULE__{} = monitor,
+        %MonitorVersion{},
+        %ProviderCredential{},
+        _at
+      ) do
+    monitor
+    |> change()
+    |> add_error(:state, "requires an active or paused monitor")
+  end
+
   def schedule_changeset(
         %__MODULE__{} = monitor,
         %User{} = user,

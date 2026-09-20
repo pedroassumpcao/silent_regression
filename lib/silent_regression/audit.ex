@@ -76,6 +76,9 @@ defmodule SilentRegression.Audit do
     "monitor.auto_paused" => ~w(reason),
     "monitor.authentication_recovery_authorized" =>
       ~w(recovery_id epoch capture_run_id provider_credential_id requested_model maximum_call_count retry_limit),
+    "monitor.successor_started" => ~w(source_monitor_version_id motivating_review_decision_id),
+    "monitor.successor_activated" =>
+      ~w(source_monitor_version_id successor_monitor_version_id successor_contract_version_id replacement_reference_required),
     "monitor.credential_rebound" =>
       ~w(predecessor_credential_id successor_credential_id reference_policy from_state to_state),
     "provider_credential.created" => ~w(provider),

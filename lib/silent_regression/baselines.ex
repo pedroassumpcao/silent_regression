@@ -501,6 +501,12 @@ defmodule SilentRegression.Baselines do
     |> Repo.one()
   end
 
+  # A completed successor is a non-executable draft and cannot invalidate an
+  # already-approved reference. During a pending reference capture, however,
+  # any newly-created draft means the captured authorization is no longer the
+  # only candidate behavior and approval must stop.
+  defp draft_compatible?(_monitor, %BaselineSnapshot{status: :approved}), do: true
+
   defp draft_compatible?(%Monitor{draft_version_id: nil}, _snapshot), do: true
 
   defp draft_compatible?(%Monitor{draft_version_id: draft_version_id}, snapshot) do

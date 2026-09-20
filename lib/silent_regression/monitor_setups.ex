@@ -6,7 +6,10 @@ defmodule SilentRegression.MonitorSetups do
   import Ecto.Query
 
   alias SilentRegression.Accounts.{Scope, User}
+  alias SilentRegression.Audit
   alias SilentRegression.CaseExpectations
+  alias SilentRegression.Captures.CaptureRun
+  alias SilentRegression.ContractAuthoring.{ContractFixture, ContractVersion}
   alias SilentRegression.MonitorSetups.Setup
 
   alias SilentRegression.Monitors.{
@@ -17,12 +20,17 @@ defmodule SilentRegression.MonitorSetups do
     Limits,
     ModelCatalog,
     Monitor,
+    MonitorVersion,
+    Fingerprint,
     ResponseFormat
   }
 
   alias SilentRegression.{Monitors, ProductAnalytics, Repo}
+  alias SilentRegression.ProviderCredentials
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Providers.RequestArtifact
+  alias SilentRegression.Reviews
+  alias SilentRegression.Reviews.ReviewDecision
   alias SilentRegression.Workspaces.{Membership, Workspace}
 
   @steps [:purpose, :connection, :prompt, :cases]
@@ -62,12 +70,75 @@ defmodule SilentRegression.MonitorSetups do
 
   def start(%Scope{}, _attrs), do: {:error, :workspace_required}
 
+  def start_successor(scope, monitor_id, review_id \\ nil)
+
+  def start_successor(
+        %Scope{
+          workspace: %Workspace{id: workspace_id} = workspace,
+          membership: %Membership{role: :owner},
+          user: %User{} = user
+        } = scope,
+        monitor_id,
+        review_id
+      ) do
+    with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id),
+         {:ok, review_id} <- optional_id(review_id) do
+      Repo.transaction(fn ->
+        with %Monitor{} = monitor <- locked_monitor(workspace_id, monitor_id),
+             :ok <- successor_startable?(monitor),
+             nil <- in_progress_setup(monitor.id),
+             %MonitorVersion{} = source <- active_version(monitor),
+             %ProviderCredential{} = credential <- active_credential(monitor, source),
+             {:ok, review} <- motivating_review(workspace_id, monitor.id, review_id),
+             attrs <- successor_setup_attributes(source, review),
+             {:ok, setup} <-
+               %Setup{}
+               |> Setup.successor_changeset(
+                 workspace,
+                 monitor,
+                 source,
+                 credential,
+                 user,
+                 attrs
+               )
+               |> Repo.insert() do
+          Audit.record_event!(%{
+            action: "monitor.successor_started",
+            target_type: "monitor_setup",
+            target_id: setup.id,
+            workspace_id: workspace_id,
+            actor_user_id: user.id,
+            metadata: %{
+              "source_monitor_version_id" => source.id,
+              "motivating_review_decision_id" => review && review.id
+            }
+          })
+
+          ProductAnalytics.record!(scope, "monitor_successor.started", monitor.id, %{
+            "motivated_by_review" => not is_nil(review)
+          })
+
+          Repo.preload(setup, [:monitor, :source_monitor_version, :motivating_review_decision])
+        else
+          %Setup{} = setup -> Repo.preload(setup, :monitor)
+          nil -> Repo.rollback(:not_found)
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    else
+      :error -> {:error, :not_found}
+    end
+  end
+
+  def start_successor(%Scope{}, _monitor_id, _review_id), do: {:error, :owner_required}
+
   def list(%Scope{workspace: %Workspace{id: workspace_id}, membership: %Membership{}}) do
     Setup
     |> where([setup], setup.workspace_id == ^workspace_id)
     |> order_by([setup], desc: setup.updated_at, desc: setup.id)
     |> preload(:monitor)
     |> Repo.all()
+    |> Enum.uniq_by(& &1.monitor_id)
   end
 
   def list(%Scope{}), do: {:error, :workspace_required}
@@ -234,8 +305,7 @@ defmodule SilentRegression.MonitorSetups do
              :ok <- credential_matches(credential, setup.provider),
              {:ok, version} <-
                Monitors.create_version(scope, monitor_id, version_attributes(setup)),
-             {:ok, monitor} <-
-               setup.monitor |> Monitor.credential_changeset(credential) |> Repo.update(),
+             {:ok, monitor} <- maybe_attach_initial_credential(setup, credential),
              {:ok, completed_setup} <-
                setup
                |> Setup.complete_changeset(version, DateTime.utc_now(:second))
@@ -258,6 +328,152 @@ defmodule SilentRegression.MonitorSetups do
   end
 
   def complete(%Scope{}, _monitor_id), do: {:error, :workspace_required}
+
+  def successor_state(
+        %Scope{workspace: %Workspace{id: workspace_id}, membership: %Membership{}} = scope,
+        monitor_id
+      ) do
+    with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id),
+         %Monitor{} = monitor <- load_monitor(workspace_id, monitor_id),
+         %Setup{} = setup <- latest_successor_setup(workspace_id, monitor.id) do
+      setup =
+        Repo.preload(setup, [
+          :monitor,
+          :provider_credential,
+          :source_monitor_version,
+          :completed_monitor_version,
+          motivating_review_decision: :reviewer_user
+        ])
+
+      source = Repo.preload(setup.source_monitor_version, :cases)
+      candidate = preload_candidate(setup.completed_monitor_version)
+      contract = approved_contract(monitor.id, source.id)
+      active_run? = active_capture_run?(monitor.id)
+      model_verified? = model_verified?(setup.provider_credential, setup.requested_model)
+      source_current? = monitor.active_version_id == source.id
+      draft_current? = candidate && monitor.draft_version_id == candidate.id
+
+      activation_ready? =
+        setup.status == :completed and source_current? and draft_current? and model_verified? and
+          not active_run? and match?(%ContractVersion{}, contract)
+
+      preview = %{
+        source_current?: source_current?,
+        draft_current?: draft_current?,
+        model_verified?: model_verified?,
+        active_run?: active_run?,
+        contract_ready?: match?(%ContractVersion{}, contract),
+        activation_ready?: activation_ready?,
+        replacement_reference_required?: true,
+        changes: successor_changes(source, candidate),
+        fingerprint:
+          successor_preview_fingerprint(
+            monitor,
+            setup,
+            source,
+            candidate,
+            contract,
+            active_run?,
+            model_verified?
+          )
+      }
+
+      {:ok,
+       %{
+         monitor: monitor,
+         setup: setup,
+         source: source,
+         candidate: candidate,
+         preview: preview,
+         can_activate?: scope.membership.role == :owner
+       }}
+    else
+      _reason -> {:error, :not_found}
+    end
+  end
+
+  def successor_state(%Scope{}, _monitor_id), do: {:error, :workspace_required}
+
+  def activate_successor(
+        %Scope{
+          workspace: %Workspace{id: workspace_id},
+          membership: %Membership{role: :owner},
+          user: %User{} = user
+        } = scope,
+        monitor_id,
+        preview_fingerprint
+      )
+      when is_binary(preview_fingerprint) do
+    with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id) do
+      Repo.transaction(fn ->
+        with %Monitor{} = monitor <- locked_monitor(workspace_id, monitor_id),
+             %Setup{status: :completed} = setup <-
+               locked_successor_setup(workspace_id, monitor.id),
+             %MonitorVersion{status: :active} = source <-
+               locked_version(monitor.id, setup.source_monitor_version_id),
+             %MonitorVersion{status: :draft} = candidate <-
+               locked_version(monitor.id, setup.completed_monitor_version_id),
+             :ok <- ensure_successor_identity(monitor, source, candidate),
+             %ProviderCredential{} = credential <- locked_successor_credential(setup, candidate),
+             :ok <- ensure_model_verified(credential, candidate.requested_model),
+             false <- active_capture_run?(monitor.id),
+             %ContractVersion{} = contract <- locked_approved_contract(monitor.id, source.id),
+             :ok <- ensure_contract_proof(contract),
+             expected_fingerprint <-
+               successor_preview_fingerprint(
+                 monitor,
+                 setup,
+                 source,
+                 candidate,
+                 contract,
+                 false,
+                 true
+               ),
+             :ok <- ensure_preview_fingerprint(preview_fingerprint, expected_fingerprint),
+             {:ok, successor_contract} <- clone_contract(contract, candidate, user),
+             {:ok, _retired_contract} <- retire_contract(contract),
+             {:ok, successor_contract} <- approve_contract(successor_contract, contract, user),
+             {:ok, _source} <-
+               source |> MonitorVersion.supersede_changeset(now()) |> Repo.update(),
+             {:ok, candidate} <-
+               candidate |> MonitorVersion.activate_changeset(now()) |> Repo.update(),
+             {:ok, monitor} <-
+               monitor
+               |> Monitor.successor_activation_changeset(candidate, credential, now())
+               |> Repo.update() do
+          Audit.record_event!(%{
+            action: "monitor.successor_activated",
+            target_type: "monitor",
+            target_id: monitor.id,
+            workspace_id: workspace_id,
+            actor_user_id: user.id,
+            metadata: %{
+              "source_monitor_version_id" => source.id,
+              "successor_monitor_version_id" => candidate.id,
+              "successor_contract_version_id" => successor_contract.id,
+              "replacement_reference_required" => true
+            }
+          })
+
+          ProductAnalytics.record!(scope, "monitor_successor.activated", monitor.id, %{
+            "replacement_reference_required" => true
+          })
+
+          %{monitor: monitor, version: candidate, contract_version: successor_contract}
+        else
+          true -> Repo.rollback(:run_in_progress)
+          false -> Repo.rollback(:model_validation_required)
+          nil -> Repo.rollback(:not_found)
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    else
+      :error -> {:error, :not_found}
+    end
+  end
+
+  def activate_successor(%Scope{}, _monitor_id, _preview_fingerprint),
+    do: {:error, :owner_required}
 
   def progress(
         %Scope{workspace: %Workspace{id: workspace_id}} = scope,
@@ -835,10 +1051,24 @@ defmodule SilentRegression.MonitorSetups do
   defp ensure_in_progress(%Setup{status: :in_progress}), do: :ok
   defp ensure_in_progress(%Setup{}), do: {:error, :already_completed}
 
+  defp maybe_attach_initial_credential(%Setup{source_monitor_version_id: nil} = setup, credential) do
+    setup.monitor |> Monitor.credential_changeset(credential) |> Repo.update()
+  end
+
+  defp maybe_attach_initial_credential(%Setup{} = setup, _credential),
+    do: {:ok, setup.monitor}
+
   defp load_setup(workspace_id, monitor_id) do
     Setup
     |> where([setup], setup.workspace_id == ^workspace_id)
     |> where([setup], setup.monitor_id == ^monitor_id)
+    |> order_by(
+      [setup],
+      desc: fragment("? = 'in_progress'", setup.status),
+      desc: setup.inserted_at,
+      desc: setup.id
+    )
+    |> limit(1)
     |> Repo.one()
   end
 
@@ -846,9 +1076,368 @@ defmodule SilentRegression.MonitorSetups do
     Setup
     |> where([setup], setup.workspace_id == ^workspace_id)
     |> where([setup], setup.monitor_id == ^monitor_id)
+    |> order_by(
+      [setup],
+      desc: fragment("? = 'in_progress'", setup.status),
+      desc: setup.inserted_at,
+      desc: setup.id
+    )
+    |> limit(1)
     |> lock("FOR UPDATE")
     |> Repo.one()
   end
+
+  defp locked_monitor(workspace_id, monitor_id) do
+    Monitor
+    |> where([monitor], monitor.workspace_id == ^workspace_id and monitor.id == ^monitor_id)
+    |> lock("FOR UPDATE")
+    |> Repo.one()
+  end
+
+  defp load_monitor(workspace_id, monitor_id) do
+    Repo.get_by(Monitor, workspace_id: workspace_id, id: monitor_id)
+  end
+
+  defp successor_startable?(%Monitor{state: state, draft_version_id: nil})
+       when state in [:active, :paused],
+       do: :ok
+
+  defp successor_startable?(%Monitor{draft_version_id: draft_version_id})
+       when not is_nil(draft_version_id),
+       do: {:error, :successor_already_exists}
+
+  defp successor_startable?(%Monitor{}), do: {:error, :monitor_not_operational}
+
+  defp in_progress_setup(monitor_id) do
+    Repo.get_by(Setup, monitor_id: monitor_id, status: :in_progress)
+  end
+
+  defp active_version(%Monitor{active_version_id: nil}), do: nil
+
+  defp active_version(monitor) do
+    MonitorVersion
+    |> where(
+      [version],
+      version.id == ^monitor.active_version_id and version.monitor_id == ^monitor.id and
+        version.status == :active
+    )
+    |> preload(:cases)
+    |> lock("FOR SHARE")
+    |> Repo.one()
+  end
+
+  defp active_credential(%Monitor{provider_credential_id: nil}, _source), do: nil
+
+  defp active_credential(monitor, source) do
+    ProviderCredential
+    |> where(
+      [credential],
+      credential.id == ^monitor.provider_credential_id and
+        credential.workspace_id == ^monitor.workspace_id and credential.status == :valid and
+        credential.provider == ^source.provider
+    )
+    |> lock("FOR SHARE")
+    |> Repo.one()
+  end
+
+  defp motivating_review(_workspace_id, _monitor_id, nil), do: {:ok, nil}
+
+  defp motivating_review(workspace_id, monitor_id, review_id) do
+    case Repo.get_by(ReviewDecision,
+           id: review_id,
+           workspace_id: workspace_id,
+           monitor_id: monitor_id
+         ) do
+      %ReviewDecision{action: action} = review
+      when action in [:prompt_change, :case_change, :provider_change] ->
+        if Reviews.current?(review), do: {:ok, review}, else: {:error, :review_not_current}
+
+      %ReviewDecision{} ->
+        {:error, :review_action_mismatch}
+
+      nil ->
+        {:error, :not_found}
+    end
+  end
+
+  defp successor_setup_attributes(source, review) do
+    %{
+      provider: source.provider,
+      requested_model: source.requested_model,
+      request_mode: source.request_mode,
+      request_schema_version: source.request_schema_version,
+      request_template: source.request_template,
+      system_prompt: source.system_prompt,
+      user_prompt_template: source.user_prompt_template,
+      response_format: source.response_format,
+      generation_config: source.generation_config,
+      cases: %{"items" => Enum.map(source.cases, &setup_case/1)},
+      motivating_review_decision_id: review && review.id
+    }
+  end
+
+  defp setup_case(case_version) do
+    %{
+      "case_key" => case_version.case_key,
+      "name" => case_version.name,
+      "position" => case_version.position,
+      "status" => Atom.to_string(case_version.status),
+      "input_variables" => case_version.input_variables,
+      "frozen_context" => case_version.frozen_context,
+      "expectation_schema_version" => case_version.expectation_schema_version,
+      "expectation" => case_version.expectation
+    }
+  end
+
+  defp latest_successor_setup(workspace_id, monitor_id) do
+    Setup
+    |> where(
+      [setup],
+      setup.workspace_id == ^workspace_id and setup.monitor_id == ^monitor_id and
+        not is_nil(setup.source_monitor_version_id)
+    )
+    |> order_by([setup], desc: setup.inserted_at, desc: setup.id)
+    |> limit(1)
+    |> Repo.one()
+  end
+
+  defp locked_successor_setup(workspace_id, monitor_id) do
+    Setup
+    |> where(
+      [setup],
+      setup.workspace_id == ^workspace_id and setup.monitor_id == ^monitor_id and
+        setup.status == :completed and not is_nil(setup.source_monitor_version_id)
+    )
+    |> order_by([setup], desc: setup.completed_at, desc: setup.id)
+    |> limit(1)
+    |> lock("FOR UPDATE")
+    |> Repo.one()
+  end
+
+  defp preload_candidate(nil), do: nil
+  defp preload_candidate(candidate), do: Repo.preload(candidate, :cases)
+
+  defp approved_contract(monitor_id, monitor_version_id) do
+    Repo.get_by(ContractVersion,
+      monitor_id: monitor_id,
+      monitor_version_id: monitor_version_id,
+      status: :approved
+    )
+  end
+
+  defp active_capture_run?(monitor_id) do
+    CaptureRun
+    |> where(
+      [run],
+      run.monitor_id == ^monitor_id and run.status in [:planned, :queued, :running]
+    )
+    |> Repo.exists?()
+  end
+
+  defp model_verified?(%ProviderCredential{status: :valid} = credential, requested_model) do
+    ProviderCredentials.model_access_verified?(credential, requested_model)
+  end
+
+  defp model_verified?(_credential, _requested_model), do: false
+
+  defp successor_changes(_source, nil), do: []
+
+  defp successor_changes(source, candidate) do
+    [
+      {:provider, source.provider, candidate.provider},
+      {:requested_model, source.requested_model, candidate.requested_model},
+      {:provider_request, request_identity(source), request_identity(candidate)},
+      {:generation_config, source.generation_config, candidate.generation_config},
+      {:response_format, source.response_format, candidate.response_format},
+      {:cases, source.case_set_fingerprint, candidate.case_set_fingerprint}
+    ]
+    |> Enum.filter(fn {_area, before, after_value} -> before != after_value end)
+    |> Enum.map(fn {area, _before, _after_value} -> area end)
+  end
+
+  defp request_identity(version) do
+    {
+      version.request_mode,
+      version.request_schema_version,
+      version.request_template,
+      version.system_prompt,
+      version.user_prompt_template
+    }
+  end
+
+  defp successor_preview_fingerprint(
+         monitor,
+         setup,
+         source,
+         candidate,
+         contract,
+         active_run?,
+         model_verified?
+       ) do
+    Fingerprint.digest(%{
+      "fingerprint_schema" => "monitor-successor-preview-v1",
+      "monitor_id" => monitor.id,
+      "monitor_state" => Atom.to_string(monitor.state),
+      "source_monitor_version_id" => source.id,
+      "candidate_monitor_version_id" => candidate && candidate.id,
+      "candidate_fingerprint" => candidate && candidate.fingerprint,
+      "setup_id" => setup.id,
+      "provider_credential_id" => setup.provider_credential_id,
+      "contract_version_id" => contract && contract.id,
+      "contract_fingerprint" => contract && contract.fingerprint,
+      "active_run" => active_run?,
+      "model_verified" => model_verified?
+    })
+  end
+
+  defp locked_version(monitor_id, version_id) do
+    MonitorVersion
+    |> where([version], version.monitor_id == ^monitor_id and version.id == ^version_id)
+    |> lock("FOR UPDATE")
+    |> Repo.one()
+  end
+
+  defp ensure_successor_identity(monitor, source, candidate) do
+    if monitor.state in [:active, :paused] and monitor.active_version_id == source.id and
+         monitor.draft_version_id == candidate.id and candidate.predecessor_id == source.id do
+      :ok
+    else
+      {:error, :stale_successor}
+    end
+  end
+
+  defp locked_successor_credential(setup, candidate) do
+    ProviderCredential
+    |> where(
+      [credential],
+      credential.id == ^setup.provider_credential_id and
+        credential.workspace_id == ^setup.workspace_id and credential.status == :valid and
+        credential.provider == ^candidate.provider
+    )
+    |> lock("FOR SHARE")
+    |> Repo.one()
+  end
+
+  defp ensure_model_verified(credential, requested_model) do
+    if model_verified?(credential, requested_model),
+      do: :ok,
+      else: {:error, :model_validation_required}
+  end
+
+  defp locked_approved_contract(monitor_id, monitor_version_id) do
+    ContractVersion
+    |> where(
+      [contract],
+      contract.monitor_id == ^monitor_id and
+        contract.monitor_version_id == ^monitor_version_id and contract.status == :approved
+    )
+    |> lock("FOR UPDATE")
+    |> Repo.one()
+  end
+
+  defp ensure_contract_proof(%ContractVersion{
+         proof_schema_version: proof_schema_version,
+         proof_fingerprint: proof_fingerprint
+       })
+       when is_binary(proof_schema_version) and is_binary(proof_fingerprint),
+       do: :ok
+
+  defp ensure_contract_proof(%ContractVersion{}), do: {:error, :contract_proof_unavailable}
+
+  defp ensure_preview_fingerprint(fingerprint, fingerprint), do: :ok
+  defp ensure_preview_fingerprint(_provided, _expected), do: {:error, :stale_preview}
+
+  defp clone_contract(source, candidate, user) do
+    fixtures =
+      ContractFixture
+      |> where([fixture], fixture.contract_version_id == ^source.id)
+      |> order_by([fixture], asc: fixture.position, asc: fixture.id)
+      |> lock("FOR SHARE")
+      |> Repo.all()
+
+    attrs = %{
+      version: next_contract_version(source.monitor_id),
+      schema_version: source.schema_version,
+      evaluator_engine_version: source.evaluator_engine_version,
+      template_key: source.template_key,
+      template_usage: source.template_usage,
+      assistance_mode: source.assistance_mode,
+      root: source.root,
+      contract_fingerprint: source.contract_fingerprint,
+      fixture_set_fingerprint: source.fixture_set_fingerprint,
+      fingerprint: source.fingerprint
+    }
+
+    associations = %{
+      workspace: %{id: source.workspace_id},
+      monitor: %{id: source.monitor_id},
+      monitor_version: candidate,
+      predecessor_id: source.id,
+      user: user
+    }
+
+    with {:ok, contract} <-
+           %ContractVersion{}
+           |> ContractVersion.create_changeset(associations, attrs)
+           |> Repo.insert(),
+         :ok <- clone_contract_fixtures(fixtures, contract, user) do
+      {:ok, contract}
+    end
+  end
+
+  defp clone_contract_fixtures(fixtures, contract, user) do
+    Enum.reduce_while(fixtures, :ok, fn fixture, :ok ->
+      attrs =
+        Map.take(fixture, [
+          :name,
+          :position,
+          :output_text,
+          :expected_status,
+          :expected_rule_statuses,
+          :fingerprint
+        ])
+
+      case %ContractFixture{}
+           |> ContractFixture.create_changeset(contract, user, attrs)
+           |> Repo.insert() do
+        {:ok, _fixture} -> {:cont, :ok}
+        {:error, changeset} -> {:halt, {:error, changeset}}
+      end
+    end)
+  end
+
+  defp retire_contract(contract) do
+    contract |> ContractVersion.retire_changeset(now()) |> Repo.update()
+  end
+
+  defp approve_contract(contract, source, user) do
+    contract
+    |> ContractVersion.approve_changeset(user, now(), %{
+      contract_fingerprint: source.contract_fingerprint,
+      fixture_set_fingerprint: source.fixture_set_fingerprint,
+      fingerprint: source.fingerprint,
+      proof_schema_version: source.proof_schema_version,
+      proof_fingerprint: source.proof_fingerprint
+    })
+    |> Repo.update()
+  end
+
+  defp next_contract_version(monitor_id) do
+    ContractVersion
+    |> where([contract], contract.monitor_id == ^monitor_id)
+    |> select([contract], max(contract.version))
+    |> Repo.one()
+    |> case do
+      nil -> 1
+      version -> version + 1
+    end
+  end
+
+  defp now, do: DateTime.utc_now(:second)
+
+  defp optional_id(nil), do: {:ok, nil}
+  defp optional_id(""), do: {:ok, nil}
+  defp optional_id(id), do: Ecto.UUID.cast(id)
 
   defp preload_setup_result({:ok, setup}), do: {:ok, Repo.preload(setup, :monitor, force: true)}
   defp preload_setup_result({:error, changeset}), do: {:error, changeset}

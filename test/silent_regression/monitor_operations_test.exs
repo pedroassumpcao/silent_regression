@@ -223,7 +223,7 @@ defmodule SilentRegression.MonitorOperationsTest do
       assert monitor.next_run_at == nil
     end
 
-    test "incompatible behavior auto-pauses an active monitor", %{
+    test "a non-executable draft does not pause active monitoring", %{
       fixture: fixture,
       scope: scope
     } do
@@ -239,11 +239,12 @@ defmodule SilentRegression.MonitorOperationsTest do
                  })
                )
 
-      assert {:ok, %{paused: 1}} = MonitorOperations.sweep_ineligible()
+      assert {:ok, %{eligible: 1, paused: 0}} = MonitorOperations.sweep_ineligible()
 
       monitor = Repo.get!(Monitor, fixture.monitor.id)
-      assert monitor.state == :paused
-      assert monitor.pause_reason == :incompatible_configuration
+      assert monitor.state == :active
+      assert monitor.pause_reason == nil
+      assert monitor.next_run_at
     end
 
     test "two consecutive authentication failures auto-pause the monitor", %{
