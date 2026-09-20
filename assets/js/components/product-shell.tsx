@@ -13,6 +13,7 @@ import {
   Database,
   Settings2,
   ShieldCheck,
+  Sparkles,
   UserRound,
 } from "lucide-react"
 
@@ -34,7 +35,7 @@ import {
 import { cn } from "@/lib/utils"
 
 type ProductShellProps = PropsWithChildren<{
-  currentSection?: "overview" | "credentials" | "monitors" | "alerts" | "notifications" | "data"
+  currentSection?: "overview" | "demo" | "credentials" | "monitors" | "alerts" | "notifications" | "data"
   releaseStage: string
   userEmail: string
   workspace: { name: string; slug: string }
@@ -63,6 +64,12 @@ export function ProductShell({
       icon: LayoutDashboard,
       href: `/app/${workspace.slug}`,
       current: currentSection === "overview",
+    },
+    {
+      label: "Demo",
+      icon: Sparkles,
+      href: `/app/${workspace.slug}/demo`,
+      current: currentSection === "demo",
     },
     {
       label: "Credentials",

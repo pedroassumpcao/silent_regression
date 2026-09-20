@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.SilentRegression.RecordAssistance do
-  @shortdoc "Records content-free founder assistance for a private-alpha monitor"
+  @shortdoc "Records content-free founder assistance for a pilot stage"
 
   @moduledoc """
   Records one allowlisted founder-assistance event without accepting notes or customer content.
@@ -11,7 +11,9 @@ defmodule Mix.Tasks.SilentRegression.RecordAssistance do
         --stage contract \
         --reason onboarding
 
-  Allowed stages are credential, workflow, cases, contract, baseline, schedule, and review.
+  For credential-free demo help, use `--stage demo` and omit `--monitor-id`.
+
+  Allowed stages are demo, credential, workflow, cases, contract, baseline, schedule, and review.
   Allowed reasons are onboarding, correction, provider, security, and other.
   """
 
@@ -33,7 +35,7 @@ defmodule Mix.Tasks.SilentRegression.RecordAssistance do
     reason: :string
   ]
 
-  @required Keyword.keys(@switches)
+  @required [:workspace_slug, :actor_email, :stage, :reason]
 
   @impl Mix.Task
   def run(args) do
@@ -49,14 +51,40 @@ defmodule Mix.Tasks.SilentRegression.RecordAssistance do
 
     attrs = opts |> Map.new() |> require_options!(@required)
 
-    with {:ok, monitor_id} <- Ecto.UUID.cast(attrs.monitor_id),
-         %Workspace{} = workspace <- Repo.get_by(Workspace, slug: attrs.workspace_slug),
+    with %Workspace{} = workspace <- Repo.get_by(Workspace, slug: attrs.workspace_slug),
          %User{} = user <- Repo.get_by(User, email: String.downcase(attrs.actor_email)),
-         %Membership{role: :owner} = membership <- membership(workspace.id, user.id),
-         %Monitor{} <-
-           Repo.get_by(Monitor, id: monitor_id, workspace_id: workspace.id) do
+         %Membership{role: :owner} = membership <- membership(workspace.id, user.id) do
       scope = Scope.for_workspace(user, workspace, membership)
 
+      target = record_assistance!(scope, workspace, attrs)
+
+      Mix.shell().info("Founder assistance recorded")
+      Mix.shell().info("Workspace: #{workspace.slug}")
+      Mix.shell().info(target)
+      Mix.shell().info("Stage: #{attrs.stage}")
+      Mix.shell().info("Reason: #{attrs.reason}")
+    else
+      nil -> Mix.raise("workspace, owner, or monitor not found")
+      %Membership{} -> Mix.raise("actor-email must belong to a workspace owner")
+    end
+  rescue
+    error in ArgumentError -> Mix.raise(error.message)
+  end
+
+  defp record_assistance!(scope, workspace, %{stage: "demo"} = attrs) do
+    if Map.get(attrs, :monitor_id) in [nil, ""] do
+      _event = ProductAnalytics.record_demo_assistance!(scope, attrs.reason)
+      "Target: credential-free demo in workspace #{workspace.id}"
+    else
+      Mix.raise("omit --monitor-id when --stage demo")
+    end
+  end
+
+  defp record_assistance!(scope, workspace, attrs) do
+    monitor_id = Map.get(attrs, :monitor_id)
+
+    with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id),
+         %Monitor{} <- Repo.get_by(Monitor, id: monitor_id, workspace_id: workspace.id) do
       _event =
         ProductAnalytics.record_founder_assistance!(
           scope,
@@ -65,18 +93,11 @@ defmodule Mix.Tasks.SilentRegression.RecordAssistance do
           attrs.reason
         )
 
-      Mix.shell().info("Founder assistance recorded")
-      Mix.shell().info("Workspace: #{workspace.slug}")
-      Mix.shell().info("Monitor: #{monitor_id}")
-      Mix.shell().info("Stage: #{attrs.stage}")
-      Mix.shell().info("Reason: #{attrs.reason}")
+      "Monitor: #{monitor_id}"
     else
-      :error -> Mix.raise("monitor-id must be a UUID")
+      :error -> Mix.raise("--monitor-id must be a UUID except when --stage demo")
       nil -> Mix.raise("workspace, owner, or monitor not found")
-      %Membership{} -> Mix.raise("actor-email must belong to a workspace owner")
     end
-  rescue
-    error in ArgumentError -> Mix.raise(error.message)
   end
 
   defp membership(workspace_id, user_id) do

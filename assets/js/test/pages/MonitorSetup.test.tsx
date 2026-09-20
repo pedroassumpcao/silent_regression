@@ -168,6 +168,17 @@ describe("MonitorSetupView", () => {
     expect(screen.getByText("a".repeat(64))).toBeInTheDocument()
   })
 
+  it("states the generic import boundary without claiming a speculative adapter", async () => {
+    const user = userEvent.setup()
+
+    render(<MonitorSetupView {...baseProps} errors={{}} flash={{}} step="cases" />)
+
+    await user.click(screen.getByRole("button", { name: "JSON import" }))
+
+    expect(screen.getByText(/no third-party eval format is currently supported/i)).toBeInTheDocument()
+    expect(screen.getByText(/first external adapter will be selected from an actual design partner dataset/i)).toBeInTheDocument()
+  })
+
   it("keeps only the named review step navigable after immutable completion", () => {
     render(
       <MonitorSetupView

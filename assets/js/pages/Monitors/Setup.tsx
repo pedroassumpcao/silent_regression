@@ -1007,7 +1007,7 @@ function CasesStep({ basePath, errors, limits, setup }: StepProps & { limits: Li
             <FileJson2 />
             <AlertTitle>Versioned import schema</AlertTitle>
             <AlertDescription>
-              Import one JSON object with <code className="rounded bg-muted px-1">schema_version: 2</code> and a <code className="rounded bg-muted px-1">cases</code> array. Each case may include an <code className="rounded bg-muted px-1">expectation</code>. Schema v1 remains accepted and creates explicit no-expectation cases. A valid import replaces the current draft case list.
+              Import one JSON object with <code className="rounded bg-muted px-1">schema_version: 2</code> and a <code className="rounded bg-muted px-1">cases</code> array. Each case may include an <code className="rounded bg-muted px-1">expectation</code>. Schema v1 remains accepted and creates explicit no-expectation cases. A valid import replaces the current draft case list. This is Silent Regression&apos;s generic schema; no third-party eval format is currently supported. The first external adapter will be selected from an actual design partner dataset rather than guessed in advance.
             </AlertDescription>
           </Alert>
           <div className="space-y-2">

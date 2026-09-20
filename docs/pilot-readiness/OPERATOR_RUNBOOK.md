@@ -38,6 +38,25 @@ mix silent_regression.record_assistance \
 
 Do not record free-form notes. Product events and audit records intentionally reject arbitrary keys.
 
+For help understanding the credential-free demo, omit the monitor ID and use the `demo` stage:
+
+```shell
+mix silent_regression.record_assistance \
+  --workspace-slug acme-ai \
+  --actor-email owner@acme.example \
+  --stage demo \
+  --reason onboarding
+```
+
+Review content-free demo completion, time to a proven case expectation, time to completion, and
+founder-assistance counts without printing customer inputs or event-level user identities:
+
+```shell
+mix silent_regression.pilot_metrics \
+  --workspace-slug acme-ai \
+  --actor-email owner@acme.example
+```
+
 ## Failed background jobs
 
 1. Inspect Oban queue health and the failure category, attempt count, worker, and record IDs only.

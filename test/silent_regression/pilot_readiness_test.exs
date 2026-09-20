@@ -81,4 +81,62 @@ defmodule SilentRegression.PilotReadinessTest do
       )
     end
   end
+
+  test "measures the credential-free demo without storing its request or outputs" do
+    scope = workspace_scope_fixture()
+
+    assert %{status: :not_started, completed_count: 0} =
+             ProductAnalytics.demo_progress(scope)
+
+    assert {:error, :not_started} = ProductAnalytics.complete_demo_step(scope, "request")
+
+    assert {:ok, %{status: :in_progress, current_step: "request"}} =
+             ProductAnalytics.start_demo(scope)
+
+    assert {:error, :out_of_order} =
+             ProductAnalytics.complete_demo_step(scope, "expectation")
+
+    for step <- ~w(request expectation reference incident) do
+      assert {:ok, _progress} = ProductAnalytics.complete_demo_step(scope, step)
+    end
+
+    assert {:ok, %{status: :completed}} =
+             ProductAnalytics.complete_demo_step(scope, "request")
+
+    assert %{
+             status: :completed,
+             completed_count: 4,
+             seconds_to_expectation: seconds_to_expectation,
+             seconds_to_completion: seconds_to_completion
+           } = ProductAnalytics.demo_progress(scope)
+
+    assert is_integer(seconds_to_expectation)
+    assert is_integer(seconds_to_completion)
+
+    event = ProductAnalytics.record_demo_assistance!(scope, :onboarding)
+    assert event.target_type == "workspace"
+    assert event.properties == %{"reason" => "onboarding", "stage" => "demo"}
+
+    assert %{
+             started_count: 1,
+             completed_count: 1,
+             assistance_count: 1,
+             median_seconds_to_expectation: median_expectation,
+             median_seconds_to_completion: median_completion,
+             step_counts: %{
+               "request" => 1,
+               "expectation" => 1,
+               "reference" => 1,
+               "incident" => 1
+             }
+           } = ProductAnalytics.demo_funnel(scope)
+
+    assert is_integer(median_expectation)
+    assert is_integer(median_completion)
+
+    inspected = inspect(ProductAnalytics.list_events(scope))
+    refute inspected =~ "charged twice"
+    refute inspected =~ "technical"
+    refute inspected =~ "billing"
+  end
 end

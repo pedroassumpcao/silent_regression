@@ -73,6 +73,7 @@ export function DashboardView({
   const completedCount = monitors.filter(monitor => monitor.setupStatus === "completed").length
   const inProgressCount = monitors.length - completedCount
   const createPath = `/app/${workspace.slug}/monitors/new`
+  const demoPath = `/app/${workspace.slug}/demo`
 
   return (
     <ProductShell
@@ -100,12 +101,17 @@ export function DashboardView({
             </p>
           </div>
 
-          <Button id="create-monitor-button" asChild className="shrink-0">
-            <Link href={createPath}>
-              <Plus />
-              {monitors.length === 0 ? "Create your first monitor" : "Create monitor"}
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button id="open-guided-demo-button" asChild variant="outline" className="shrink-0">
+              <Link href={demoPath}><FlaskConical /> Try the zero-call demo</Link>
+            </Button>
+            <Button id="create-monitor-button" asChild className="shrink-0">
+              <Link href={createPath}>
+                <Plus />
+                {monitors.length === 0 ? "Create your first monitor" : "Create monitor"}
+              </Link>
+            </Button>
+          </div>
         </section>
 
         {flash.info && (
@@ -126,7 +132,7 @@ export function DashboardView({
         {activation && <ActivationCard activation={activation} />}
 
         {monitors.length === 0 ? (
-          <EmptyMonitors createPath={createPath} />
+          <EmptyMonitors createPath={createPath} demoPath={demoPath} />
         ) : (
           <>
             <section className="grid gap-4 sm:grid-cols-3" aria-label="Monitor summary">
@@ -210,7 +216,7 @@ function ActivationCard({ activation }: { activation: ActivationChecklist }) {
   )
 }
 
-function EmptyMonitors({ createPath }: { createPath: string }) {
+function EmptyMonitors({ createPath, demoPath }: { createPath: string; demoPath: string }) {
   return (
     <Card id="empty-monitors-card" className="overflow-hidden border-dashed bg-card/70">
       <CardContent className="grid gap-8 px-6 py-10 md:grid-cols-[1fr_0.8fr] md:items-center md:px-10 md:py-14">
@@ -225,11 +231,10 @@ function EmptyMonitors({ createPath }: { createPath: string }) {
             Choose an output your product must keep producing correctly. We will guide you through
             the exact provider, prompt, and frozen cases needed to define it safely.
           </p>
-          <Button id="empty-create-monitor-button" asChild className="mt-6">
-            <Link href={createPath}>
-              Create your first monitor <ArrowRight />
-            </Link>
-          </Button>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button id="empty-demo-button" asChild variant="outline"><Link href={demoPath}>Try the zero-call demo</Link></Button>
+            <Button id="empty-create-monitor-button" asChild><Link href={createPath}>Create your first monitor <ArrowRight /></Link></Button>
+          </div>
         </div>
 
         <div className="rounded-2xl border bg-muted/35 p-5">
