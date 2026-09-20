@@ -58,7 +58,7 @@ defmodule Mix.Tasks.SilentRegression.ReconcileDeletions do
   end
 
   defp validate_execution_confirmation!(opts, digest) do
-    if opts[:execute] and opts[:confirm_ledger_sha] != digest do
+    if opts[:execute] == true and opts[:confirm_ledger_sha] != digest do
       Mix.raise("--confirm-ledger-sha must exactly match #{digest}")
     end
   end
