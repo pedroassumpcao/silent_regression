@@ -22,6 +22,20 @@ const auth = {
 const baseProps: OperationsProps = {
   auth,
   approvedBaseline: true,
+  authenticationRecovery: {
+    required: false,
+    status: null,
+    trippedAt: null,
+    epoch: null,
+    authorizedAt: null,
+    credentialValidatedAt: null,
+    captureRunId: null,
+    probeStatus: null,
+    failureCategory: null,
+    validationCallCount: 0,
+    maximumCallCount: 0,
+    retryLimit: 0,
+  },
   canManage: true,
   lastRun: null,
   monitor: {
@@ -121,6 +135,104 @@ describe("OperationsView", () => {
 
     expect(screen.getByText("Provider calls are paused")).toBeInTheDocument()
     expect(screen.getAllByText(/exact provider credential is unavailable/i).length).toBeGreaterThan(0)
+    expect(screen.getByRole("button", { name: "Resume monitor" })).toBeEnabled()
+  })
+
+  it("blocks resume until an owner reviews the exact recovery call envelope", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <OperationsView
+        {...baseProps}
+        authenticationRecovery={{
+          ...baseProps.authenticationRecovery,
+          required: true,
+          status: "ready",
+          trippedAt: "2026-09-20T15:00:00Z",
+          validationCallCount: 1,
+          maximumCallCount: 1,
+        }}
+        flash={{}}
+        monitor={{
+          ...baseProps.monitor,
+          state: "paused",
+          cadence: "daily",
+          pauseReason: "repeated_authentication_failures",
+        }}
+      />,
+    )
+
+    expect(screen.getByRole("heading", { name: "Authentication recovery required" })).toBeInTheDocument()
+    expect(screen.getByText("1 metadata request")).toBeInTheDocument()
+    expect(screen.getByText("1 call maximum")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Resume monitor" })).toBeDisabled()
+
+    await user.click(screen.getByRole("button", { name: "Start recovery" }))
+
+    expect(screen.getByRole("heading", { name: "Authorize bounded authentication recovery?" })).toBeInTheDocument()
+    expect(screen.getByText(/one content-free request/i)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Validate and run one probe" })).toBeEnabled()
+  })
+
+  it("shows recovery progress to members without granting authorization", () => {
+    render(
+      <OperationsView
+        {...baseProps}
+        auth={{ ...auth, membership: { id: "member-id", role: "member" } }}
+        authenticationRecovery={{
+          ...baseProps.authenticationRecovery,
+          required: true,
+          status: "failed",
+          trippedAt: "2026-09-20T15:00:00Z",
+          failureCategory: "authentication",
+          validationCallCount: 1,
+          maximumCallCount: 1,
+        }}
+        canManage={false}
+        flash={{}}
+        monitor={{
+          ...baseProps.monitor,
+          state: "paused",
+          cadence: "daily",
+          pauseReason: "repeated_authentication_failures",
+        }}
+      />,
+    )
+
+    expect(screen.getByRole("heading", { name: "Authentication recovery probe failed" })).toBeInTheDocument()
+    expect(screen.getByText(/ended with authentication/i)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Retry recovery" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Resume monitor" })).toBeDisabled()
+  })
+
+  it("unlocks only explicit resume after a successful probe", () => {
+    render(
+      <OperationsView
+        {...baseProps}
+        authenticationRecovery={{
+          ...baseProps.authenticationRecovery,
+          status: "succeeded",
+          trippedAt: "2026-09-20T15:00:00Z",
+          epoch: 1,
+          authorizedAt: "2026-09-20T15:02:00Z",
+          credentialValidatedAt: "2026-09-20T15:02:00Z",
+          captureRunId: "recovery-run-id",
+          probeStatus: "succeeded",
+          validationCallCount: 1,
+          maximumCallCount: 1,
+        }}
+        flash={{}}
+        monitor={{
+          ...baseProps.monitor,
+          state: "paused",
+          cadence: "daily",
+          pauseReason: "repeated_authentication_failures",
+        }}
+      />,
+    )
+
+    expect(screen.getByRole("heading", { name: "Authentication recovery succeeded" })).toBeInTheDocument()
+    expect(screen.getByText(/monitoring has not restarted/i)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Resume monitor" })).toBeEnabled()
   })
 })

@@ -13,6 +13,7 @@ import {
   LoaderCircle,
   Play,
   RefreshCw,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
 } from "lucide-react"
@@ -37,6 +38,22 @@ import type { SharedPageProps } from "@/types/page"
 
 type Cadence = "manual" | "daily" | "weekly"
 type MonitorState = "baseline_pending" | "active" | "paused"
+type AuthenticationRecoveryStatus = "ready" | "in_progress" | "succeeded" | "failed"
+
+type AuthenticationRecovery = {
+  required: boolean
+  status: AuthenticationRecoveryStatus | null
+  trippedAt: string | null
+  epoch: number | null
+  authorizedAt: string | null
+  credentialValidatedAt: string | null
+  captureRunId: string | null
+  probeStatus: string | null
+  failureCategory: string | null
+  validationCallCount: number
+  maximumCallCount: number
+  retryLimit: number
+}
 
 type LastRun = {
   id: string
@@ -52,6 +69,7 @@ type LastRun = {
 export type OperationsProps = {
   auth: SharedPageProps["auth"]
   approvedBaseline: boolean
+  authenticationRecovery: AuthenticationRecovery
   canManage: boolean
   lastRun: LastRun | null
   monitor: {
@@ -87,6 +105,7 @@ export type OperationsProps = {
 
 export function OperationsView({
   approvedBaseline,
+  authenticationRecovery,
   auth,
   canManage,
   flash = {},
@@ -100,6 +119,7 @@ export function OperationsView({
   const [cadence, setCadence] = useState<Cadence>(monitor.cadence)
   const [processing, setProcessing] = useState<string | null>(null)
   const [runDialogOpen, setRunDialogOpen] = useState(false)
+  const [recoveryDialogOpen, setRecoveryDialogOpen] = useState(false)
 
   if (!workspace) return null
 
@@ -111,6 +131,8 @@ export function OperationsView({
   const active = monitor.state === "active"
   const paused = monitor.state === "paused"
   const pendingActivation = monitor.state === "baseline_pending"
+  const authenticationPause = paused && monitor.pauseReason === "repeated_authentication_failures"
+  const recoveryBlocksResume = authenticationPause && authenticationRecovery.status !== "succeeded"
 
   const mutate = (name: string, url: string) => {
     setProcessing(name)
@@ -131,6 +153,23 @@ export function OperationsView({
     router.post(`${path}/run-now`, {}, {
       preserveScroll: true,
       onSuccess: () => setRunDialogOpen(false),
+      onFinish: () => setProcessing(null),
+    })
+  }
+
+  const authorizeRecovery = () => {
+    setProcessing("authentication-recovery")
+    router.post(`${path}/authentication-recovery`, {}, {
+      preserveScroll: true,
+      onSuccess: () => setRecoveryDialogOpen(false),
+      onFinish: () => setProcessing(null),
+    })
+  }
+
+  const refreshRecovery = () => {
+    setProcessing("authentication-recovery-refresh")
+    router.reload({
+      only: ["authenticationRecovery", "monitor"],
       onFinish: () => setProcessing(null),
     })
   }
@@ -205,6 +244,103 @@ export function OperationsView({
           </Alert>
         )}
 
+        {authenticationRecovery.status && (
+          <Card
+            id="authentication-recovery-card"
+            className={authenticationRecovery.status === "succeeded" ? "border-success/30 bg-success/5" : "border-amber-500/30 bg-amber-500/5"}
+          >
+            <CardHeader>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex gap-3">
+                  <span className={`mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl ${authenticationRecovery.status === "succeeded" ? "bg-success/10 text-success" : "bg-amber-500/10 text-amber-700"}`}>
+                    {authenticationRecovery.status === "succeeded" ? <ShieldCheck className="size-5" /> : <ShieldAlert className="size-5" />}
+                  </span>
+                  <div>
+                    <CardTitle role="heading" aria-level={2} className="text-xl">{recoveryTitle(authenticationRecovery.status)}</CardTitle>
+                    <CardDescription className="mt-2 max-w-3xl leading-6">
+                      {recoveryDescription(authenticationRecovery.status, authenticationRecovery.failureCategory)}
+                    </CardDescription>
+                  </div>
+                </div>
+                <Badge variant="outline" className="w-fit bg-background/70">
+                  {authenticationRecovery.status === "succeeded" ? "Recovery verified" : "Provider calls paused"}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <RecoveryLimit label="Access validation" value={`${authenticationRecovery.validationCallCount} metadata request`} />
+                <RecoveryLimit label="Completion probe" value={`${authenticationRecovery.maximumCallCount} call maximum`} />
+                <RecoveryLimit label="Automatic retries" value={String(authenticationRecovery.retryLimit)} />
+              </div>
+
+              {authenticationRecovery.status === "in_progress" && (
+                <div className="flex flex-col gap-3 rounded-xl border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium">The single probe is queued or running</p>
+                    <p className="mt-1 text-sm text-muted-foreground">The monitor stays paused. Refresh after the worker finishes; no additional completion call will be retried automatically.</p>
+                  </div>
+                  <Button id="refresh-authentication-recovery" variant="outline" disabled={processing !== null} onClick={refreshRecovery}>
+                    {processing === "authentication-recovery-refresh" ? <LoaderCircle className="animate-spin" /> : <RefreshCw />} Refresh status
+                  </Button>
+                </div>
+              )}
+
+              {authenticationRecovery.status === "succeeded" && (
+                <Alert className="border-success/25 bg-background/70">
+                  <CheckCircle2 className="text-success" />
+                  <AlertTitle>Exact-model access and one completion succeeded</AlertTitle>
+                  <AlertDescription>The breaker is cleared, but monitoring has not restarted. Review the evidence, then use Resume monitor below when you are ready to restore the schedule.</AlertDescription>
+                </Alert>
+              )}
+
+              {(authenticationRecovery.status === "ready" || authenticationRecovery.status === "failed") && (
+                <div className="flex flex-col gap-3 rounded-xl border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium">{canManage ? "Owner authorization required" : "A workspace owner must authorize recovery"}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Validation sends no prompt or case content. A completion probe is queued only when the credential can access {monitor.requestedModel || "the exact configured model"}.</p>
+                  </div>
+                  <Dialog open={recoveryDialogOpen} onOpenChange={setRecoveryDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button id="authorize-authentication-recovery" disabled={!canManage || processing !== null || !approvedBaseline}>
+                        <ShieldCheck /> {authenticationRecovery.status === "failed" ? "Retry recovery" : "Start recovery"}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Authorize bounded authentication recovery?</DialogTitle>
+                        <DialogDescription>
+                          First, Silent Regression makes one content-free request to verify this credential can access the exact configured model. Only after that succeeds will it queue one completion probe.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-3 py-2 sm:grid-cols-3">
+                        <RecoveryLimit label="Validation" value="1 request" />
+                        <RecoveryLimit label="Completion" value="1 maximum" />
+                        <RecoveryLimit label="Retries" value="0" />
+                      </div>
+                      <Alert>
+                        <CirclePause />
+                        <AlertTitle>Resume remains manual</AlertTitle>
+                        <AlertDescription>Even a successful probe leaves the monitor paused until an owner explicitly resumes it.</AlertDescription>
+                      </Alert>
+                      <DialogFooter>
+                        <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                        <Button id="confirm-authentication-recovery" disabled={processing !== null} onClick={authorizeRecovery}>
+                          {processing === "authentication-recovery" ? <LoaderCircle className="animate-spin" /> : <ShieldCheck />} Validate and run one probe
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              )}
+
+              {authenticationRecovery.trippedAt && (
+                <p className="text-xs text-muted-foreground">Breaker opened {formatUtc(authenticationRecovery.trippedAt)}. Recovery evidence is stored as a new immutable epoch; earlier failures remain in history.</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Monitor status">
           <MetricCard icon={Activity} label="Monitor state" value={stateLabel(monitor.state)} detail={paused ? pauseReason(monitor.pauseReason) : cadenceLabel(monitor.cadence)} />
           <MetricCard icon={Clock3} label="Last run" value={lastRun ? statusLabel(lastRun.status) : "No managed run"} detail={lastRun ? formatUtc(lastRun.completedAt || lastRun.insertedAt) : "Activate or run on demand"} />
@@ -261,7 +397,7 @@ export function OperationsView({
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   {paused ? (
-                    <Button id="resume-monitor" disabled={!canManage || processing !== null || !approvedBaseline} onClick={() => mutate("resume", `${path}/resume`)}>
+                    <Button id="resume-monitor" disabled={!canManage || processing !== null || !approvedBaseline || recoveryBlocksResume} onClick={() => mutate("resume", `${path}/resume`)}>
                       {processing === "resume" ? <LoaderCircle className="animate-spin" /> : <RefreshCw />} Resume monitor
                     </Button>
                   ) : (
@@ -279,6 +415,7 @@ export function OperationsView({
                   )}
                 </div>
               </div>
+              {recoveryBlocksResume && <p className="text-xs text-amber-700">Resume unlocks only after the bounded authentication probe succeeds.</p>}
             </CardContent>
           </Card>
 
@@ -380,6 +517,10 @@ function SpendMetric({ label, value }: { label: string; value: number }) {
   return <div className="rounded-xl border bg-muted/20 p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p></div>
 }
 
+function RecoveryLimit({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-xl border bg-background/70 p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-sm font-semibold tracking-tight">{value}</p></div>
+}
+
 function RunFact({ label, value }: { label: string; value: string }) {
   return <div className="rounded-xl border bg-background p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 break-words text-sm font-medium capitalize">{value}</p></div>
 }
@@ -411,6 +552,25 @@ function pauseReason(reason: string | null) {
     workspace_call_limit: "Today’s workspace call envelope is exhausted.",
     schedule_owner_unavailable: "The owner who authorized this schedule is no longer available.",
   } as Record<string, string>)[reason || ""] || "Monitoring is paused."
+}
+
+function recoveryTitle(status: AuthenticationRecoveryStatus) {
+  if (status === "ready") return "Authentication recovery required"
+  if (status === "in_progress") return "Authentication recovery is in progress"
+  if (status === "succeeded") return "Authentication recovery succeeded"
+  return "Authentication recovery probe failed"
+}
+
+function recoveryDescription(status: AuthenticationRecoveryStatus, failureCategory: string | null) {
+  if (status === "ready") return "Two consecutive managed runs were rejected by the provider. The schedule is stopped until an owner proves exact-model access with a tightly bounded recovery attempt."
+  if (status === "in_progress") return "Fresh exact-model access was verified. One completion probe with zero retries is now the only provider work allowed for this monitor."
+  if (status === "succeeded") return "The fresh credential validation and single completion probe both succeeded. Earlier failure evidence is unchanged and the schedule still requires an explicit resume."
+  return `The single completion probe ended with ${failureLabel(failureCategory)}. The monitor remains paused; retrying creates a new recovery epoch with fresh validation.`
+}
+
+function failureLabel(category: string | null) {
+  if (!category) return "a failed or unknown outcome"
+  return category.replaceAll("_", " ")
 }
 
 function statusLabel(status: string) {
