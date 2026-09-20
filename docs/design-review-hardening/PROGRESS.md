@@ -3,8 +3,8 @@
 ## Current status
 
 - Program: in progress
-- Current gate: Gate C — Pilot usability
-- Current task: Task 25 — credential-free demo and focused imports (in progress)
+- Current gate: Gate D — Hosted-pilot readiness
+- Current task: Task 26 — reproducible verification and toolchain (in progress)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -22,8 +22,8 @@
 | 22 | Successor workflow configuration | Complete (`20367c0`) |
 | 23 | Incident-centered alerting | Complete (`85a99f4`) |
 | 24 | Reviewed reference capture language | Complete (`bf16677`) |
-| 25 | Credential-free demo and focused imports | In progress |
-| 26 | Reproducible verification and toolchain | Not started |
+| 25 | Credential-free demo and focused imports | Complete (`89e62d7`) |
+| 26 | Reproducible verification and toolchain | In progress |
 | 27 | Hosted security and operations | Not started |
 
 ## Task 15 log
@@ -405,3 +405,28 @@ Completion:
   that matching later failures still create incidents.
 - Verification passed on 2026-09-20 with `mix precommit` (650 Elixir tests), frontend TypeScript and
   60 tests, and `mix assets.build`. Focused implementation commit: `bf16677`. Task 25 is next.
+
+## Task 25 log
+
+- [x] Add a sealed, credential-free, zero-provider-call demo before credential entry.
+- [x] Evaluate the demo with the production shared-contract and case-expectation engines.
+- [x] Persist resumable content-free progress for request, expectation, reference, and incident.
+- [x] Measure time to the proven expectation, total completion time, and founder assistance.
+- [x] Keep manual/versioned JSON import and state the unsupported external-format boundary.
+- [x] Gate the first external adapter on inspection of an actual partner dataset; none has been
+  supplied, so no adapter or compatibility claim was invented.
+
+The demo's sealed fingerprint covers its request, deterministic contract, case expectation,
+reviewed output, and recurring output. The reviewed output passes both layers; the recurring output
+still passes the broad routing contract but fails the exact duplicate-charge case expectation,
+producing the representative incident. Product events contain only fixed step/version/count values.
+
+The new demo routes are inside the authenticated workspace scope because progress and assistance
+measurements are tenant-bound and actor-attributed. They require no credential and create no monitor,
+capture, run, or provider attempt. The operator can record bounded demo assistance and print
+aggregate pilot measures without customer content or event-level identities.
+
+The additive migration preserved all 34 existing monitor-target product events and installed the
+expanded name/target constraints. No local data wipe was needed. Verification passed on 2026-09-20
+with `mix precommit` (655 Elixir tests), frontend TypeScript and 64 tests, and `mix assets.build`.
+Focused implementation commit: `89e62d7`. Task 26 is next.

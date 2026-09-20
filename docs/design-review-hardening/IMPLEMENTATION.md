@@ -210,6 +210,13 @@ approval consequences explicit across the workflow.
   speculative universal importer.
 - Measure authoring assistance and time to a proven case expectation.
 
+Completion: implemented in `89e62d7`. The authenticated workspace demo is sealed and resumable,
+uses the production deterministic engines, makes zero provider calls, and exposes the shared-pass /
+case-failure wedge with exact fingerprints and evidence. Content-free events and the operator metrics
+command measure step completion, time to expectation, time to completion, and demo assistance. The
+generic JSON import remains supported and the product explicitly states that no external adapter is
+available until a real partner format is inspected.
+
 ## Gate D — Hosted-pilot readiness
 
 ### Task 26: reproducible verification and toolchain

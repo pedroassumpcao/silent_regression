@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–24 complete; Task 25 is in progress; Gates A–B are complete and Gates C–D block the first design-partner pilot
+> **Status:** Tasks 1–25 complete; Task 26 is in progress; Gates A–C are complete and Gate D blocks the first design-partner pilot
 >
-> **Progress:** 24 of 27 tasks complete; Task 25 is in progress
+> **Progress:** 25 of 27 tasks complete; Task 26 is in progress
 >
 > **Last revised:** 2026-09-20
 >
@@ -320,10 +320,10 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 20 | Authentication-breaker recovery | 19 | Complete | `b2e6d80`, `e639ce6`, `5d42d0a`, `6403357` |
 | 21 | Temporary capacity and coverage state | 20 | Complete | `628ea87`, `0b06ca8`, `54b23fc` |
 | 22 | Successor workflow configuration | 17, 19–21 | Complete | `3383065`, `20367c0` |
-| 23 | Incident-centered alerting | 18, 22 | In progress | — |
-| 24 | Reviewed reference capture language | 16–18, 23 | Not started | — |
-| 25 | Credential-free demo and focused imports | 17, 18, 24 | Not started | — |
-| 26 | Reproducible verification and toolchain | 15–25 | Not started | — |
+| 23 | Incident-centered alerting | 18, 22 | Complete | `e9edd50`, `85a99f4`, `7cab70f` |
+| 24 | Reviewed reference capture language | 16–18, 23 | Complete | `f9ad312`, `bf16677`, `46c9fed` |
+| 25 | Credential-free demo and focused imports | 17, 18, 24 | Complete | `89e62d7` |
+| 26 | Reproducible verification and toolchain | 15–25 | In progress | — |
 | 27 | Hosted security and operations | 19–26 | Not started | — |
 
 ## 10. Implementation tasks
@@ -1160,7 +1160,7 @@ as statistical proof of universal content health.
 
 ### Task 25 — Credential-free demo and focused imports
 
-**Status:** In progress
+**Status:** Complete (`89e62d7`)
 
 **Gate:** C — Pilot usability
 
@@ -1169,15 +1169,16 @@ reduce setup friction using evidence from real design-partner formats.
 
 **Checklist:**
 
-- [ ] Add a sealed credential-free demo with representative requests, expectations, failures, and
+- [x] Add a sealed credential-free demo with representative requests, expectations, failures, and
   exact evidence.
-- [ ] Measure the steps and founder assistance needed to understand the wedge.
-- [ ] Select one import adapter only after inspecting the first partners' existing eval data.
-- [ ] Keep the generic versioned JSON import and document unsupported external formats honestly.
+- [x] Measure the steps and founder assistance needed to understand the wedge.
+- [x] Enforce the evidence gate: no external adapter is selected until an actual partner format is
+  inspected; none has been supplied, so no speculative compatibility claim was added.
+- [x] Keep the generic versioned JSON import and document unsupported external formats honestly.
 
 ### Task 26 — Reproducible verification and toolchain
 
-**Status:** Not started
+**Status:** In progress
 
 **Gate:** D — Hosted-pilot readiness
 
@@ -2200,6 +2201,27 @@ The product is ready for the first external design partner only when:
 - Verification passed with `mix precommit` (650 Elixir tests), frontend TypeScript and 60 tests, and
   `mix assets.build`.
 - Focused commits: `f9ad312` and `bf16677`. Task 25 is next.
+
+### 2026-09-20 — Task 25 complete
+
+- Added an authenticated, resumable credential-free demo reachable from navigation and the empty
+  dashboard before a partner shares any provider secret.
+- Sealed the exact request, shared contract, case expectation, reviewed output, and recurring output
+  under one stable fingerprint and evaluated both outputs with the production deterministic engines.
+- Demonstrated the core wedge: the recurring `technical` output remains an allowed routing label but
+  fails the duplicate-charge case's exact `billing` expectation, producing an inspectable incident.
+- Persisted only allowlisted demo version/step/count events and derived time to proven expectation,
+  time to completion, per-step counts, and founder-assistance counts.
+- Added operator commands/runbook guidance for content-free assistance recording and aggregate pilot
+  metrics without printing customer inputs, outputs, credentials, rationale, or user identities.
+- Kept manual entry and the versioned generic JSON import; product copy states that no external eval
+  format is supported until a real design-partner dataset is inspected. No speculative adapter was
+  created.
+- The additive migration preserved all 34 existing monitor-target product events and installed the
+  expanded event-name/target constraints. No local data wipe was needed.
+- Verification passed with `mix precommit` (655 Elixir tests), frontend TypeScript and 64 tests, and
+  `mix assets.build`.
+- Focused commit: `89e62d7`. Task 26 is next.
 
 ## 17. References
 

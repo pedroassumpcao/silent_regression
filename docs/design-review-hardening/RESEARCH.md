@@ -367,6 +367,26 @@ in that exact reference membership. It does not weaken the approved contract, su
 findings, or establish that the same future output is acceptable; incident occurrences retain an
 explicit exceptional-reference flag.
 
+#### Task 25 demo and import boundary
+
+The credential-free demo is a sealed, read-only routing scenario, not a fake customer monitor. It
+uses the production deterministic contract and case-expectation engines against two frozen outputs:
+the reviewed output passes both layers, while the recurring output remains an allowed shared-contract
+label but fails the exact case expectation. Its fingerprint covers the request artifact, contract,
+expectation, and both outputs. It makes zero provider calls, stores no demo content in product
+events, and cannot be mistaken for provider/model proof.
+
+The four persisted learning steps are exact request, expected behavior, reviewed reference, and
+silent-regression incident. Workspace-scoped, actor-attributed product events measure completion,
+time to the proven expectation, time to completion, and allowlisted founder assistance without raw
+inputs or outputs.
+
+No external dataset adapter is selected in the absence of an actual design-partner source format.
+The supported import surface remains manual entry plus the versioned Silent Regression JSON schema.
+This is a deliberate evidence gate: inspect a partner's real export, quantify the mapping and loss,
+then implement one narrow adapter with fixtures. A universal or guessed adapter would create a false
+compatibility claim and is outside the private-alpha scope.
+
 ## Data-model impact
 
 A local data wipe is **not required or recommended**. The changes can be additive and the existing
@@ -382,6 +402,7 @@ data provides valuable migration and compatibility coverage.
 | Successor configuration | Existing immutable versions are reusable; add draft/origin/motivation linkage where required | Copy active version and cases into a draft, then activate atomically |
 | Incidents | Add incident and occurrence records; retain alerts during transition | Backfill or lazily attach open alerts by stable signature; do not discard alerts |
 | Bounded rescore | A durable rescore job/cutoff may need progress state associated with a draft contract version | Pin the observation cutoff and activate only after the bounded rescore completes |
+| Demo learning evidence | Extend the existing content-free product-event allowlist to workspace-scoped demo steps | Preserve all monitor events; add no customer-content columns or demo monitor rows |
 | Public copy, reference terminology, proof UI, CI | No domain migration | Code/documentation changes only |
 
 Before each schema-bearing task, tests must exercise the migration against a database containing
