@@ -8,7 +8,7 @@ defmodule SilentRegression.MonitorOperations.Workers.DispatcherWorker do
     max_attempts: 1,
     unique: [period: 55, fields: [:worker], states: [:available, :scheduled, :executing]]
 
-  alias SilentRegression.MonitorOperations
+  alias SilentRegression.{MonitorOperations, OperationalHealth}
 
   @impl Oban.Worker
   def perform(%Oban.Job{}) do
@@ -16,6 +16,7 @@ defmodule SilentRegression.MonitorOperations.Workers.DispatcherWorker do
 
     with {:ok, _sweep} <- MonitorOperations.sweep_ineligible(now),
          {:ok, _dispatch} <- MonitorOperations.dispatch_due(now) do
+      {:ok, _heartbeat} = OperationalHealth.record_heartbeat(:scheduler_dispatch, :ok)
       :ok
     end
   end

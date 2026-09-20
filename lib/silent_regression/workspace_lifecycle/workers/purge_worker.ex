@@ -12,13 +12,18 @@ defmodule SilentRegression.WorkspaceLifecycle.Workers.PurgeWorker do
       states: [:available, :scheduled, :executing, :retryable]
     ]
 
-  alias SilentRegression.WorkspaceLifecycle
+  alias SilentRegression.{OperationalHealth, WorkspaceLifecycle}
 
   @impl Oban.Worker
   def perform(%Oban.Job{}) do
     case WorkspaceLifecycle.purge_due_workspaces() do
-      {:ok, _summary} -> :ok
-      {:error, summary} -> {:error, "#{summary.failed} due workspace purge(s) failed"}
+      {:ok, _summary} ->
+        {:ok, _heartbeat} = OperationalHealth.record_heartbeat(:workspace_purge, :ok)
+        :ok
+
+      {:error, summary} ->
+        {:ok, _heartbeat} = OperationalHealth.record_heartbeat(:workspace_purge, :error)
+        {:error, "#{summary.failed} due workspace purge(s) failed"}
     end
   end
 end

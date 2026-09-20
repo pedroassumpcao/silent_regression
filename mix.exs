@@ -97,6 +97,7 @@ defmodule SilentRegression.MixProject do
         "phx.digest"
       ],
       precommit: [
+        "hex.audit",
         "compile --warnings-as-errors",
         "deps.unlock --check-unused",
         "format --check-formatted",

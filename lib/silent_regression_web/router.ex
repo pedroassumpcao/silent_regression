@@ -31,6 +31,23 @@ defmodule SilentRegressionWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :operational_health do
+    plug SilentRegressionWeb.Plugs.RequireOperationalHealthToken
+  end
+
+  scope "/health", SilentRegressionWeb do
+    pipe_through :api
+
+    get "/live", HealthController, :live
+    get "/ready", HealthController, :ready
+  end
+
+  scope "/health", SilentRegressionWeb do
+    pipe_through [:api, :operational_health]
+
+    get "/operations", HealthController, :operations
+  end
+
   scope "/", SilentRegressionWeb do
     pipe_through :browser
 

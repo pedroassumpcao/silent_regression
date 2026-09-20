@@ -94,6 +94,14 @@ defmodule Mix.Tasks.SilentRegression.Invite do
   defp format_reason(:already_member), do: "the email is already a workspace member"
   defp format_reason(:invalid_role), do: "role must be owner or member"
   defp format_reason(:invalid_validity_days), do: "validity-days must be between 1 and 30"
+
+  defp format_reason(:pilot_invitations_disabled),
+    do: "the production invitation switch is disabled"
+
+  defp format_reason(:operational_drills_incomplete),
+    do: "required operational drills are missing or stale"
+
+  defp format_reason(:operational_health_not_ready), do: "operational health is not ready"
   defp format_reason(reason), do: inspect(reason)
 
   defp ensure_trailing_slash(url) do

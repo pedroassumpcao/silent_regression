@@ -1,9 +1,6 @@
 defmodule SilentRegression.PilotReadiness do
   @moduledoc """
-  Derives private-alpha activation state from authoritative workspace records.
-
-  No mutable checklist state is stored. A completed step may become incomplete again when a
-  credential is revoked, a baseline becomes incompatible, or a monitor is paused.
+  Derives tenant onboarding state and enforces hosted-pilot operational readiness.
   """
 
   import Ecto.Query
@@ -13,10 +10,14 @@ defmodule SilentRegression.PilotReadiness do
   alias SilentRegression.ContractAuthoring.ContractVersion
   alias SilentRegression.MonitorSetups.Setup
   alias SilentRegression.Monitors.{CaseVersion, Monitor}
+  alias SilentRegression.OperationalHealth
+  alias SilentRegression.PilotReadiness.OperationalDrill
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
   alias SilentRegression.Workspaces.{Membership, Workspace}
 
+  @required_drills OperationalDrill.kinds()
+  @release_bound_drills [:backup_restore, :rollback, :deletion_reconciliation]
   @steps [
     {:credential, "Connect a provider credential"},
     {:workflow, "Define the workflow"},
@@ -25,6 +26,94 @@ defmodule SilentRegression.PilotReadiness do
     {:baseline, "Approve the baseline"},
     {:schedule, "Activate monitoring"}
   ]
+
+  def record_drill(attrs, opts \\ []) when is_map(attrs) do
+    config = config(opts)
+
+    performed_at =
+      value(attrs, :performed_at, DateTime.utc_now()) |> DateTime.truncate(:microsecond)
+
+    validity_days = Keyword.fetch!(config, :drill_validity_days)
+
+    attrs = %{
+      kind: value(attrs, :kind),
+      environment: value(attrs, :environment, Keyword.fetch!(config, :environment)),
+      release_sha: value(attrs, :release_sha, Keyword.fetch!(config, :release_sha)),
+      outcome: value(attrs, :outcome),
+      operator_identifier: value(attrs, :operator_identifier),
+      evidence_ref: value(attrs, :evidence_ref),
+      performed_at: performed_at,
+      expires_at: DateTime.add(performed_at, validity_days, :day)
+    }
+
+    %OperationalDrill{}
+    |> OperationalDrill.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def status(opts \\ []) do
+    config = config(opts)
+    now = Keyword.get(opts, :at, DateTime.utc_now()) |> DateTime.truncate(:microsecond)
+    environment = Keyword.fetch!(config, :environment)
+    release_sha = Keyword.fetch!(config, :release_sha)
+
+    latest =
+      OperationalDrill
+      |> where([drill], drill.environment == ^environment)
+      |> order_by([drill], desc: drill.performed_at, desc: drill.id)
+      |> Repo.all()
+      |> Enum.reduce(%{}, fn drill, acc -> Map.put_new(acc, drill.kind, drill) end)
+
+    drills =
+      Enum.map(@required_drills, fn kind ->
+        drill = latest[kind]
+        current? = current_drill?(drill, kind, release_sha, now)
+
+        %{
+          kind: kind,
+          current: current?,
+          outcome: drill && drill.outcome,
+          performed_at: drill && drill.performed_at,
+          expires_at: drill && drill.expires_at,
+          release_matches: drill && release_matches?(drill, kind, release_sha)
+        }
+      end)
+
+    operational_health = OperationalHealth.snapshot(at: DateTime.truncate(now, :second))
+    drills_current? = Enum.all?(drills, & &1.current)
+    health_ready? = operational_health.status == :ok
+    enabled? = Keyword.fetch!(config, :invitations_enabled)
+
+    %{
+      ready: drills_current? and health_ready? and enabled?,
+      environment: environment,
+      release_sha: release_sha,
+      enforcement: Keyword.fetch!(config, :enforce_invitation_gate),
+      invitations_enabled: enabled?,
+      drills_current: drills_current?,
+      operational_health: operational_health.status,
+      drills: drills
+    }
+  end
+
+  def authorize_invitation(opts \\ []) do
+    config = config(opts)
+
+    if Keyword.fetch!(config, :enforce_invitation_gate) do
+      readiness = status(Keyword.put(opts, :config, config))
+
+      cond do
+        not readiness.invitations_enabled -> {:error, :pilot_invitations_disabled}
+        not readiness.drills_current -> {:error, :operational_drills_incomplete}
+        readiness.operational_health != :ok -> {:error, :operational_health_not_ready}
+        true -> :ok
+      end
+    else
+      :ok
+    end
+  end
+
+  def required_drills, do: @required_drills
 
   def onboarding(
         %Scope{
@@ -70,6 +159,22 @@ defmodule SilentRegression.PilotReadiness do
   end
 
   def onboarding(%Scope{}), do: {:error, :workspace_required}
+
+  defp current_drill?(nil, _kind, _release_sha, _now), do: false
+
+  defp current_drill?(drill, kind, release_sha, now) do
+    drill.outcome == :passed and DateTime.after?(drill.expires_at, now) and
+      release_matches?(drill, kind, release_sha)
+  end
+
+  defp release_matches?(drill, kind, release_sha) when kind in @release_bound_drills,
+    do: drill.release_sha == release_sha
+
+  defp release_matches?(_drill, _kind, _release_sha), do: true
+
+  defp config(opts) do
+    Keyword.get(opts, :config, Application.fetch_env!(:silent_regression, :pilot_readiness))
+  end
 
   defp candidates(workspace_id, scope) do
     Monitor
@@ -161,4 +266,11 @@ defmodule SilentRegression.PilotReadiness do
     do: "/app/#{slug}/monitors/#{monitor.id}/operations"
 
   defp truthy?(value), do: value == true
+
+  defp value(attrs, key, default \\ nil) do
+    case Map.get(attrs, key, Map.get(attrs, Atom.to_string(key))) do
+      nil -> default
+      value -> value
+    end
+  end
 end

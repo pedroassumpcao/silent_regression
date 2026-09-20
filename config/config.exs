@@ -85,6 +85,23 @@ config :silent_regression, :monitor_operations,
 
 config :silent_regression, :workspace_lifecycle, purge_batch_size: 25
 
+config :silent_regression, :operational_health,
+  queues: ["capture", "scheduler", "notifications", "contract_rescore", "maintenance"],
+  queue_backlog_limit: 100,
+  queue_oldest_seconds: 300,
+  scheduler_heartbeat_seconds: 180,
+  scheduler_overdue_seconds: 900,
+  notification_pending_seconds: 900,
+  purge_overdue_seconds: 1800,
+  explicit_purge_sla_seconds: 604_800
+
+config :silent_regression, :pilot_readiness,
+  environment: "development",
+  release_sha: "development",
+  enforce_invitation_gate: false,
+  invitations_enabled: false,
+  drill_validity_days: 90
+
 config :silent_regression, :rate_limits,
   login: [limit: 10, window_seconds: 900],
   invitation_acceptance: [limit: 10, window_seconds: 3600],

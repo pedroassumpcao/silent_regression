@@ -11,6 +11,7 @@ defmodule SilentRegression.Workspaces do
   alias SilentRegression.Accounts
   alias SilentRegression.Accounts.{Scope, User}
   alias SilentRegression.Audit
+  alias SilentRegression.PilotReadiness
   alias SilentRegression.Repo
   alias SilentRegression.Workspaces.{Invitation, Membership, Workspace}
 
@@ -20,35 +21,37 @@ defmodule SilentRegression.Workspaces do
   @maximum_validity_days 30
 
   def operator_create_invitation(attrs) when is_map(attrs) do
-    Repo.transaction(fn ->
-      with {:ok, role} <- normalize_role(value(attrs, :role, :owner)),
-           {:ok, validity_days} <- normalize_validity_days(value(attrs, :validity_days, nil)),
-           {:ok, {workspace, workspace_created?}} <- operator_workspace(attrs, role),
-           {:ok, invitation, encoded_token} <-
-             insert_invitation(workspace, nil, attrs, role, validity_days) do
-        if workspace_created? do
+    with :ok <- PilotReadiness.authorize_invitation() do
+      Repo.transaction(fn ->
+        with {:ok, role} <- normalize_role(value(attrs, :role, :owner)),
+             {:ok, validity_days} <- normalize_validity_days(value(attrs, :validity_days, nil)),
+             {:ok, {workspace, workspace_created?}} <- operator_workspace(attrs, role),
+             {:ok, invitation, encoded_token} <-
+               insert_invitation(workspace, nil, attrs, role, validity_days) do
+          if workspace_created? do
+            Audit.record_event!(%{
+              action: "workspace.created",
+              target_type: "workspace",
+              target_id: workspace.id,
+              workspace_id: workspace.id,
+              metadata: %{"source" => "operator"}
+            })
+          end
+
           Audit.record_event!(%{
-            action: "workspace.created",
-            target_type: "workspace",
-            target_id: workspace.id,
+            action: "invitation.created",
+            target_type: "invitation",
+            target_id: invitation.id,
             workspace_id: workspace.id,
-            metadata: %{"source" => "operator"}
+            metadata: %{"role" => Atom.to_string(invitation.role), "source" => "operator"}
           })
+
+          %{workspace: workspace, invitation: invitation, token: encoded_token}
+        else
+          {:error, reason} -> Repo.rollback(reason)
         end
-
-        Audit.record_event!(%{
-          action: "invitation.created",
-          target_type: "invitation",
-          target_id: invitation.id,
-          workspace_id: workspace.id,
-          metadata: %{"role" => Atom.to_string(invitation.role), "source" => "operator"}
-        })
-
-        %{workspace: workspace, invitation: invitation, token: encoded_token}
-      else
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end)
+      end)
+    end
   end
 
   def create_invitation(

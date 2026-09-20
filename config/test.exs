@@ -18,6 +18,17 @@ config :silent_regression, SilentRegression.Repo,
 
 config :silent_regression, Oban, testing: :manual, cron: false
 
+config :silent_regression,
+       :operational_health_token,
+       "test-operational-health-token-with-at-least-32-bytes"
+
+config :silent_regression, :pilot_readiness,
+  environment: "test",
+  release_sha: "test-release",
+  enforce_invitation_gate: false,
+  invitations_enabled: false,
+  drill_validity_days: 90
+
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
 config :silent_regression, SilentRegressionWeb.Endpoint,

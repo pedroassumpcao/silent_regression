@@ -123,8 +123,31 @@ if config_env() == :prod do
   rate_limit_hmac_key = decode_32_byte_key!.("RATE_LIMIT_HMAC_KEY")
   deletion_receipt_hmac_key = decode_32_byte_key!.("DELETION_RECEIPT_HMAC_KEY")
 
+  operational_health_token =
+    System.get_env("OPERATIONAL_HEALTH_TOKEN") ||
+      raise "environment variable OPERATIONAL_HEALTH_TOKEN is missing"
+
+  if byte_size(operational_health_token) < 32 do
+    raise "OPERATIONAL_HEALTH_TOKEN must contain at least 32 bytes"
+  end
+
+  pilot_release_sha =
+    System.get_env("PILOT_RELEASE_SHA") ||
+      raise "environment variable PILOT_RELEASE_SHA is missing"
+
+  pilot_environment = System.get_env("PILOT_ENVIRONMENT", "production")
+  pilot_invitations_enabled = System.get_env("PILOT_INVITATIONS_ENABLED") == "true"
+
   config :silent_regression, :rate_limit_hmac_key, rate_limit_hmac_key
   config :silent_regression, :deletion_receipt_hmac_key, deletion_receipt_hmac_key
+  config :silent_regression, :operational_health_token, operational_health_token
+
+  config :silent_regression, :pilot_readiness,
+    environment: pilot_environment,
+    release_sha: pilot_release_sha,
+    enforce_invitation_gate: true,
+    invitations_enabled: pilot_invitations_enabled,
+    drill_validity_days: 90
 
   resend_api_key =
     System.get_env("RESEND_API_KEY") ||
