@@ -925,7 +925,8 @@ artifact without silently changing legacy monitors.
 - [x] Derive compatibility fingerprints from canonical effective requests.
 - [x] Remove product execution's dependency on spike prompt construction while preserving the spike.
 - [x] Add setup-to-wire payload tests proving no undisclosed wrapper or empty-context sentence is added.
-- [ ] Run separately authorized OpenAI and Anthropic smoke tests only after local gates pass.
+- [x] Run the separately authorized OpenAI smoke test after local gates pass.
+- [ ] Run the separately authorized Anthropic smoke test after local gates pass.
 
 **Local completion evidence:** `provider_native_v1` now emits strict OpenAI Responses or Anthropic
 Messages artifacts with no implicit wrapper, while migrated versions remain `legacy_wrapped_v1`.
@@ -934,8 +935,10 @@ planning freezes that fingerprint, execution reproduces and verifies it, and the
 ledger stores the exact secret-free artifact before direct single-attempt Req transport. Run
 evidence exposes the receipt mode, schema, and fingerprint. The local data migration preserved all
 existing rows and defaults only new setups to native mode. Verification passed with 608 Elixir
-tests, 46 frontend tests, TypeScript checking, and the production asset build. The task remains in
-progress solely for the two separately authorized live smoke calls.
+tests, 46 frontend tests, TypeScript checking, and the production asset build. The separately
+authorized OpenAI `gpt-5.6-luna` smoke passed in one call and one attempt with exact model
+provenance, a complete response, and a passing deterministic contract. The task remains in progress
+solely for the separately authorized Anthropic live smoke call.
 
 **Acceptance criteria:**
 
@@ -1926,6 +1929,19 @@ The product is ready for the first external design partner only when:
   with a declared-fact/trailing-source example implemented by the current evaluator.
 - Verified the focused public controller suite with 3 passing tests and `mix precommit` with 598
   passing tests. Public-copy implementation commit: `d49b997`.
+
+### 2026-09-19 — Task 16 OpenAI live gate passed
+
+- Received explicit just-in-time authorization for exactly one OpenAI `gpt-5.6-luna` call using
+  preview fingerprint `a54208127ebde9e56a894ea0867a656bf6758d6abba9e57db1e14c530536fcf5`.
+- The first command attempt was stopped by the local Mix sandbox lock before any provider request;
+  the identical authorized command was then executed with the required local permissions.
+- OpenAI completed the native request successfully in one call and one attempt. The returned model
+  exactly matched `gpt-5.6-luna`, completion was complete, and the deterministic `approved`
+  contract passed with 32 input tokens, 5 output tokens, 8 output bytes, and 2,342 ms latency.
+- A secret-free passed receipt was written to
+  `results/provider_smoke/openai-20260920T033924Z-aea0ee3e-67d3-4e08-95aa-10965aa0ba84.json`.
+  Task 16 remains in progress for the separately authorized Anthropic smoke gate.
 
 ## 17. References
 

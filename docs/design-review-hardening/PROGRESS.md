@@ -50,7 +50,8 @@ Task 15 implementation commit: `d49b997`.
 - [x] Update setup and review UX.
 - [x] Add migration, payload, capture-receipt, controller, and frontend tests.
 - [x] Run all local gates and record focused commits.
-- [ ] Run separately authorized OpenAI and Anthropic live smoke calls.
+- [x] Run the separately authorized OpenAI live smoke call.
+- [ ] Run the separately authorized Anthropic live smoke call.
 
 Local implementation commits:
 
@@ -60,5 +61,7 @@ Local implementation commits:
 - `d26177a` — request receipt identity in run evidence
 
 Local gates passed on 2026-09-19 (America/Chicago): 608 Elixir tests, 46 frontend tests,
-TypeScript checking, and `mix assets.build`. The remaining Task 16 gate is one separately authorized
-live smoke call per provider.
+TypeScript checking, and `mix assets.build`. The separately authorized OpenAI `gpt-5.6-luna`
+smoke passed in one call and one attempt with exact model provenance, a complete response, a passing
+contract, 32 input tokens, 5 output tokens, and 2,342 ms latency. The remaining Task 16 gate is the
+separately authorized Anthropic live smoke call.
