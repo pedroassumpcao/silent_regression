@@ -440,6 +440,30 @@ defmodule SilentRegression.MonitorSetupsTest do
       refute inspect(completion) =~ "Answer only from the supplied context."
     end
 
+    test "promotes cases without frozen context", %{scope: scope} do
+      completed =
+        MonitorSetupsFixtures.complete_setup_fixture(scope, %{
+          cases: [
+            %{
+              case_key: "approval-route",
+              name: "Approval route",
+              input_variables_json: ~s({"question":"Should this request be approved?"}),
+              frozen_context: "",
+              expectation_json:
+                Jason.encode!(%{
+                  checks: [
+                    %{id: "route", type: "label", allowed_values: ["approved"]}
+                  ]
+                }),
+              status: "active"
+            }
+          ]
+        })
+
+      assert completed.setup.status == :completed
+      assert [%CaseVersion{frozen_context: ""}] = completed.version.cases
+    end
+
     test "rejects incomplete and repeated promotion", %{scope: scope} do
       %{monitor: monitor} = MonitorSetupsFixtures.setup_fixture(scope)
       assert {:error, :setup_incomplete} = MonitorSetups.complete(scope, monitor.id)
