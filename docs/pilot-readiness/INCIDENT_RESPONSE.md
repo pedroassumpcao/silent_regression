@@ -1,5 +1,20 @@
 # Private-Alpha Incident Response
 
+## Ownership and contact path
+
+| Responsibility | Pilot owner | Escalation path |
+| --- | --- | --- |
+| Incident commander, containment, status cadence | Pedro | Hosting/database/provider support as the affected boundary requires |
+| Application and release rollback | Pedro | Fly.io and managed-Postgres support |
+| Credential/provider-call containment | Pedro | OpenAI or Anthropic organization support plus the affected workspace owner |
+| Email delivery | Pedro | Resend support plus the affected recipient |
+| Design-partner communication | Pedro | The partner's verified owner contact in the private pilot record |
+
+Do not store phone numbers, bearer links, secrets, or customer content in this repository. Before the
+first invitation, Pedro must verify the partner contact and the private communication channel with a
+content-free test message. If Pedro is unavailable, monitoring and invitations remain disabled; the
+pilot has no unrecorded substitute operator.
+
 ## Severity triggers
 
 - **Critical:** suspected cross-tenant access, plaintext credential disclosure, unauthorized provider
@@ -40,3 +55,7 @@
 Document cause, affected boundaries, containment, customer communication, durable corrective action,
 and verification. Add regression tests for the failing boundary before returning the system to normal
 operation.
+
+After a target-environment tabletop or incident is closed, record an `incident_response` drill only
+when containment, communication, recovery, and the regression boundary were all exercised. A failed
+tabletop is recorded as failed and keeps invitation readiness blocked.

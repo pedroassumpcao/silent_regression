@@ -7,6 +7,32 @@ database access, invite-only accounts, customer-supplied provider credentials, a
 Never paste prompts, contexts, outputs, credentials, bearer tokens, or review rationale into tickets,
 chat, logs, or operator notes.
 
+## Before enabling an invitation
+
+Production invitation creation is fail-closed. Before changing the invitation switch:
+
+1. Confirm the release SHA, migration version, image digest, backup timestamp, rollback owner, and
+   outstanding risks in the go/no-go record.
+2. Run `mix silent_regression.ops_check`; every check must be `ok`.
+3. Run `mix silent_regression.pilot_readiness`; all five drills must be current for the configured
+   environment, and the three release-bound drills must match `PILOT_RELEASE_SHA`.
+4. Set `PILOT_INVITATIONS_ENABLED=true` only in a separately authorized deployment, repeat both
+   checks, and obtain separate authorization for the first invitation.
+
+The required drills are backup/restore, rollback, key rotation, deletion reconciliation, and
+incident response. Recording a drill is an attestation, not a substitute for doing it:
+
+```shell
+mix silent_regression.record_drill \
+  --kind backup_restore \
+  --outcome passed \
+  --operator pedro \
+  --evidence-ref ops://production/2026-09-20/restore-1
+```
+
+Use the matching target-environment evidence reference for each drill. Never record a local drill as
+production evidence.
+
 ## Invite a design partner
 
 1. Confirm the workspace name, slug, owner email, timezone, and intended provider out of band.
@@ -56,6 +82,44 @@ mix silent_regression.pilot_metrics \
   --workspace-slug acme-ai \
   --actor-email owner@acme.example
 ```
+
+## Recent-authentication boundary
+
+Credential mutations, model validation, reviewed-reference authorization, Run now, schedule
+configuration/resume, authentication recovery, successor activation, and workspace closure or
+deletion require primary authentication within the previous ten minutes. If that window has
+expired, the application redirects the user to sign in and returns them only to a same-host path.
+Do not bypass this boundary through a console or direct context call for customer operations.
+
+Application MFA is not claimed for the controlled invite-only pilot. Pedro's hosting, database,
+source-control, email, and provider operator accounts must use their providers' MFA. Application MFA
+becomes a release gate before regulated data, self-serve administration, broader access, or
+materially expanded roles.
+
+## Operational health
+
+Traffic probes:
+
+- `GET /health/live` proves the web process can respond.
+- `GET /health/ready` proves the process can reach Postgres.
+
+Those endpoints intentionally do not encode business backlog. Run the protected operational check
+from an external scheduler at least every minute:
+
+```shell
+curl --fail \
+  --header "Authorization: Bearer $OPERATIONAL_HEALTH_TOKEN" \
+  https://HOST/health/operations
+```
+
+The external monitor must also assert that the JSON `status` is exactly `ok`; degraded snapshots
+return HTTP 200 so they remain inspectable, while critical snapshots return 503. The same
+content-free snapshot is available from the release environment with
+`mix silent_regression.ops_check`. It checks queue backlog/discards, scheduler heartbeat and overdue
+monitors, unknown or expired provider attempts, failed/stale notifications, and overdue purge work.
+Critical state always fails; degraded state also fails unless an operator deliberately supplies
+`--allow-degraded` for a bounded maintenance condition. See
+[HOSTED_OPERATIONS.md](HOSTED_OPERATIONS.md) for thresholds and response ownership.
 
 ## Failed background jobs
 

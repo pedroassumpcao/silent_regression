@@ -42,6 +42,11 @@ ID, a one-way keyed workspace fingerprint, request type, status, and lifecycle t
 workspace foreign key and contains no workspace name, slug, email, prompt, output, provider secret,
 or free-form customer text.
 
+The maintenance queue runs a singleton bounded purge pass every 15 minutes and processes at most 25
+due workspaces per pass. It uses the same transaction and deletion-receipt path as the guarded
+operator command. Operational health is degraded when due work is more than 30 minutes overdue and
+critical when the worker reports an error or an explicit request exceeds the seven-day SLA.
+
 ### Disaster-recovery backups
 
 Purged data may remain in encrypted disaster-recovery backups until those backups expire. The
@@ -79,3 +84,18 @@ mix silent_regression.reopen_workspace \
 ```
 
 These commands intentionally require exact identifiers and never accept a broad selector.
+
+## Automation and restore evidence
+
+Check purge health with `mix silent_regression.ops_check`. A worker failure or SLA breach is an
+incident; do not repeatedly run manual purge without first resolving target ambiguity.
+
+Export the signed content-free deletion ledger to storage separate from the database backups:
+
+```shell
+mix silent_regression.deletion_ledger --output /secure/separate-store/deletions.json
+```
+
+Use `mix silent_regression.reconcile_deletions` only against an isolated restore, preview first, and
+execute only with the exact printed ledger SHA256. The complete procedure is in
+[BACKUP_RESTORE.md](BACKUP_RESTORE.md).

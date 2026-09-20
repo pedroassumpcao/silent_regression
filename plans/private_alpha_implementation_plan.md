@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–26 complete; Task 27 is in progress; Gates A–C are complete and Gate D blocks the first design-partner pilot
+> **Status:** Tasks 1–26 complete; Task 27 implementation and local drills are complete, but target-environment execution remains pending; Gates A–C are complete and Gate D blocks the first design-partner pilot
 >
-> **Progress:** 26 of 27 tasks complete; Task 27 is in progress
+> **Progress:** 26 of 27 tasks complete; Task 27 awaits separately authorized deployment and target-environment drills
 >
 > **Last revised:** 2026-09-20
 >
@@ -1204,13 +1204,13 @@ credentials or data are hosted.
 
 **Checklist:**
 
-- [ ] Require recent authentication for credential lifecycle, spend authorization, and destructive
+- [x] Require recent authentication for credential lifecycle, spend authorization, and destructive
   workspace actions; explicitly decide the controlled-pilot MFA boundary.
-- [ ] Automate and monitor purge deadlines and post-restore deletion reconciliation.
-- [ ] Deploy health, queue, overdue-scheduler, unknown-outcome, notification, and purge monitoring.
-- [ ] Name operational owners and escalation paths.
+- [x] Automate and monitor purge deadlines and post-restore deletion reconciliation.
+- [x] Implement health, queue, overdue-scheduler, unknown-outcome, notification, and purge monitoring.
+- [x] Name operational owners and escalation paths.
 - [ ] Exercise backup restore, key rotation, rollback, and incident response in the target environment.
-- [ ] Require separate user authorization for deployment and the first invitation after all gates pass.
+- [x] Require separate user authorization for deployment and the first invitation after all gates pass.
 
 **Decisions:**
 
@@ -2254,6 +2254,42 @@ The product is ready for the first external design partner only when:
 - Repeated `mix deps.get`, `mix assets.setup`, the full repository gate, and the browser journey in a
   detached clean worktree containing no ignored artifacts; all passed.
 - Focused implementation commit: `53dcfe8`. Task 27 is next.
+
+### 2026-09-20 — Task 27 implementation and local controls complete
+
+- Added a router-level ten-minute recent-authentication boundary after authenticated workspace
+  resolution. Credential create/validate/rotate/activate/revoke, model validation, reviewed-reference
+  and manual-run authorization, schedule configuration/resume, authentication recovery, successor
+  activation, and workspace closure/deletion now redirect stale sessions through primary sign-in.
+- Explicitly deferred application MFA for the tightly controlled invite-only pilot without making an
+  MFA claim. Pedro's infrastructure accounts require provider MFA, and broader access, regulated
+  workloads, self-serve administration, or expanded roles reopen the application-MFA gate.
+- Added a singleton 15-minute, 25-workspace bounded purge worker and content-free heartbeats. Added
+  signed deletion-ledger export plus preview-first, exact-SHA-confirmed isolated-restore
+  reconciliation.
+- Added public liveness/database-readiness endpoints, bearer-protected operational health, and a
+  strict operator check for queues, scheduler heartbeat/overdue monitors, unknown/expired provider
+  outcomes, notifications, purge delay, and deletion SLA.
+- Added expiring allowlisted drill attestations, release binding for restore/rollback/deletion
+  reconciliation, production release/environment configuration, and a fail-closed invitation gate
+  requiring the explicit switch, healthy operations, and all five current drills.
+- Patched Mint from 1.10.0 to 1.10.1 after the clean dependency audit exposed an advisory, and made
+  `mix hex.audit` part of the repository precommit gate.
+- Exercised an isolated local pre-deletion backup/restore. The signed ledger preview identified one
+  reintroduced workspace; exact-digest execution removed it, and a repeat verification showed zero
+  workspaces plus one completed receipt. Rolled the latest operational-controls migration backward
+  and forward on that isolated database, then removed both drill databases and temporary artifacts.
+- The first preview exposed a strict-boolean bug when `--execute` was absent. Fixed it and added a
+  task-level no-mutation regression test in `e250c2a`.
+- A read-only local key inventory reported six of six credentials decryptable, zero unreadable
+  headers, and no mutation. The deterministic invitation-to-demo browser journey passed with zero
+  provider calls.
+- Final `mix precommit` passed the dependency advisory audit, 672 Elixir tests with two explicit
+  private-artifact tests excluded, TypeScript, 64 frontend tests, and production assets. Focused
+  commits: `ad1373a`, `ab5df9d`, `b1e57c3`, `52ef340`, and `e250c2a`.
+- Task 27 remains `In progress`: no Fly resources, production secrets, target deployment, production
+  drill attestations, invitation-switch change, or first invitation were authorized or performed.
+  Those external steps are the only remaining Gate D work.
 
 ## 17. References
 

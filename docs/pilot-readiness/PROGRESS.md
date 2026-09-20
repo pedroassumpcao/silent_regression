@@ -2,6 +2,10 @@
 
 ## Status: Complete — all six phases and both separately authorized live smokes pass
 
+The later Task 27 hosted-control implementation and local drills are also complete. Target deployment,
+production drill attestations, the invitation switch, and the first partner invitation remain
+separately authorized Gate D work.
+
 ## Quick Reference
 
 - Research: `docs/pilot-readiness/RESEARCH.md`
@@ -47,6 +51,23 @@
   reserved calls/day, 200 calls/run, and the existing OpenAI and Anthropic allowlists.
 
 ## Session Log
+
+### 2026-09-20 — Hosted-control implementation and local drills
+
+- Added ten-minute recent authentication for sensitive credential, spend, recovery, successor, and
+  destructive workspace actions. Application MFA remains explicitly deferred for the controlled
+  invite-only pilot; provider MFA is required for operator infrastructure.
+- Added the singleton bounded purge worker, signed deletion ledger, isolated-restore reconciliation,
+  liveness/readiness/operational health, external operator check, drill records, and fail-closed
+  production invitation gate.
+- Named Pedro as the primary pilot operator and incident commander, documented service-specific
+  escalation routes, and added the complete hosted operations sequence and thresholds.
+- Completed a local restore/reconciliation and migration rollback/forward drill, a read-only key
+  inventory, the deterministic browser journey, and `mix precommit`: dependency audit, 672 Elixir
+  tests (two private live-artifact checks excluded), TypeScript, 64 frontend tests, and assets all
+  passed.
+- No deployment or invitation was performed. The five target-environment drills, invitation switch,
+  and first invitation remain explicit follow-ups.
 
 ### 2026-09-19 — Post-readiness replacement-baseline correction
 

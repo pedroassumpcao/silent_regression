@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate D — Hosted-pilot readiness
-- Current task: Task 27 — hosted security and operations (in progress)
+- Current task: Task 27 — implementation/local drills complete; target-environment execution pending
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -462,9 +462,36 @@ ignored local diagnostics. Focused implementation commit: `53dcfe8`. Task 27 is 
   deployment runbooks.
 - [x] Decide the controlled-pilot MFA, recent-authentication, readiness, restore-reconciliation,
   operational-health, drill, invitation, and external-authorization boundaries.
-- [ ] Enforce recent authentication for credential, provider-call/spend, schedule activation, and
+- [x] Enforce recent authentication for credential, provider-call/spend, schedule activation, and
   destructive workspace mutations.
-- [ ] Automate bounded due purge and add signed post-restore reconciliation.
-- [ ] Add traffic health plus protected operational monitoring and operator checks.
-- [ ] Persist and enforce current operational drills before production invitations.
-- [ ] Exercise local control drills, run the complete verification gate, and record focused commits.
+- [x] Automate bounded due purge and add signed post-restore reconciliation.
+- [x] Add traffic health plus protected operational monitoring and operator checks.
+- [x] Persist and enforce current operational drills before production invitations.
+- [x] Exercise local control drills, run the complete verification gate, and record focused commits.
+- [ ] Obtain separate deployment authorization and exercise all five drills in the target environment.
+- [ ] Obtain separate authorization to enable invitations and then for the first partner invitation.
+
+Ten-minute primary-authentication recency now guards every sensitive credential, provider-call,
+future-spend, schedule-recovery, successor-activation, and destructive workspace mutation. The
+ordinary authenticated workspace scope retains read-only evidence and non-spending authoring.
+Application MFA is explicitly deferred for the controlled pilot, while provider MFA is required for
+Pedro's infrastructure accounts and the broader-product triggers are documented.
+
+The maintenance queue now runs a singleton bounded purge every 15 minutes. Signed content-free
+deletion ledgers support preview and exact-SHA-confirmed reconciliation before an isolated restore
+can serve traffic. Liveness/database readiness are separated from bearer-protected operational
+health so backlog incidents do not remove healthy web capacity.
+
+The local drill restored a backup taken before one explicit deletion, detected the reintroduced
+workspace, reapplied the deletion, verified zero workspaces and one completed receipt, and rolled
+the latest migration backward and forward. The preview discovered and then regression-protected a
+strict-boolean defect. A local key inventory verified six decryptable rows and zero unreadable
+headers without mutation. The deterministic browser journey also passed with zero provider calls.
+
+Final verification on 2026-09-20 passed `mix hex.audit`, 672 Elixir tests with two private artifact
+checks explicitly excluded, TypeScript, 64 frontend tests, production assets, and the browser
+journey. Commits: `ad1373a`, `ab5df9d`, `b1e57c3`, `52ef340`, and `e250c2a`.
+
+No Fly resources, production secrets, deployment, production drill attestations, invitation switch,
+or external invitation were created. Task 27 and Gate D remain open for those separately authorized
+external steps.

@@ -58,14 +58,34 @@ encryption-key operations, or pilot spending remains gated by the decisions reco
 - [x] Run each one-call smoke and retain a content-free local result receipt.
 - [x] Reconcile Task 14 and the private-alpha readiness checklist.
 
+## Task 27 hosted-control extension
+
+- [x] Require ten-minute recent authentication for credentials, provider-call/future-spend
+  authorization, schedule recovery, and destructive workspace actions.
+- [x] Decide the controlled-pilot MFA boundary and require provider MFA for operator infrastructure.
+- [x] Automate bounded purge, signed ledger export, and preview/digest-confirmed restore
+  reconciliation.
+- [x] Add liveness, traffic readiness, protected operational health, operator checks, drill records,
+  and a fail-closed production invitation gate.
+- [x] Exercise an isolated local backup/restore, deletion reconciliation, migration rollback/forward,
+  key inventory, and browser journey.
+- [ ] Exercise and record all five drills in the target environment after separate deployment
+  authorization.
+
 ## Route Placement
 
-Workspace checklist, notification preference, closure, and deletion-request routes belong inside
-the existing `/app/:workspace_slug` scope with
-`[:browser, :authenticated, :workspace_scope]`. The scope is required because these operations
-expose private workspace state and must resolve an authenticated membership before authorization.
+Workspace checklist and notification preference routes belong inside the existing
+`/app/:workspace_slug` scope with `[:browser, :authenticated, :workspace_scope]`. The scope is
+required because these operations expose private workspace state and must resolve an authenticated
+membership before authorization.
 
-Login and invitation-acceptance rate limiting remains in the public browser pipeline because it
+Sensitive mutations use a second scope with
+`[:browser, :authenticated, :workspace_scope, :recent_authentication]`. Recent authentication comes
+after tenant resolution so the request has both a primary actor and a valid workspace membership
+before credential, provider-call/spend, schedule activation/recovery, successor activation, closure,
+or deletion work can run. Read-only evidence and non-spending authoring remain in the ordinary
+authenticated workspace scope.
+
+Login and invitation-acceptance rate limiting remain in the public browser pipeline because they
 must run before authentication. Credential validation, baseline authorization, schedule activation,
-and Run now remain in the authenticated workspace scope and combine rate limiting with existing
-owner checks.
+and Run now combine recent authentication and rate limiting with existing owner checks.

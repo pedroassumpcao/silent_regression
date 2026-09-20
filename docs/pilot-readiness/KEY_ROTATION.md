@@ -32,5 +32,18 @@
    days) and the backup/restore drill succeeds with the planned key set.
 7. Only then remove V1 in a reviewed follow-up that promotes a newer versioned key contract.
 
+8. For a target-environment drill, exercise the deploy, preview, exact-tag execution, restart, and
+   decryptability checks on approved drill credentials, then record the result:
+
+   ```shell
+   mix silent_regression.record_drill \
+     --kind key_rotation \
+     --outcome passed \
+     --operator pedro \
+     --evidence-ref ops://production/YYYY-MM-DD/key-rotation-1
+   ```
+
+   Do not record a preview-only local inventory as a production key-rotation drill.
+
 The rotation command never outputs plaintext and refuses execution unless the supplied tag exactly
 matches the configured active tag.

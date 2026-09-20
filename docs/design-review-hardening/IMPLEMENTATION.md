@@ -238,7 +238,7 @@ complete gate and browser journey passed from a detached clean worktree with no 
 - Apply recent authentication to sensitive credential, run, and deletion actions; decide whether
   MFA is required for the controlled pilot.
 - Automate and observe purge deadlines and post-restore deletion reconciliation.
-- Deploy production health, queue, scheduler-overdue, notification, and rollback monitoring.
+- Implement production health, queue, scheduler-overdue, notification, and rollback monitoring.
 - Execute restore and rollback drills before invitation authorization.
 
 Implementation sequence:
@@ -260,6 +260,13 @@ Implementation sequence:
 External boundary: no Fly resources, production secrets, deployment, or first partner invitation
 will be created by this task. Those remain separately authorized actions after the implemented gate
 reports ready in the target environment.
+
+Implementation completion: recent authentication, bounded purge, signed restore reconciliation,
+traffic/operational health, drill attestations, and the production invitation gate are implemented
+in `ab5df9d`, `b1e57c3`, `52ef340`, and `e250c2a`. The isolated local restore/reconciliation,
+rollback/forward migration, key inventory, browser journey, and complete repository gate passed.
+Task 27 and Gate D remain open only for a separately authorized target deployment, target-environment
+drills, invitation-switch change, and first invitation.
 
 ## Sequencing
 
