@@ -48,6 +48,21 @@
 
 ## Session Log
 
+### 2026-09-19 — Post-readiness replacement-baseline correction
+
+- Reproduced the invited-user walkthrough state where an approved contract semantics change made
+  the existing baseline incompatible and the scheduled monitor auto-paused.
+- Found that the Baseline page preserved and explained the historical evidence but hid the only
+  path to authorize a compatible replacement because any approved snapshot suppressed preflight.
+- Added an explicit replacement preview for genuinely incompatible approved baselines. Active or
+  incompatibility-paused monitors now move safely to `baseline_pending`, clear scheduled execution,
+  and retain the old approved snapshot throughout replacement capture and review.
+- Replacement approval atomically supersedes the historical baseline; rejection leaves it approved
+  and presents the replacement preview again. Compatible approved baselines retain their existing
+  direct handoff to Monitor Operations.
+- Added context and component coverage plus operator guidance for the lifecycle. All 45 frontend
+  tests and `mix precommit` with 598 backend tests pass.
+
 ### 2026-09-16
 
 - Audited Task 14 against authentication, workspace, provider credential, setup, product event,

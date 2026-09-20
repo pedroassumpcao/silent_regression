@@ -258,6 +258,8 @@ defmodule SilentRegression.Monitors do
   def transition_monitor(%Scope{}, _monitor_id, _target),
     do: {:error, :workspace_required}
 
+  def prepare_baseline(scope, monitor_id, version_id, options \\ [])
+
   def prepare_baseline(
         %Scope{
           workspace: %Workspace{id: workspace_id},
@@ -265,15 +267,22 @@ defmodule SilentRegression.Monitors do
           user: %User{} = user
         },
         monitor_id,
-        version_id
-      ) do
+        version_id,
+        options
+      )
+      when is_list(options) do
     with {:ok, monitor_id} <- cast_id(monitor_id),
          {:ok, version_id} <- cast_id(version_id) do
       Repo.transaction(fn ->
         with %Monitor{} = monitor <- locked_monitor(workspace_id, monitor_id),
              :ok <- ensure_editable(monitor),
              %MonitorVersion{} = version <- load_monitor_version(monitor.id, version_id),
-             {:ok, monitor, activated?, prepared?} <- prepare_baseline_version(monitor, version) do
+             {:ok, monitor, activated?, prepared?} <-
+               prepare_baseline_version(
+                 monitor,
+                 version,
+                 Keyword.get(options, :replacement?, false)
+               ) do
           if activated? do
             record_version_event!(
               version,
@@ -300,7 +309,8 @@ defmodule SilentRegression.Monitors do
     end
   end
 
-  def prepare_baseline(%Scope{}, _monitor_id, _version_id), do: {:error, :owner_required}
+  def prepare_baseline(%Scope{}, _monitor_id, _version_id, _options),
+    do: {:error, :owner_required}
 
   def ensure_compatible_versions(%Scope{} = scope, reference_id, candidate_id) do
     with {:ok, reference} <- get_version(scope, reference_id),
@@ -313,13 +323,29 @@ defmodule SilentRegression.Monitors do
 
   defp prepare_baseline_version(
          %Monitor{active_version_id: version_id, state: :baseline_pending} = monitor,
-         %MonitorVersion{id: version_id, status: :active}
+         %MonitorVersion{id: version_id, status: :active},
+         _replacement?
        ),
        do: {:ok, monitor, false, false}
 
   defp prepare_baseline_version(
          %Monitor{active_version_id: version_id, state: state} = monitor,
-         %MonitorVersion{id: version_id, status: :active}
+         %MonitorVersion{id: version_id, status: :active},
+         true
+       )
+       when state in [:active, :paused] do
+    with {:ok, monitor} <-
+           monitor
+           |> Monitor.replacement_baseline_changeset(DateTime.utc_now(:second))
+           |> Repo.update() do
+      {:ok, monitor, false, true}
+    end
+  end
+
+  defp prepare_baseline_version(
+         %Monitor{active_version_id: version_id, state: state} = monitor,
+         %MonitorVersion{id: version_id, status: :active},
+         _replacement?
        )
        when state in [:validating, :ready] do
     with {:ok, monitor} <- advance_to_baseline_pending(monitor) do
@@ -329,7 +355,8 @@ defmodule SilentRegression.Monitors do
 
   defp prepare_baseline_version(
          %Monitor{draft_version_id: version_id} = monitor,
-         %MonitorVersion{id: version_id, status: :draft} = version
+         %MonitorVersion{id: version_id, status: :draft} = version,
+         _replacement?
        ) do
     with {:ok, monitor, _version} <- activate_locked_version(monitor, version),
          {:ok, monitor} <- advance_to_baseline_pending(monitor) do
@@ -337,7 +364,7 @@ defmodule SilentRegression.Monitors do
     end
   end
 
-  defp prepare_baseline_version(%Monitor{}, %MonitorVersion{}),
+  defp prepare_baseline_version(%Monitor{}, %MonitorVersion{}, _replacement?),
     do: {:error, :not_current_configuration}
 
   defp advance_to_baseline_pending(%Monitor{state: :validating} = monitor) do

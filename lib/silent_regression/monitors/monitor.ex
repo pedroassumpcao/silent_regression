@@ -141,6 +141,28 @@ defmodule SilentRegression.Monitors.Monitor do
     |> add_error(:state, "has an invalid target")
   end
 
+  def replacement_baseline_changeset(
+        %__MODULE__{state: state} = monitor,
+        at
+      )
+      when state in [:active, :paused] do
+    monitor
+    |> change(
+      state: :baseline_pending,
+      state_changed_at: at,
+      next_run_at: nil,
+      pause_reason: nil
+    )
+    |> validate_schedule()
+    |> add_constraints()
+  end
+
+  def replacement_baseline_changeset(%__MODULE__{} = monitor, _at) do
+    monitor
+    |> change()
+    |> add_error(:state, "cannot prepare a replacement baseline from #{monitor.state}")
+  end
+
   def schedule_changeset(
         %__MODULE__{} = monitor,
         %User{} = user,

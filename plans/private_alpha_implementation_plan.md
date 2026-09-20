@@ -1574,6 +1574,24 @@ The product is ready for the first external design partner only when:
   14 private-alpha implementation tasks are complete. No deployment, external invitation, or
   irreversible temporary-workspace deletion was authorized.
 
+### 2026-09-19 — Replacement-baseline lifecycle correction
+
+- The post-build invited-user walkthrough exposed a product-flow gap after an approved contract
+  revision changed deterministic semantics: the old sealed baseline correctly became incompatible,
+  but its presence hid replacement preflight and left an auto-paused monitor with no product path
+  forward.
+- Added a server-authoritative replacement eligibility rule, limited to a genuinely incompatible
+  approved baseline under current behavior. Authorization returns active or
+  incompatibility-paused monitors to `baseline_pending`, cancels their next scheduled execution,
+  and keeps the prior baseline approved throughout capture and review.
+- The Baseline page now distinguishes historical evidence from a current compatible reference,
+  shows the exact replacement spend envelope, withholds the operations handoff while incompatible,
+  and explains that only replacement approval supersedes the earlier baseline.
+- Added end-to-end context coverage for semantic correction, automatic pause, replacement
+  authorization, evidence completion, atomic supersession, and restored compatibility, plus
+  component coverage and operator instructions. All 45 frontend tests and `mix precommit` with 598
+  backend tests pass.
+
 ## 17. References
 
 - [Feasibility spike implementation plan](implementation_plan.md)

@@ -276,7 +276,12 @@ defmodule SilentRegression.Baselines do
       Repo.transaction(fn ->
         with nil <- locked_pending_snapshot(scope.workspace.id, monitor_id),
              {:ok, _monitor} <-
-               Monitors.prepare_baseline(scope, monitor_id, preflight.monitor_version.id),
+               Monitors.prepare_baseline(
+                 scope,
+                 monitor_id,
+                 preflight.monitor_version.id,
+                 replacement?: preflight.replacement?
+               ),
              {:ok, refreshed} <-
                preflight(scope, monitor_id, %{samples_per_case: preflight.samples_per_case}),
              :ok <- ensure_ready(refreshed),
@@ -544,13 +549,22 @@ defmodule SilentRegression.Baselines do
       monitor ->
         version = load_current_version(monitor)
 
+        resources = %{
+          monitor: monitor,
+          monitor_version: version,
+          contract_version: load_approved_contract(monitor.id, version_id(version)),
+          credential: load_credential(workspace_id, monitor.provider_credential_id)
+        }
+
+        approved = approved_snapshot(workspace_id, monitor.id)
+
         {:ok,
-         %{
-           monitor: monitor,
-           monitor_version: version,
-           contract_version: load_approved_contract(monitor.id, version_id(version)),
-           credential: load_credential(workspace_id, monitor.provider_credential_id)
-         }}
+         Map.put(
+           resources,
+           :replacement_baseline?,
+           match?(%BaselineSnapshot{}, approved) and
+             not compatibility(approved, resources).compatible?
+         )}
     end
   end
 

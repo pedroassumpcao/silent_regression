@@ -92,6 +92,7 @@ type Health = {
 type Preflight = {
   ready: boolean
   blockers: Blocker[]
+  replacement: boolean
   caseCount: number
   cases: Array<{ id: string; key: string; name: string }>
   samplesPerCase: number
@@ -166,7 +167,8 @@ export function BaselineView({
   const contractPath = `/app/${workspace.slug}/monitors/${props.monitor.id}/contract`
   const credentialsPath = `/app/${workspace.slug}/credentials`
   const hasSnapshot = Boolean(props.snapshot)
-  const approved = props.snapshot?.status === "approved"
+  const replacementNeeded = props.snapshot?.status === "approved" && props.preflight.replacement
+  const approved = props.snapshot?.status === "approved" && !replacementNeeded
   const operationsPath = `/app/${workspace.slug}/monitors/${props.monitor.id}/operations`
 
   return (
@@ -188,21 +190,23 @@ export function BaselineView({
             </Button>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">Configuration v{props.monitor.version || "—"}</Badge>
-              <BaselineStatusBadge snapshot={props.snapshot} polling={props.polling} />
+              <BaselineStatusBadge compatibility={props.compatibility} snapshot={props.snapshot} polling={props.polling} />
             </div>
           </div>
 
           <div className="max-w-3xl">
             <p className="text-sm font-medium text-primary">{props.monitor.name}</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Capture the reference you will monitor
+              {replacementNeeded ? "Restore a compatible reference" : "Capture the reference you will monitor"}
             </h1>
             <p className="mt-3 text-base leading-7 text-muted-foreground">
-              Preview the exact provider-call envelope, authorize the first managed replay, then inspect every output and deterministic judgment before sealing the baseline.
+              {replacementNeeded
+                ? "Current contract semantics changed. Preserve the historical evidence, authorize a fresh managed replay, and approve it before monitoring resumes."
+                : "Preview the exact provider-call envelope, authorize the first managed replay, then inspect every output and deterministic judgment before sealing the baseline."}
             </p>
           </div>
 
-          <WorkflowSteps approved={approved} hasSnapshot={hasSnapshot} polling={props.polling} />
+          <WorkflowSteps approved={approved} hasSnapshot={hasSnapshot} polling={props.polling} replacement={replacementNeeded} />
         </header>
 
         {flash.info && (
@@ -221,7 +225,17 @@ export function BaselineView({
           </Alert>
         )}
 
-        {!props.snapshot && (
+        {replacementNeeded && (
+          <Alert id="replacement-baseline-required" className="border-amber-500/25 bg-amber-500/5">
+            <ShieldAlert className="text-amber-600" />
+            <AlertTitle>Replacement baseline required</AlertTitle>
+            <AlertDescription>
+              The approved reference below remains sealed as historical evidence. It will be superseded only after you capture, inspect, and approve a compatible replacement.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {(!props.snapshot || replacementNeeded) && (
           <PreflightPanel
             authorizationKey={props.authorizationKey}
             canDecide={props.canDecide}
@@ -229,6 +243,7 @@ export function BaselineView({
             credentialsPath={credentialsPath}
             path={path}
             preflight={props.preflight}
+            replacement={replacementNeeded}
           />
         )}
 
@@ -257,12 +272,12 @@ export function BaselineView({
   )
 }
 
-function WorkflowSteps({ approved, hasSnapshot, polling }: { approved: boolean; hasSnapshot: boolean; polling: boolean }) {
+function WorkflowSteps({ approved, hasSnapshot, polling, replacement }: { approved: boolean; hasSnapshot: boolean; polling: boolean; replacement: boolean }) {
   const steps = [
-    { label: "Preview", complete: hasSnapshot, detail: hasSnapshot ? "Authorized" : "Review limits" },
-    { label: "Capture", complete: hasSnapshot && !polling, detail: polling ? "In progress" : hasSnapshot ? "Terminal" : "Not started" },
-    { label: "Inspect", complete: hasSnapshot && !polling, detail: hasSnapshot && !polling ? "Evidence ready" : "Waiting" },
-    { label: "Approve", complete: approved, detail: approved ? "Sealed" : "Owner decision" },
+    { label: "Preview", complete: hasSnapshot && !replacement, detail: replacement ? "Review replacement" : hasSnapshot ? "Authorized" : "Review limits" },
+    { label: "Capture", complete: hasSnapshot && !polling && !replacement, detail: replacement ? "Not started" : polling ? "In progress" : hasSnapshot ? "Terminal" : "Not started" },
+    { label: "Inspect", complete: hasSnapshot && !polling && !replacement, detail: replacement ? "Historical only" : hasSnapshot && !polling ? "Evidence ready" : "Waiting" },
+    { label: "Approve", complete: approved, detail: replacement ? "Replacement required" : approved ? "Sealed" : "Owner decision" },
   ]
 
   return (
@@ -282,13 +297,14 @@ function WorkflowSteps({ approved, hasSnapshot, polling }: { approved: boolean; 
   )
 }
 
-function PreflightPanel({ authorizationKey, canDecide, contractPath, credentialsPath, path, preflight }: {
+function PreflightPanel({ authorizationKey, canDecide, contractPath, credentialsPath, path, preflight, replacement }: {
   authorizationKey: string
   canDecide: boolean
   contractPath: string
   credentialsPath: string
   path: string
   preflight: Preflight
+  replacement: boolean
 }) {
   const authorizeForm = useForm({
     baseline: {
@@ -321,10 +337,12 @@ function PreflightPanel({ authorizationKey, canDecide, contractPath, credentials
     <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
       <Card id="baseline-preflight" className={preflight.ready ? "border-primary/25" : ""}>
         <CardHeader>
-          <p className="text-sm font-medium text-primary">Step 1 · exact preview</p>
-          <CardTitle className="text-2xl">Know the maximum before any completion call</CardTitle>
+          <p className="text-sm font-medium text-primary">Step 1 · {replacement ? "replacement preview" : "exact preview"}</p>
+          <CardTitle className="text-2xl">{replacement ? "Capture a reference for the current contract" : "Know the maximum before any completion call"}</CardTitle>
           <CardDescription className="leading-6">
-            Model-access verification is a provider metadata request. The authorization below is the boundary that permits billable completion calls.
+            {replacement
+              ? "This exact provider-call envelope creates new evidence. The historical baseline remains approved until you approve its replacement."
+              : "Model-access verification is a provider metadata request. The authorization below is the boundary that permits billable completion calls."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -439,11 +457,13 @@ function PreflightPanel({ authorizationKey, canDecide, contractPath, credentials
             onClick={() => authorizeForm.post(`${path}/authorize`)}
           >
             {authorizeForm.processing ? <LoaderCircle className="animate-spin" /> : <Coins />}
-            Authorize up to {preflight.maximumCallCount} calls
+            Authorize {replacement ? "replacement " : ""}up to {preflight.maximumCallCount} calls
           </Button>
 
           <p className="text-xs leading-5 text-muted-foreground">
-            {canDecide ? "Clicking authorize permits this exact plan; it does not approve the resulting outputs." : "A workspace owner must verify model access and authorize provider spend."}
+            {canDecide
+              ? `Clicking authorize permits this exact ${replacement ? "replacement " : ""}plan; it does not approve the resulting outputs.`
+              : "A workspace owner must verify model access and authorize provider spend."}
           </p>
 
           <div className="flex flex-wrap gap-2 border-t pt-4">
@@ -466,11 +486,11 @@ function CaptureSummary({ compatibility, health, polling, snapshot }: {
   const progress = snapshot.plannedCallCount === 0 ? 0 : Math.round((terminalCount / snapshot.plannedCallCount) * 100)
 
   return (
-    <Card id="baseline-capture-summary" className={snapshot.status === "approved" ? "border-success/25 bg-success/5" : ""}>
+    <Card id="baseline-capture-summary" className={snapshot.status === "approved" && compatibility.compatible ? "border-success/25 bg-success/5" : ""}>
       <CardHeader className="gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-sm font-medium text-primary">Step 2 · durable capture</p>
-          <CardTitle className="mt-1 text-2xl">{snapshot.status === "approved" ? "Approved reference" : polling ? "Provider capture in progress" : "Capture ready for review"}</CardTitle>
+          <CardTitle className="mt-1 text-2xl">{snapshot.status === "approved" ? (compatibility.compatible ? "Approved reference" : "Historical approved reference") : polling ? "Provider capture in progress" : "Capture ready for review"}</CardTitle>
           <CardDescription className="mt-2 leading-6">
             {polling ? "Progress refreshes from persisted jobs every two seconds; leaving this page does not stop the run." : `Run ${snapshot.run.status.replaceAll("_", " ")} · authorized ${formatDate(snapshot.authorizedAt)}`}
           </CardDescription>
@@ -500,7 +520,9 @@ function CaptureSummary({ compatibility, health, polling, snapshot }: {
           <Alert variant="destructive">
             <ShieldAlert />
             <AlertTitle>Configuration compatibility changed</AlertTitle>
-            <AlertDescription>This capture cannot be approved against the current behavior: {compatibility.mismatches.join(", ").replaceAll("_", " ")}.</AlertDescription>
+            <AlertDescription>
+              {snapshot.status === "approved" ? "This historical reference no longer matches current behavior" : "This capture cannot be approved against current behavior"}: {compatibility.mismatches.join(", ").replaceAll("_", " ")}.
+            </AlertDescription>
           </Alert>
         )}
       </CardContent>
@@ -626,6 +648,20 @@ function ApprovalPanel({ canDecide, compatibility, errors, health, operationsPat
   const approved = snapshot.status === "approved"
   const pending = snapshot.status === "pending"
 
+  if (approved && !compatibility.compatible) {
+    return (
+      <Card id="baseline-historical" className="border-amber-500/25 bg-amber-500/5">
+        <CardHeader>
+          <p className="text-sm font-medium text-amber-700">Historical evidence</p>
+          <CardTitle className="flex items-center gap-2 text-2xl"><ShieldAlert className="size-6" /> Approved baseline retained</CardTitle>
+          <CardDescription className="leading-6">
+            {snapshot.memberCount} sealed observation{snapshot.memberCount === 1 ? "" : "s"} remain attributable and auditable. This reference will be superseded only when a compatible replacement is approved.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
   if (approved) {
     return (
       <Card id="baseline-approved" className="border-success/25 bg-success/5">
@@ -741,8 +777,9 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant="outline" className={success ? "border-success/25 bg-success/10 text-success" : danger ? "border-destructive/25 bg-destructive/5 text-destructive" : "border-primary/25 text-primary"}>{success ? <CheckCircle2 /> : danger ? <AlertTriangle /> : <CircleDashed />}{normalized}</Badge>
 }
 
-function BaselineStatusBadge({ polling, snapshot }: { polling: boolean; snapshot: Snapshot | null }) {
+function BaselineStatusBadge({ compatibility, polling, snapshot }: { compatibility: BaselineProps["compatibility"]; polling: boolean; snapshot: Snapshot | null }) {
   if (!snapshot) return <Badge variant="outline"><CircleDashed /> Not authorized</Badge>
+  if (snapshot.status === "approved" && !compatibility.compatible) return <Badge variant="outline" className="border-amber-500/25 text-amber-700"><ShieldAlert /> Replacement required</Badge>
   if (snapshot.status === "approved") return <Badge variant="outline" className="border-success/25 bg-success/10 text-success"><ShieldCheck /> Approved baseline</Badge>
   if (snapshot.status === "rejected") return <Badge variant="outline" className="border-destructive/25 text-destructive"><XCircle /> Rejected</Badge>
   if (polling) return <Badge variant="outline" className="border-primary/25 text-primary"><Clock3 /> Capturing</Badge>

@@ -59,6 +59,25 @@ Do not record free-form notes. Product events and audit records intentionally re
 4. Tell affected partners that monitoring is paused and whether any run outcome is unknown.
 5. Resume only after credential/model validation and normal capacity checks succeed.
 
+## Contract correction and replacement baseline
+
+An approved contract revision that changes deterministic semantics intentionally invalidates the
+current baseline. Historical rescoring makes no provider call, but the monitor cannot compare new
+runs against evidence interpreted under the old contract.
+
+1. Confirm the Baseline page identifies the exact compatibility change and still shows the sealed
+   historical evidence.
+2. Review the replacement preview and its maximum calls and output-token ceiling. Authorizing it is
+   a new provider-spend decision; it does not approve the resulting outputs.
+3. Inspect every replacement output and deterministic judgment. The old baseline remains approved
+   and auditable while this capture is pending, and a rejected replacement returns the page to the
+   same replacement preview.
+4. Approve the replacement only when its operational evidence is complete. Approval atomically
+   marks the old reference superseded and makes the new one current.
+5. Return to Monitor Operations and explicitly configure the desired manual, daily, or weekly
+   cadence. Replacement authorization clears the next scheduled time rather than silently
+   restarting the previous schedule.
+
 ## Provider smoke verification
 
 Preview each provider independently with the exact existing credential ID, workspace, and allowed

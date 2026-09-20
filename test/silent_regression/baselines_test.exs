@@ -9,8 +9,13 @@ defmodule SilentRegression.BaselinesTest do
   alias SilentRegression.Accounts.Scope
   alias SilentRegression.Audit
   alias SilentRegression.Baselines
+  alias SilentRegression.Baselines.BaselineSnapshot
   alias SilentRegression.Captures.Workers.ObservationWorker
+  alias SilentRegression.ContractAuthoring
+  alias SilentRegression.ContractAuthoring.Templates
+  alias SilentRegression.MonitorOperations
   alias SilentRegression.Monitors
+  alias SilentRegression.Repo
 
   setup do
     scope = workspace_scope_fixture()
@@ -286,6 +291,57 @@ defmodule SilentRegression.BaselinesTest do
                Baselines.current_compatible(scope, fixture.monitor.id)
     end
 
+    test "an incompatible approved baseline can be replaced without losing its history", %{
+      scope: scope
+    } do
+      fixture = operational_monitor_fixture(scope)
+      original = fixture.baseline
+
+      corrected_contract = approve_semantic_contract_revision(scope, fixture.monitor.id)
+
+      refute corrected_contract.contract_fingerprint ==
+               fixture.contract.contract_fingerprint
+
+      assert {:ok, %{paused: 1}} = MonitorOperations.sweep_ineligible()
+
+      assert {:ok, state} = Baselines.get_state(scope, fixture.monitor.id)
+      assert state.snapshot.id == original.id
+      assert state.snapshot.status == :approved
+      refute state.compatibility.compatible?
+      assert state.preflight.replacement?
+      assert state.preflight.ready?
+
+      assert {:ok, replacement} =
+               Baselines.authorize(
+                 scope,
+                 fixture.monitor.id,
+                 authorization_attrs(state.preflight)
+               )
+
+      assert replacement.id != original.id
+      assert replacement.status == :pending
+      assert Repo.get!(BaselineSnapshot, original.id).status == :approved
+
+      assert {:ok, monitor} = Monitors.get_monitor(scope, fixture.monitor.id)
+      assert monitor.state == :baseline_pending
+      assert monitor.pause_reason == nil
+      assert monitor.next_run_at == nil
+
+      complete_capture(replacement)
+
+      assert {:ok, approved_replacement} =
+               Baselines.approve(scope, fixture.monitor.id, %{approval_mode: :normal})
+
+      superseded = Repo.get!(BaselineSnapshot, original.id)
+      assert superseded.status == :superseded
+      assert superseded.superseded_by_id == approved_replacement.id
+      assert superseded.superseded_at
+
+      assert {:ok, current} = Baselines.current_compatible(scope, fixture.monitor.id)
+      assert current.id == approved_replacement.id
+      assert current.contract_version_id == corrected_contract.id
+    end
+
     test "rejecting a pending capture cancels it and permits a new authorization", %{scope: scope} do
       {fixture, snapshot} = authorized_snapshot(scope)
 
@@ -340,6 +396,50 @@ defmodule SilentRegression.BaselinesTest do
                  observation_id: observation.id
                })
     end)
+  end
+
+  defp approve_semantic_contract_revision(scope, monitor_id) do
+    assert {:ok, _draft} = ContractAuthoring.create_revision(scope, monitor_id)
+    assert {:ok, template} = Templates.fetch("classification")
+
+    changed_root =
+      put_in(
+        template,
+        ["root", "rules", Access.at(0), "allowed_values"],
+        ["approved", "accepted", "rejected"]
+      )["root"]
+
+    assert {:ok, _draft} =
+             ContractAuthoring.save_draft(scope, monitor_id, %{
+               template_key: "classification",
+               assistance_mode: "self_serve",
+               root: changed_root
+             })
+
+    assert {:ok, state} = ContractAuthoring.get_state(scope, monitor_id)
+
+    Enum.each(state.fixtures, fn contract_fixture ->
+      expected =
+        if contract_fixture.output_text == "approved" do
+          %{expected_status: "pass", expected_failed_rule_ids: []}
+        else
+          %{expected_status: "fail", expected_failed_rule_ids: ["allowed_label"]}
+        end
+
+      assert {:ok, _fixture} =
+               ContractAuthoring.update_fixture(
+                 scope,
+                 monitor_id,
+                 contract_fixture.id,
+                 Map.merge(expected, %{
+                   name: contract_fixture.name,
+                   output_text: contract_fixture.output_text
+                 })
+               )
+    end)
+
+    assert {:ok, corrected} = ContractAuthoring.approve(scope, monitor_id)
+    corrected
   end
 
   defp exceptional_approval do

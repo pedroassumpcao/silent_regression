@@ -214,6 +214,7 @@ defmodule SilentRegressionWeb.BaselineController do
     %{
       ready: preflight.ready?,
       blockers: preflight.blockers,
+      replacement: preflight.replacement?,
       case_count: length(preflight.cases),
       cases:
         Enum.map(preflight.cases, fn case_version ->

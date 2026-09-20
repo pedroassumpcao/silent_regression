@@ -21,6 +21,7 @@ const auth = {
 const preflight: BaselineProps["preflight"] = {
   ready: true,
   blockers: [],
+  replacement: false,
   caseCount: 1,
   cases: [{ id: "case-id", key: "supported-answer", name: "Supported answer" }],
   samplesPerCase: 1,
@@ -314,5 +315,33 @@ describe("BaselineView", () => {
       "href",
       "/app/acme-ai/monitors/monitor-id/operations",
     )
+  })
+
+  it("preserves incompatible evidence while offering an explicit replacement capture", () => {
+    render(
+      <BaselineView
+        {...baseProps}
+        compatibility={{ compatible: false, mismatches: ["contract_semantics_fingerprint"] }}
+        errors={{}}
+        flash={{}}
+        health={health}
+        monitor={{ ...baseProps.monitor, state: "paused" }}
+        preflight={{ ...preflight, replacement: true }}
+        snapshot={{
+          ...snapshot,
+          status: "approved",
+          approvalMode: "normal",
+          approvedAt: "2026-09-16T15:00:00Z",
+          memberCount: 1,
+        }}
+      />,
+    )
+
+    expect(screen.getByRole("heading", { level: 1, name: "Restore a compatible reference" })).toBeInTheDocument()
+    expect(screen.getByText("Replacement baseline required")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Authorize replacement up to 2 calls" })).toBeEnabled()
+    expect(screen.getByText(/historical baseline remains approved until you approve its replacement/i)).toBeInTheDocument()
+    expect(screen.getByText(/will be superseded only when a compatible replacement is approved/i)).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: /continue to operations/i })).not.toBeInTheDocument()
   })
 })

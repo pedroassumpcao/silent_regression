@@ -14,6 +14,7 @@ defmodule SilentRegression.Baselines.Preflight do
     :monitor_version,
     :contract_version,
     :credential,
+    :replacement?,
     :cases,
     :samples_per_case,
     :retry_limit,
@@ -57,6 +58,7 @@ defmodule SilentRegression.Baselines.Preflight do
       monitor_version: resources.monitor_version,
       contract_version: resources.contract_version,
       credential: resources.credential,
+      replacement?: resources.replacement_baseline?,
       cases: cases,
       samples_per_case: samples_per_case,
       retry_limit: @retry_limit,
@@ -93,7 +95,7 @@ defmodule SilentRegression.Baselines.Preflight do
   defp blockers(resources, cases, maximum_call_count, call_cap) do
     []
     |> require(resources.monitor, "monitor_not_found", "The monitor is unavailable.")
-    |> require_monitor_state(resources.monitor)
+    |> require_monitor_state(resources)
     |> require(
       resources.monitor_version,
       "configuration_missing",
@@ -126,12 +128,19 @@ defmodule SilentRegression.Baselines.Preflight do
     if value, do: blockers, else: blockers ++ [%{code: code, message: message}]
   end
 
-  defp require_monitor_state(blockers, nil), do: blockers
+  defp require_monitor_state(blockers, %{monitor: nil}), do: blockers
 
-  defp require_monitor_state(blockers, monitor) do
+  defp require_monitor_state(blockers, resources) do
+    monitor = resources.monitor
+
+    replacement_state? =
+      resources.replacement_baseline? and
+        (monitor.state == :active or
+           (monitor.state == :paused and monitor.pause_reason == :incompatible_configuration))
+
     require(
       blockers,
-      monitor.state in [:draft, :validating, :ready, :baseline_pending],
+      monitor.state in [:draft, :validating, :ready, :baseline_pending] or replacement_state?,
       "monitor_state_invalid",
       "This monitor cannot start a baseline from its current state."
     )

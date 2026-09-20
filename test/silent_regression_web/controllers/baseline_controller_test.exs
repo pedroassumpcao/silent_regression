@@ -52,6 +52,7 @@ defmodule SilentRegressionWeb.BaselineControllerTest do
       assert inertia_component(page) == "Monitors/Baseline"
       assert inertia_props(page).snapshot == nil
       refute inertia_props(page).preflight.ready
+      refute inertia_props(page).preflight.replacement
       assert inertia_props(page).preflight.caseCount == 1
       assert inertia_props(page).preflight.plannedCallCount == 1
       assert inertia_props(page).preflight.maximumCallCount == 2
