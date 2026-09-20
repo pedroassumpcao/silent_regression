@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–19 complete; Task 20 is next; Gate A is complete and Gates B–D block the first design-partner pilot
+> **Status:** Tasks 1–19 complete; Task 20 is in progress; Gate A is complete and Gates B–D block the first design-partner pilot
 >
-> **Progress:** 19 of 27 tasks complete; Task 20 is not started
+> **Progress:** 19 of 27 tasks complete; Task 20 is in progress
 >
 > **Last revised:** 2026-09-20
 >
@@ -1025,7 +1025,7 @@ revoking an unactivated successor releases the predecessor for a fresh replaceme
 
 ### Task 20 — Authentication-breaker recovery
 
-**Status:** Not started
+**Status:** In progress
 
 **Gate:** B — Recoverable monitoring
 
@@ -1039,6 +1039,13 @@ back to healthy execution.
 - [ ] Count consecutive authentication failures only within the active epoch.
 - [ ] Represent probe success/failure and the next action in the product UI.
 - [ ] Test trip, repair, probe, resume, and retrip through public context/controller operations.
+
+**Implementation decision:** Store an immutable recovery epoch for every owner-authorized attempt.
+Authorization performs a fresh exact-model metadata validation after the latest breaker trip, then
+queues one stable active case with one sample, zero retries, and a one-call ceiling. A successful
+probe starts the next failure-counting epoch but leaves the monitor paused until the owner explicitly
+resumes its existing cadence. Failed or unknown probes remain recoverable, normal history and alerts
+exclude probe captures, and no old failure evidence is changed or deleted.
 
 ### Task 21 — Temporary capacity and coverage state
 

@@ -96,9 +96,22 @@ successor releases the predecessor for a safe retry.
 
 ### Task 20: authentication breaker recovery
 
-- Persist a recovery epoch/event.
-- Require successful validation plus owner authorization for a bounded recovery probe.
-- Preserve old failures while counting consecutive failures only in the active epoch.
+1. Add immutable, workspace-scoped authentication recovery epochs linked to the monitor,
+   credential, owner, exact model-validation snapshot, and one probe capture. Preserve all existing
+   capture evidence and protect epoch history from updates.
+2. Add an `authentication_probe` capture kind that selects the first stable active case, permits one
+   sample, zero retries, and one maximum provider call, retains compatible reference provenance, and
+   is excluded from normal monitoring history and alert generation.
+3. Derive breaker state from consecutive terminal manual/scheduled runs after the most recent
+   successful probe. Require the monitor to be paused, the reviewed reference to remain compatible,
+   no unfinished work, and a fresh exact-model validation after the latest trip before authorizing
+   an epoch and enqueueing its probe.
+4. Add an owner-only authenticated workspace operation with the existing run-authorization rate
+   limit. Show validation/probe call boundaries, progress, success, failure category, and the exact
+   next action on the monitor Operations page; members remain read-only.
+5. Prove trip, same-credential repair, bounded probe, explicit resume, preserved old failures, retrip
+   in a later epoch, failed-probe retry, tenancy, authorization, and purge compatibility. Run
+   frontend checks, `mix precommit`, the production asset build, and additive migration audits.
 
 ### Task 21: temporary capacity and coverage state
 

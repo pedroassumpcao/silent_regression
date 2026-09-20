@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate B — Recoverable monitoring
-- Current task: Task 20 — authentication breaker recovery (not started)
+- Current task: Task 20 — authentication breaker recovery (in progress)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -17,7 +17,7 @@
 | 17 | Case-specific expectations | Complete |
 | 18 | Contract proof coverage, severity, and bounded rescore | Complete |
 | 19 | Credential successor rebinding | Complete (`b5ae9f5`, `eaf97fd`) |
-| 20 | Authentication breaker recovery | Not started |
+| 20 | Authentication breaker recovery | In progress |
 | 21 | Temporary capacity and coverage state | Not started |
 | 22 | Successor workflow configuration | Not started |
 | 23 | Incident-centered alerting | Not started |
@@ -186,3 +186,29 @@ multi-model validation, no-call blocking for active runs and pending reference d
 future-only rebinding, historical provenance retention, replacement-reference approval, schedule
 reactivation, one-attempt bounded execution, staged-setup exclusion, revoked-successor retry, and
 legacy-lineage recovery. Task 19 is complete; Task 20 is next.
+
+## Task 20 log
+
+- [x] Reconfirm the accepted breaker finding and inspect failure counting, capture planning and
+  finalization, exact-model validation, scheduling locks, rate limits, authenticated routes, and the
+  Operations UI.
+- [x] Define immutable recovery epochs, fresh post-trip validation, a one-call/zero-retry probe,
+  explicit resume after success, and post-success failure windows.
+- [ ] Add the additive recovery schema, probe capture kind, and purge compatibility.
+- [ ] Implement owner authorization, fresh validation, bounded planning, execution guards, and
+  epoch-aware failure counting.
+- [ ] Expose recovery state and next actions through the authenticated Operations flow.
+- [ ] Prove trip, repair, probe, resume, failed-probe retry, and retrip through context/controller
+  operations.
+- [ ] Run migration audits and all verification gates; record focused commits.
+
+Decisions:
+
+- Recovery is an owner-authorized half-open probe, not an automatic timeout and not a deletion of
+  old failures.
+- Each attempt validates the exact credential/model after the latest breaker trip, then authorizes
+  one stable active case, one sample, zero retries, and one completion call.
+- Probe success establishes the next failure-counting epoch but does not silently restart scheduled
+  spend; the owner uses the existing Resume action.
+- Recovery probes remain operational evidence and do not enter normal result history or alert
+  generation.

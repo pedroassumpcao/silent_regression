@@ -226,6 +226,29 @@ Legacy rotations whose predecessor was already marked superseded remain recovera
 same activation operation. Existing successful exact-model validation summaries are backfilled into
 the per-model table; no historical row or local workspace data is rewritten.
 
+#### Task 20 authentication-breaker boundary
+
+Authentication recovery uses a durable, explicitly authorized half-open probe rather than deleting
+or reclassifying old capture evidence:
+
+- the breaker still opens after the configured number of consecutive terminal manual/scheduled runs
+  contain authentication or authorization failures;
+- every recovery attempt gets an immutable, monotonically numbered monitor epoch linked to its
+  credential, exact requested model, owner, validation proof snapshot, and probe capture;
+- authorization first performs a fresh, non-generative exact-model credential validation after the
+  latest breaker trip, then permits exactly one completion call against the first stable active case
+  with zero retries;
+- the monitor remains paused while the probe is pending and after it finishes. A successful probe
+  unlocks the existing explicit Resume action; a failed or unknown probe keeps recovery required;
+- normal failure counting begins after the most recent successful probe completion, while every old
+  run, observation, attempt, and failed recovery epoch remains inspectable; and
+- recovery probes are not ordinary monitoring results or incident inputs. They are bounded
+  operational evidence presented on the monitor Operations page.
+
+This is the standard circuit-breaker half-open principle—allow only limited trial work before
+closing the circuit—adapted to require owner authorization rather than an automatic timeout:
+[Microsoft circuit-breaker pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/circuit-breaker).
+
 ### Incident-centered alerts
 
 Observations and evaluations remain immutable. A mutable incident groups the actionable lifecycle
@@ -243,7 +266,7 @@ data provides valuable migration and compatibility coverage.
 | Request fidelity | Add request mode/schema and provider-native template data to `MonitorVersion`; exact fields finalized in Task 16 | Backfill existing versions as `legacy_wrapped_v1`; freeze their current fingerprints and behavior |
 | Case expectations | Add versioned expectation data/schema identity to `CaseVersion`, and expectation provenance to evaluations/results if needed | Existing cases mean `no_case_expectation`; no inferred answers |
 | Credential replacement | Add durable per-credential/model validation proof; retain credential lineage and the existing monitor reference | Backfill exact legacy model checks, atomically update only future monitor references, and keep historical IDs |
-| Auth recovery | Add a breaker epoch/reset event or equivalent durable state | Existing failure history remains evidence; only the evaluation window changes |
+| Auth recovery | Add immutable monitor recovery epochs linked to one bounded probe capture | Existing failure history remains evidence; only runs after the latest successful epoch count toward a new trip |
 | Capacity coverage | Add explicit waiting/retry/coverage state or events if current monitor fields cannot represent it cleanly | Backfill active/paused monitors conservatively from current state |
 | Successor configuration | Existing immutable versions are reusable; add draft/origin/motivation linkage where required | Copy active version and cases into a draft, then activate atomically |
 | Incidents | Add incident and occurrence records; retain alerts during transition | Backfill or lazily attach open alerts by stable signature; do not discard alerts |
