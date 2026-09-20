@@ -26,9 +26,15 @@ export function AlertStatusBadge({ status }: { status: AlertStatus }) {
 }
 
 export function CategoryBadge({ category }: { category: AlertCategory }) {
+  const categoryLabels: Record<AlertCategory, string> = {
+    contract_failure: "Contract failure",
+    case_expectation_failure: "Case expectation",
+    operational_anomaly: "Operational anomaly",
+  }
+
   return (
     <Badge variant="secondary">
-      {category === "contract_failure" ? "Contract failure" : "Operational anomaly"}
+      {categoryLabels[category]}
     </Badge>
   )
 }

@@ -35,6 +35,8 @@ export const run: RunSummary = {
   observationCounts: { succeeded: 1 },
   completionCounts: { complete: 1 },
   evaluationCounts: { fail: 1 },
+  contractEvaluationCounts: { fail: 1 },
+  caseExpectationCounts: { notConfigured: 1 },
   providerFailureCount: 0,
   modelMismatchCount: 0,
   inputTokens: 12,

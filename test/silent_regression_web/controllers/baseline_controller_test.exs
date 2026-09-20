@@ -107,9 +107,13 @@ defmodule SilentRegressionWeb.BaselineControllerTest do
       refute inertia_props(review_page).polling
       assert inertia_props(review_page).health.normalApprovable
       assert inertia_props(review_page).health.completionCounts.complete == 1
+      assert inertia_props(review_page).health.contractEvaluationCounts.pass == 1
+      assert inertia_props(review_page).health.caseExpectationCounts.notConfigured == 1
       assert [observation] = inertia_props(review_page).snapshot.run.observations
       assert observation.outputText == "approved"
       assert observation.evaluation.status == :pass
+      assert observation.evaluation.contractStatus == :pass
+      assert observation.evaluation.caseExpectationStatus == :not_configured
       assert length(observation.evaluation.ruleResults) == 3
 
       approved =

@@ -19,6 +19,8 @@ defmodule SilentRegression.Baselines.Health do
       )
 
     evaluation_counts = frequencies(evaluations, & &1.status)
+    contract_evaluation_counts = frequencies(evaluations, & &1.contract_status)
+    case_expectation_counts = frequencies(evaluations, & &1.case_expectation_status)
     model_mismatch_count = Enum.count(observations, &model_mismatch?/1)
     missing_observation_count = max(run.planned_call_count - length(observations), 0)
 
@@ -81,6 +83,8 @@ defmodule SilentRegression.Baselines.Health do
       status_counts: status_counts,
       completion_counts: completion_counts,
       evaluation_counts: evaluation_counts,
+      contract_evaluation_counts: contract_evaluation_counts,
+      case_expectation_counts: case_expectation_counts,
       deterministic_failure_count: deterministic_failure_count,
       model_mismatch_count: model_mismatch_count,
       input_tokens: sum(observations, :input_tokens),
@@ -104,6 +108,8 @@ defmodule SilentRegression.Baselines.Health do
       status_counts: %{},
       completion_counts: %{},
       evaluation_counts: %{},
+      contract_evaluation_counts: %{},
+      case_expectation_counts: %{},
       deterministic_failure_count: 0,
       model_mismatch_count: 0,
       input_tokens: 0,

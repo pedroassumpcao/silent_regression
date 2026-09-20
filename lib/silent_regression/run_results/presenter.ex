@@ -47,6 +47,8 @@ defmodule SilentRegression.RunResults.Presenter do
       observation_counts: frequencies(observations, & &1.status),
       completion_counts: frequencies(observations, &completion_bucket/1),
       evaluation_counts: frequencies(evaluations, & &1.status),
+      contract_evaluation_counts: frequencies(evaluations, & &1.contract_status),
+      case_expectation_counts: frequencies(evaluations, & &1.case_expectation_status),
       provider_failure_count: Enum.count(observations, &(&1.status in [:failed, :unknown])),
       model_mismatch_count: Enum.count(observations, &model_mismatch?/1),
       input_tokens: sum(observations, :input_tokens),
@@ -110,9 +112,14 @@ defmodule SilentRegression.RunResults.Presenter do
           |> Map.update!(:provider_metadata, &SafeValue.diagnostic/1)
           |> Map.update!(:evaluations, fn evaluations ->
             Enum.map(evaluations, fn evaluation ->
-              Map.update!(evaluation, :rule_results, fn results ->
+              evaluation
+              |> Map.update!(:rule_results, fn results ->
                 Enum.map(results, &Map.drop(&1, [:evidence]))
               end)
+              |> Map.update!(
+                :case_expectation_results,
+                &redact_expectation_evidence/1
+              )
             end)
           end)
         end)
@@ -144,7 +151,9 @@ defmodule SilentRegression.RunResults.Presenter do
         name: observation.case_version.name,
         input_variables: SafeValue.structured(observation.case_version.input_variables),
         context: SafeValue.text(observation.case_version.frozen_context),
-        fingerprint: observation.case_fingerprint
+        fingerprint: observation.case_fingerprint,
+        expectation_schema_version: observation.case_version.expectation_schema_version,
+        expectation_fingerprint: observation.case_version.expectation_fingerprint
       },
       output: SafeValue.text(observation.output_text),
       attempts: Enum.map(observation.provider_attempts, &attempt/1),
@@ -174,8 +183,14 @@ defmodule SilentRegression.RunResults.Presenter do
     %{
       id: evaluation.id,
       status: evaluation.status,
+      contract_status: evaluation.contract_status,
       root_rule_id: evaluation.root_rule_id,
       contract_fingerprint: evaluation.contract_fingerprint,
+      case_expectation_schema_version: evaluation.case_expectation_schema_version,
+      case_expectation_fingerprint: evaluation.case_expectation_fingerprint,
+      case_expectation_status: evaluation.case_expectation_status,
+      case_expectation_results: expectation_results(evaluation.case_expectation_results),
+      case_expectation_error: SafeValue.structured(evaluation.case_expectation_error),
       evaluator_engine_version: evaluation.evaluator_engine_version,
       evaluated_at: evaluation.evaluated_at,
       error: SafeValue.structured(evaluation.error),
@@ -275,6 +290,30 @@ defmodule SilentRegression.RunResults.Presenter do
 
   defp loaded_association(%Ecto.Association.NotLoaded{}), do: nil
   defp loaded_association(value), do: value
+
+  defp expectation_results(%{"checks" => checks}) when is_list(checks) do
+    %{
+      checks:
+        Enum.map(checks, fn check ->
+          %{
+            check_id: check["check_id"],
+            check_type: check["check_type"],
+            status: check["status"],
+            code: check["code"],
+            explanation: check["explanation"],
+            evidence: SafeValue.structured(check["evidence"])
+          }
+        end)
+    }
+  end
+
+  defp expectation_results(_results), do: %{checks: []}
+
+  defp redact_expectation_evidence(%{checks: checks} = results) when is_list(checks) do
+    Map.put(results, :checks, Enum.map(checks, &Map.drop(&1, [:evidence])))
+  end
+
+  defp redact_expectation_evidence(results), do: results
 
   defp frequencies(collection, callback) do
     collection |> Enum.frequencies_by(callback) |> stringify_keys()

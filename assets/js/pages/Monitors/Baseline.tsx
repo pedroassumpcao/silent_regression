@@ -63,6 +63,21 @@ type Observation = {
   attemptCount: number
   evaluation: {
     status: EvaluationStatus
+    contractStatus: EvaluationStatus
+    caseExpectationSchemaVersion: "no_case_expectation" | "case_expectation_v1"
+    caseExpectationFingerprint: string
+    caseExpectationStatus: EvaluationStatus | "not_configured"
+    caseExpectationResults: {
+      checks: Array<{
+        checkId: string
+        checkType: string
+        status: EvaluationStatus
+        code: string
+        explanation: string
+        evidence: Record<string, unknown>
+      }>
+    }
+    caseExpectationError: Record<string, unknown> | null
     error: Record<string, unknown> | null
     ruleResults: RuleResult[]
   } | null
@@ -79,6 +94,8 @@ type Health = {
   statusCounts: Record<string, number>
   completionCounts: Record<string, number>
   evaluationCounts: Record<string, number>
+  contractEvaluationCounts: Record<string, number>
+  caseExpectationCounts: Record<string, number>
   deterministicFailureCount: number
   modelMismatchCount: number
   inputTokens: number
@@ -499,12 +516,13 @@ function CaptureSummary({ compatibility, health, polling, snapshot }: {
       </CardHeader>
       <CardContent className="space-y-5">
         <Progress value={progress} aria-label="Baseline capture progress" />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <ProofMetric label="Terminal samples" value={`${terminalCount}/${snapshot.plannedCallCount}`} />
           <ProofMetric label="Actual calls" value={String(health?.actualCallCount ?? snapshot.run.actualCallCount ?? 0)} />
           <ProofMetric label="Complete" value={String(health?.completionCounts.complete || 0)} tone="success" />
           <ProofMetric label="Incomplete / unknown" value={String((health?.completionCounts.incomplete || 0) + (health?.completionCounts.unknown || 0))} tone="warning" />
           <ProofMetric label="Failed" value={String(health?.statusCounts.failed || 0)} tone="danger" />
+          <ProofMetric label="Contract / case failures" value={`${health?.contractEvaluationCounts.fail || 0} / ${health?.caseExpectationCounts.fail || 0}`} tone={(health?.contractEvaluationCounts.fail || 0) + (health?.caseExpectationCounts.fail || 0) > 0 ? "danger" : "success"} />
         </div>
 
         {health && (
@@ -536,7 +554,7 @@ function ObservationReview({ observations }: { observations: Observation[] }) {
       <div>
         <p className="text-sm font-medium text-primary">Step 3 · inspect every sample</p>
         <h2 id="observation-review-heading" className="mt-1 text-2xl font-semibold tracking-tight">Provider evidence and deterministic results</h2>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">Operational outcomes and contract judgments stay separate so a provider anomaly is never mistaken for quality degradation.</p>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">Operational outcomes, shared-contract judgments, and case-specific expectations stay separate so each failure points to the correct layer.</p>
       </div>
 
       <div id="baseline-observations" className="space-y-4">
@@ -560,7 +578,9 @@ function ObservationCard({ observation }: { observation: Observation }) {
         <div className="flex flex-wrap gap-2">
           <StatusBadge status={observation.status} />
           {observation.completionState && <StatusBadge status={observation.completionState} />}
-          {observation.evaluation && <StatusBadge status={observation.evaluation.status} />}
+          {observation.evaluation && <span className="flex items-center gap-1 text-xs text-muted-foreground">Overall <StatusBadge status={observation.evaluation.status} /></span>}
+          {observation.evaluation && <span className="flex items-center gap-1 text-xs text-muted-foreground">Contract <StatusBadge status={observation.evaluation.contractStatus} /></span>}
+          {observation.evaluation && <span className="flex items-center gap-1 text-xs text-muted-foreground">Case <StatusBadge status={observation.evaluation.caseExpectationStatus} /></span>}
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -605,8 +625,10 @@ function ObservationCard({ observation }: { observation: Observation }) {
           <EvidenceMetric label="Attempts / latency" value={`${observation.attemptCount} · ${observation.latencyMs || 0} ms`} />
         </div>
 
-        {rules.length > 0 && (
-          <div className="overflow-hidden rounded-xl border">
+        {observation.evaluation && (
+          <div className="grid gap-4 xl:grid-cols-2">
+            <div className="overflow-hidden rounded-xl border">
+              <div className="border-b bg-muted/25 px-4 py-3"><p className="text-sm font-medium">Shared contract</p></div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -625,6 +647,26 @@ function ObservationCard({ observation }: { observation: Observation }) {
                 ))}
               </TableBody>
             </Table>
+            </div>
+            <div className="overflow-hidden rounded-xl border border-primary/20">
+              <div className="border-b bg-primary/5 px-4 py-3"><p className="text-sm font-medium">Case-specific expectation</p><p className="mt-1 font-mono text-[11px] text-muted-foreground">{shortFingerprint(observation.evaluation.caseExpectationFingerprint)}</p></div>
+              {observation.evaluation.caseExpectationStatus === "not_configured" ? (
+                <p className="p-4 text-sm text-muted-foreground">This immutable case explicitly has no case-specific expectation.</p>
+              ) : (
+                <Table>
+                  <TableHeader><TableRow><TableHead>Check</TableHead><TableHead>Status</TableHead><TableHead>Why</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {observation.evaluation.caseExpectationResults.checks.map(check => (
+                      <TableRow key={check.checkId}>
+                        <TableCell><span className="block font-mono text-xs font-medium">{check.checkId}</span><span className="text-xs text-muted-foreground">{check.checkType.replaceAll("_", " ")}</span></TableCell>
+                        <TableCell><StatusBadge status={check.status} /></TableCell>
+                        <TableCell className="min-w-64 whitespace-normal text-xs leading-5 text-muted-foreground">{check.explanation}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
           </div>
         )}
       </CardContent>

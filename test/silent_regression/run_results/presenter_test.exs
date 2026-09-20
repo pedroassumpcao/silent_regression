@@ -12,7 +12,22 @@ defmodule SilentRegression.RunResults.PresenterTest do
 
   setup do
     scope = workspace_scope_fixture()
-    fixture = operational_monitor_fixture(scope)
+
+    fixture =
+      operational_monitor_fixture(scope, %{
+        cases: [
+          %{
+            case_key: "supported-answer",
+            name: "Supported answer",
+            input_variables_json: ~s({"question":"Which plan includes SSO?"}),
+            frozen_context: "The Enterprise plan includes SSO.",
+            status: "active",
+            expectation_json:
+              ~s({"checks":[{"id":"decision","type":"label","allowed_values":["approved"]}]})
+          }
+        ]
+      })
+
     {:ok, run} = MonitorOperations.run_now(scope, fixture.monitor.id)
     [job] = jobs_for_run(run.id)
     :ok = perform_job(ObservationWorker, job.args)
@@ -29,6 +44,8 @@ defmodule SilentRegression.RunResults.PresenterTest do
     assert detail.summary.observation_counts == %{"succeeded" => 1}
     assert detail.summary.completion_counts == %{"complete" => 1}
     assert detail.summary.evaluation_counts == %{"pass" => 1}
+    assert detail.summary.contract_evaluation_counts == %{"pass" => 1}
+    assert detail.summary.case_expectation_counts == %{"pass" => 1}
     assert detail.summary.provider_failure_count == 0
     assert detail.summary.provenance_compatible
     assert detail.provenance.compatible
@@ -45,6 +62,14 @@ defmodule SilentRegression.RunResults.PresenterTest do
     assert attempt.request_schema_version == 1
     assert attempt.request_fingerprint == hd(state.run.observations).request_fingerprint
     assert [evaluation] = observation.evaluations
+    assert evaluation.contract_status == :pass
+    assert evaluation.case_expectation_status == :pass
+    assert evaluation.case_expectation_schema_version == "case_expectation_v1"
+    assert evaluation.case_expectation_fingerprint == observation.case.expectation_fingerprint
+
+    assert get_in(evaluation.case_expectation_results, [:checks, Access.at(0), :check_id]) ==
+             "decision"
+
     assert length(evaluation.rule_results) == 3
     assert Enum.all?(evaluation.rule_results, &(&1.severity == :critical))
   end

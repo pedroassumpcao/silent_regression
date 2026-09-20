@@ -64,6 +64,12 @@ const observation = {
   attemptCount: 1,
   evaluation: {
     status: "pass" as const,
+    contractStatus: "pass" as const,
+    caseExpectationSchemaVersion: "no_case_expectation" as const,
+    caseExpectationFingerprint: "e".repeat(64),
+    caseExpectationStatus: "not_configured" as const,
+    caseExpectationResults: { checks: [] },
+    caseExpectationError: null,
     error: null,
     ruleResults: [
       {
@@ -115,6 +121,8 @@ const health: NonNullable<BaselineProps["health"]> = {
   statusCounts: { succeeded: 1 },
   completionCounts: { complete: 1 },
   evaluationCounts: { pass: 1 },
+  contractEvaluationCounts: { pass: 1 },
+  caseExpectationCounts: { not_configured: 1 },
   deterministicFailureCount: 0,
   modelMismatchCount: 0,
   inputTokens: 10,
@@ -190,6 +198,55 @@ describe("BaselineView", () => {
     expect(screen.getByText("The normalized output matches an allowed label.")).toBeInTheDocument()
     expect(screen.getByText("10 in · 1 out")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Approve and seal baseline" })).toBeEnabled()
+  })
+
+  it("shows case-specific evidence separately from a passing shared contract", () => {
+    render(
+      <BaselineView
+        {...baseProps}
+        errors={{}}
+        flash={{}}
+        health={{
+          ...health,
+          evaluationCounts: { fail: 1 },
+          contractEvaluationCounts: { pass: 1 },
+          caseExpectationCounts: { fail: 1 },
+          deterministicFailureCount: 1,
+          normalApprovable: false,
+          exceptionalApprovable: true,
+        }}
+        snapshot={{
+          ...snapshot,
+          run: {
+            ...snapshot.run,
+            observations: [{
+              ...observation,
+              evaluation: {
+                ...observation.evaluation!,
+                status: "fail",
+                contractStatus: "pass",
+                caseExpectationSchemaVersion: "case_expectation_v1",
+                caseExpectationStatus: "fail",
+                caseExpectationResults: {
+                  checks: [{
+                    checkId: "decision",
+                    checkType: "label",
+                    status: "fail",
+                    code: "expected_label_mismatch",
+                    explanation: "The case-specific label did not match.",
+                    evidence: {},
+                  }],
+                },
+              },
+            }],
+          },
+        }}
+      />,
+    )
+
+    expect(screen.getByText("Shared contract")).toBeInTheDocument()
+    expect(screen.getByText("Case-specific expectation")).toBeInTheDocument()
+    expect(screen.getByText("The case-specific label did not match.")).toBeInTheDocument()
   })
 
   it("separates model anomalies from quality and blocks exceptional approval", () => {
@@ -269,6 +326,7 @@ describe("BaselineView", () => {
           ...health,
           deterministicFailureCount: 1,
           evaluationCounts: { fail: 1 },
+          contractEvaluationCounts: { fail: 1 },
           normalApprovable: false,
           exceptionalApprovable: true,
         }}
@@ -280,7 +338,7 @@ describe("BaselineView", () => {
               {
                 ...observation,
                 outputText: "maybe",
-                evaluation: { ...observation.evaluation!, status: "fail", ruleResults: [{ ...observation.evaluation!.ruleResults[0], status: "fail" }] },
+                evaluation: { ...observation.evaluation!, status: "fail", contractStatus: "fail", ruleResults: [{ ...observation.evaluation!.ruleResults[0], status: "fail" }] },
               },
             ],
           },

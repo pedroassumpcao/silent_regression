@@ -35,6 +35,8 @@ defmodule SilentRegressionWeb.RunResultControllerTest do
     assert [presented_run] = inertia_props(results_page).runs
     assert presented_run.id == run.id
     assert presented_run.criticalAlertCount == 1
+    assert presented_run.contractEvaluationCounts["fail"] == 1
+    assert presented_run.caseExpectationCounts["notConfigured"] == 1
     assert [presented_alert] = inertia_props(results_page).alerts
     assert presented_alert.id == alert.id
     assert presented_alert.category == :contract_failure
@@ -48,6 +50,8 @@ defmodule SilentRegressionWeb.RunResultControllerTest do
     assert observation.output.text == "maybe"
     assert [evaluation] = observation.evaluations
     assert evaluation.status == :fail
+    assert evaluation.contractStatus == :fail
+    assert evaluation.caseExpectationStatus == :not_configured
 
     diagnostic = run_page |> recycle() |> get(run_path <> "/diagnostic")
     assert response(diagnostic, 200)

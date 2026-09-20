@@ -90,7 +90,7 @@ export function ResultsView({
               <p className="text-sm font-medium text-primary">{monitor.name}</p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Runs, evidence, and actionable alerts</h1>
               <p className="mt-3 text-base leading-7 text-muted-foreground">
-                Inspect explicit outcomes against the pinned baseline. Contract failures and operational anomalies remain separate throughout the evidence trail.
+                Inspect explicit outcomes against the pinned baseline. Shared-contract failures, case-specific mismatches, and operational anomalies remain separate throughout the evidence trail.
               </p>
             </div>
             <Button asChild variant="outline">
@@ -187,7 +187,8 @@ export function ResultsView({
                         <TableHead>Outcome</TableHead>
                         <TableHead>Calls</TableHead>
                         <TableHead>Completions</TableHead>
-                        <TableHead>Contract</TableHead>
+                        <TableHead>Shared contract</TableHead>
+                        <TableHead>Case expectation</TableHead>
                         <TableHead>Alerts</TableHead>
                         <TableHead className="text-right">Evidence</TableHead>
                       </TableRow>
@@ -202,7 +203,8 @@ export function ResultsView({
                           <TableCell><RunStatusBadge status={run.status} /></TableCell>
                           <TableCell className="tabular-nums">{run.actualCallCount}/{run.maximumCallCount}</TableCell>
                           <TableCell className="tabular-nums">{run.completionCounts.complete || 0}/{run.plannedCallCount}</TableCell>
-                          <TableCell className="tabular-nums">{run.evaluationCounts.fail || 0} failed</TableCell>
+                          <TableCell className="tabular-nums">{run.contractEvaluationCounts.fail || 0} failed</TableCell>
+                          <TableCell className="tabular-nums">{run.caseExpectationCounts.fail || 0} failed</TableCell>
                           <TableCell className="tabular-nums">{run.criticalAlertCount} critical · {run.warningAlertCount} warning</TableCell>
                           <TableCell className="text-right"><Button asChild size="sm" variant="outline"><Link href={`${monitorPath}/runs/${run.id}`}>Open</Link></Button></TableCell>
                         </TableRow>
@@ -224,7 +226,8 @@ export function ResultsView({
                       <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-muted-foreground">
                         <p>Calls <span className="block text-sm font-medium text-foreground">{run.actualCallCount}/{run.maximumCallCount}</span></p>
                         <p>Complete <span className="block text-sm font-medium text-foreground">{run.completionCounts.complete || 0}/{run.plannedCallCount}</span></p>
-                        <p>Contract failures <span className="block text-sm font-medium text-foreground">{run.evaluationCounts.fail || 0}</span></p>
+                        <p>Shared-contract failures <span className="block text-sm font-medium text-foreground">{run.contractEvaluationCounts.fail || 0}</span></p>
+                        <p>Case mismatches <span className="block text-sm font-medium text-foreground">{run.caseExpectationCounts.fail || 0}</span></p>
                         <p>Alerts <span className="block text-sm font-medium text-foreground">{run.criticalAlertCount + run.warningAlertCount}</span></p>
                       </div>
                       <Button asChild className="mt-4 w-full" variant="outline"><Link href={`${monitorPath}/runs/${run.id}`}>Inspect evidence</Link></Button>

@@ -1,4 +1,4 @@
-export type AlertCategory = "contract_failure" | "operational_anomaly"
+export type AlertCategory = "contract_failure" | "case_expectation_failure" | "operational_anomaly"
 export type AlertSeverity = "critical" | "warning"
 export type AlertStatus = "open" | "acknowledged" | "resolved"
 export type ReviewClassification =
@@ -64,6 +64,8 @@ export type RunSummary = {
   observationCounts: Record<string, number>
   completionCounts: Record<string, number>
   evaluationCounts: Record<string, number>
+  contractEvaluationCounts: Record<string, number>
+  caseExpectationCounts: Record<string, number>
   providerFailureCount: number
   modelMismatchCount: number
   inputTokens: number
@@ -93,8 +95,23 @@ export type RuleResult = {
 export type Evaluation = {
   id: string
   status: "pass" | "fail" | "evaluator_error"
+  contractStatus: "pass" | "fail" | "evaluator_error"
   rootRuleId: string
   contractFingerprint: string
+  caseExpectationSchemaVersion: "no_case_expectation" | "case_expectation_v1"
+  caseExpectationFingerprint: string
+  caseExpectationStatus: "not_configured" | "pass" | "fail" | "evaluator_error"
+  caseExpectationResults: {
+    checks: Array<{
+      checkId: string
+      checkType: string
+      status: "pass" | "fail" | "evaluator_error"
+      code: string
+      explanation: string
+      evidence: unknown
+    }>
+  }
+  caseExpectationError: Record<string, unknown> | null
   evaluatorEngineVersion: string
   evaluatedAt: string
   error: Record<string, unknown> | null
@@ -125,6 +142,8 @@ export type Observation = {
     inputVariables: Record<string, unknown>
     context: BoundedText
     fingerprint: string
+    expectationSchemaVersion: "no_case_expectation" | "case_expectation_v1"
+    expectationFingerprint: string
   }
   output: BoundedText | null
   attempts: Array<{

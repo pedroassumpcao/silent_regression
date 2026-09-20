@@ -57,9 +57,13 @@ defmodule SilentRegression.RunResults.Policy do
   end
 
   defp content_findings(run) do
+    contract_findings(run) ++ case_expectation_findings(run)
+  end
+
+  defp contract_findings(run) do
     run.observations
     |> Enum.flat_map(& &1.evaluations)
-    |> Enum.filter(&(&1.status == :fail))
+    |> Enum.filter(&(contract_status(&1) == :fail))
     |> Enum.map(fn evaluation ->
       decisive = decisive_failures(evaluation)
 
@@ -79,6 +83,38 @@ defmodule SilentRegression.RunResults.Policy do
             evaluation.rule_results
             |> Enum.filter(&(&1.status == :fail))
             |> Enum.map(& &1.rule_id)
+        }
+      })
+    end)
+  end
+
+  defp case_expectation_findings(run) do
+    run.observations
+    |> Enum.flat_map(& &1.evaluations)
+    |> Enum.filter(&(&1.case_expectation_status == :fail))
+    |> Enum.map(fn evaluation ->
+      failed_checks = failed_expectation_checks(evaluation)
+
+      finding(run, "expectation:#{evaluation.id}", %{
+        category: :case_expectation_failure,
+        severity: :critical,
+        code: "case_expectation_failed",
+        title: "Case-specific expectation failed",
+        explanation:
+          "The captured output was evaluated against a configured case-specific check and did not match the expected outcome.",
+        capture_evaluation_id: evaluation.id,
+        evidence: %{
+          "evaluation_id" => evaluation.id,
+          "observation_id" => evaluation.capture_observation_id,
+          "expectation_fingerprint" => evaluation.case_expectation_fingerprint,
+          "failed_checks" =>
+            Enum.map(failed_checks, fn check ->
+              %{
+                "check_id" => field(check, "check_id"),
+                "check_type" => field(check, "check_type"),
+                "code" => field(check, "code")
+              }
+            end)
         }
       })
     end)
@@ -187,7 +223,12 @@ defmodule SilentRegression.RunResults.Policy do
           %{
             "evaluation_id" => evaluation.id,
             "observation_id" => evaluation.capture_observation_id,
-            "error_code" => get_in(evaluation.error || %{}, ["code"])
+            "error_code" => get_in(evaluation.error || %{}, ["code"]),
+            "contract_status" => atom_string(evaluation.contract_status),
+            "contract_error_code" => get_in(evaluation.error || %{}, ["contract", "code"]),
+            "case_expectation_status" => atom_string(evaluation.case_expectation_status),
+            "case_expectation_error_code" =>
+              get_in(evaluation.case_expectation_error || %{}, ["code"])
           }
         end)
 
@@ -323,6 +364,26 @@ defmodule SilentRegression.RunResults.Policy do
   end
 
   defp decisive_failures(%CaptureRuleResult{} = result, _by_id), do: [result]
+
+  defp contract_status(%CaptureEvaluation{contract_status: nil, status: status}), do: status
+  defp contract_status(%CaptureEvaluation{contract_status: status}), do: status
+
+  defp failed_expectation_checks(%CaptureEvaluation{case_expectation_results: results}) do
+    results
+    |> field("checks", [])
+    |> Enum.filter(&(field(&1, "status") in [:fail, "fail"]))
+    |> Enum.take(@evidence_item_limit)
+  end
+
+  defp field(map, key), do: field(map, key, nil)
+
+  defp field(map, key, default) when is_map(map) do
+    Map.get(map, key, Map.get(map, String.to_existing_atom(key), default))
+  rescue
+    ArgumentError -> Map.get(map, key, default)
+  end
+
+  defp field(_value, _key, default), do: default
 
   defp highest_severity(results) do
     if Enum.any?(results, &(&1.severity == :critical)), do: :critical, else: :warning

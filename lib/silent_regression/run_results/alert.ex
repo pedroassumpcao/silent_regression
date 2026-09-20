@@ -19,7 +19,7 @@ defmodule SilentRegression.RunResults.Alert do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
-  @categories [:contract_failure, :operational_anomaly]
+  @categories [:contract_failure, :case_expectation_failure, :operational_anomaly]
   @severities [:critical, :warning]
   @statuses [:open, :acknowledged, :resolved]
   @notification_states [:not_configured, :pending, :sent, :failed]

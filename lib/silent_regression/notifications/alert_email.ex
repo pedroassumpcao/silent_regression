@@ -33,6 +33,7 @@ defmodule SilentRegression.Notifications.AlertEmail do
   end
 
   defp category_label(:contract_failure), do: "Deterministic contract failure"
+  defp category_label(:case_expectation_failure), do: "Case-specific expectation failure"
   defp category_label(:operational_anomaly), do: "Operational anomaly"
   defp severity_label(:critical), do: "Critical"
   defp severity_label(:warning), do: "Warning"

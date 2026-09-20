@@ -87,10 +87,18 @@ defmodule SilentRegression.Providers.FakeAnthropic do
 
       true ->
         output_text =
-          if secret == "sk-test-output-maybe" or
-               String.contains?(request_text, "[fake:output=maybe]"),
-             do: "maybe",
-             else: "approved"
+          cond do
+            secret == "sk-test-output-maybe" or
+                String.contains?(request_text, "[fake:output=maybe]") ->
+              "maybe"
+
+            secret == "sk-test-output-rejected" or
+                String.contains?(request_text, "[fake:output=rejected]") ->
+              "rejected"
+
+            true ->
+              "approved"
+          end
 
         returned_model =
           if String.contains?(request_text, "[fake:model-mismatch]"),

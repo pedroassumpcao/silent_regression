@@ -64,6 +64,51 @@ defmodule SilentRegression.RunResultsTest do
     refute alert.title =~ "degradation"
   end
 
+  test "creates a distinct alert when the contract passes but the case expectation fails", %{
+    scope: scope
+  } do
+    fixture =
+      operational_monitor_fixture(scope, %{
+        cases: [
+          %{
+            case_key: "case-specific-decision",
+            name: "Case-specific decision",
+            input_variables_json: ~s({"question":"Which decision applies?"}),
+            frozen_context: "The expected decision for this case is approved.",
+            status: "active",
+            expectation_json:
+              ~s({"checks":[{"id":"decision","type":"label","allowed_values":["approved"]}]})
+          }
+        ]
+      })
+
+    replace_secret(fixture.credential.id, "sk-test-output-rejected")
+
+    assert {:ok, run} = MonitorOperations.run_now(scope, fixture.monitor.id)
+    [job] = jobs_for_run(run.id)
+    assert :ok = perform_job(ObservationWorker, job.args)
+
+    assert [alert] = Repo.all(from alert in Alert, where: alert.capture_run_id == ^run.id)
+    assert alert.category == :case_expectation_failure
+    assert alert.code == "case_expectation_failed"
+    assert alert.capture_evaluation_id
+
+    assert alert.evidence["failed_checks"] == [
+             %{
+               "check_id" => "decision",
+               "check_type" => "label",
+               "code" => "expected_label_mismatch"
+             }
+           ]
+
+    evaluation =
+      Repo.get!(SilentRegression.Captures.CaptureEvaluation, alert.capture_evaluation_id)
+
+    assert evaluation.contract_status == :pass
+    assert evaluation.case_expectation_status == :fail
+    assert evaluation.status == :fail
+  end
+
   test "members acknowledge while only owners resolve the forward-only lifecycle", %{
     fixture: fixture,
     scope: owner_scope

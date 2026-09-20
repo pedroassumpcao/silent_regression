@@ -46,6 +46,8 @@ describe("ResultsView", () => {
     expect(screen.getByRole("heading", { name: "Runs, evidence, and actionable alerts" })).toBeInTheDocument()
     expect(screen.getByText("Deterministic contract failed")).toBeInTheDocument()
     expect(screen.getAllByText("1 critical").length).toBeGreaterThan(0)
+    expect(screen.getByRole("columnheader", { name: "Shared contract" })).toBeInTheDocument()
+    expect(screen.getByRole("columnheader", { name: "Case expectation" })).toBeInTheDocument()
     expect(screen.getAllByRole("link", { name: /inspect evidence/i })).toEqual(
       expect.arrayContaining([expect.objectContaining({ href: expect.stringContaining("/app/acme-ai/monitors/monitor-id/runs/run-id") })]),
     )

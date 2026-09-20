@@ -112,6 +112,8 @@ const props: RunProps = {
         inputVariables: { question: "Can I cancel?" },
         context: { text: "Plan facts", truncated: false, originalBytes: 10 },
         fingerprint: "case-fingerprint",
+        expectationSchemaVersion: "no_case_expectation",
+        expectationFingerprint: "e".repeat(64),
       },
       output: { text: maliciousOutput, truncated: false, originalBytes: maliciousOutput.length },
       attempts: [{
@@ -132,8 +134,14 @@ const props: RunProps = {
       evaluations: [{
         id: "evaluation-id",
         status: "fail",
+        contractStatus: "fail",
         rootRuleId: "contract",
         contractFingerprint: "r".repeat(64),
+        caseExpectationSchemaVersion: "no_case_expectation",
+        caseExpectationFingerprint: "e".repeat(64),
+        caseExpectationStatus: "not_configured",
+        caseExpectationResults: { checks: [] },
+        caseExpectationError: null,
         evaluatorEngineVersion: "1",
         evaluatedAt: "2026-09-16T18:00:00Z",
         error: null,
@@ -163,6 +171,48 @@ describe("RunView", () => {
     expect(container.querySelector("#observation-observation-id img")).not.toBeInTheDocument()
     expect(screen.getByText("The output did not match an allowed label.")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: /redacted diagnostic/i })).toHaveAttribute("href", "/app/acme-ai/monitors/monitor-id/runs/run-id/diagnostic")
+  })
+
+  it("separates a passing shared contract from a failing case expectation", () => {
+    const observation = props.result.observations[0]
+    const evaluation = observation.evaluations[0]
+
+    render(<RunView {...props} flash={{}} result={{
+      ...props.result,
+      summary: {
+        ...props.result.summary,
+        evaluationCounts: { fail: 1 },
+        contractEvaluationCounts: { pass: 1 },
+        caseExpectationCounts: { fail: 1 },
+      },
+      alerts: [],
+      observations: [{
+        ...observation,
+        case: { ...observation.case, expectationSchemaVersion: "case_expectation_v1" },
+        evaluations: [{
+          ...evaluation,
+          contractStatus: "pass",
+          caseExpectationSchemaVersion: "case_expectation_v1",
+          caseExpectationStatus: "fail",
+          ruleResults: evaluation.ruleResults.map(rule => ({ ...rule, status: "pass" })),
+          caseExpectationResults: {
+            checks: [{
+              checkId: "route",
+              checkType: "label",
+              status: "fail",
+              code: "expected_label_mismatch",
+              explanation: "The case-specific label did not match.",
+              evidence: { allowedValues: ["billing"], normalizedOutput: "accounts" },
+            }],
+          },
+        }],
+      }],
+    }} />)
+
+    expect(screen.getByText("Contract: Pass")).toBeInTheDocument()
+    expect(screen.getByText("Case: Fail")).toBeInTheDocument()
+    expect(screen.getByText("Case mismatches")).toBeInTheDocument()
+    expect(screen.getByText("The case-specific label did not match.")).toBeInTheDocument()
   })
 
   it("lets members acknowledge open alerts but never offers owner resolution", () => {

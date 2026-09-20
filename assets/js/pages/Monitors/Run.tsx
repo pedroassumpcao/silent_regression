@@ -113,7 +113,8 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
   const alertsPath = `/app/${workspace.slug}/alerts`
   const runPath = `/app/${workspace.slug}/monitors/${monitor.id}/runs/${summary.id}`
   const terminal = !["planned", "queued", "running"].includes(summary.status)
-  const contractFailures = summary.evaluationCounts.fail || 0
+  const contractFailures = summary.contractEvaluationCounts.fail || 0
+  const expectationFailures = summary.caseExpectationCounts.fail || 0
   const complete = summary.completionCounts.complete || 0
 
   const mutateAlert = (alert: ResultAlert, action: "acknowledge" | "resolve") => {
@@ -185,7 +186,7 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
             <div className="max-w-3xl">
               <p className="text-sm font-medium text-primary">{monitor.name}</p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Run evidence, without a hidden score</h1>
-              <p className="mt-3 text-base leading-7 text-muted-foreground">Review completion, deterministic contract outcomes, operational anomalies, and each captured response. The product does not collapse these distinct facts into one quality number.</p>
+              <p className="mt-3 text-base leading-7 text-muted-foreground">Review completion, shared-contract outcomes, case-specific expectations, operational anomalies, and each captured response. The product does not collapse these distinct facts into one quality number.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="outline"><Link href={alertsPath}>Workspace alerts</Link></Button>
@@ -215,10 +216,11 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
           </Alert>
         )}
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Run summary">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5" aria-label="Run summary">
           <Metric label="Provider calls" value={`${summary.actualCallCount}/${summary.maximumCallCount}`} detail={`${summary.plannedCallCount} planned; retry ceiling included`} />
           <Metric label="Complete responses" value={`${complete}/${summary.plannedCallCount}`} detail={`${summary.providerFailureCount} provider failure${summary.providerFailureCount === 1 ? "" : "s"}`} tone={complete === summary.plannedCallCount ? "success" : "warning"} />
-          <Metric label="Contract failures" value={contractFailures} detail={`${summary.evaluationCounts.evaluator_error || 0} evaluator errors`} tone={contractFailures > 0 ? "danger" : "success"} />
+          <Metric label="Shared-contract failures" value={contractFailures} detail={`${summary.contractEvaluationCounts.evaluatorError || 0} contract evaluator errors`} tone={contractFailures > 0 ? "danger" : "success"} />
+          <Metric label="Case mismatches" value={expectationFailures} detail={`${summary.caseExpectationCounts.evaluatorError || 0} expectation evaluator errors`} tone={expectationFailures > 0 ? "danger" : "success"} />
           <Metric label="Run alerts" value={summary.criticalAlertCount + summary.warningAlertCount} detail={`${summary.criticalAlertCount} critical · ${summary.warningAlertCount} warning`} tone={summary.criticalAlertCount > 0 ? "danger" : summary.warningAlertCount > 0 ? "warning" : "success"} />
         </section>
 
@@ -283,7 +285,7 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
         </section>
 
         <Card id="run-operational-evidence">
-          <CardHeader><CardTitle className="flex items-center gap-2"><Gauge className="size-5 text-primary" /> Operational evidence</CardTitle><CardDescription>Provider identity, completion, usage, and latency remain separate from deterministic contract judgments.</CardDescription></CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Gauge className="size-5 text-primary" /> Operational evidence</CardTitle><CardDescription>Provider identity, completion, usage, and latency remain separate from shared-contract and case-specific judgments.</CardDescription></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Fact label="Provider / requested model" value={`${summary.provider} / ${summary.requestedModel}`} />
             <Fact label="Returned-model mismatches" value={formatNumber(summary.modelMismatchCount)} tone={summary.modelMismatchCount > 0 ? "danger" : "default"} />
@@ -307,7 +309,7 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
         </Card>
 
         <section id="observation-evidence" className="space-y-4" aria-labelledby="observation-heading">
-          <div><p className="text-sm font-medium text-primary">Captured samples</p><h2 id="observation-heading" className="mt-1 text-2xl font-semibold tracking-tight">Observation and rule-level evidence</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Each response is shown as inert text, never interpreted as HTML. Provider attempts and deterministic evaluations remain attributable to the individual case.</p></div>
+          <div><p className="text-sm font-medium text-primary">Captured samples</p><h2 id="observation-heading" className="mt-1 text-2xl font-semibold tracking-tight">Observation and deterministic evidence</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Each response is shown as inert text, never interpreted as HTML. Shared-contract rules and case-specific expectations remain separately attributable to the individual case.</p></div>
           {result.observations.length === 0 ? (
             <Card id="observations-empty"><CardContent className="py-8 text-center text-sm text-muted-foreground">No observations have been captured yet.</CardContent></Card>
           ) : result.observations.map(observation => {
@@ -412,13 +414,14 @@ function ObservationCard({ observation, review, history, onReview, onStartContra
   onStartContractRevision: (review: ReviewDecision) => void
   processingReview: boolean
 }) {
-  const failures = observation.evaluations.flatMap(evaluation => evaluation.ruleResults).filter(result => result.status !== "pass").length
+  const contractFailures = observation.evaluations.flatMap(evaluation => evaluation.ruleResults).filter(result => result.status !== "pass").length
+  const expectationFailures = observation.evaluations.flatMap(evaluation => evaluation.caseExpectationResults.checks).filter(result => result.status !== "pass").length
   return (
     <Card id={`observation-${observation.id}`}>
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div><p className="text-xs font-medium uppercase tracking-[0.14em] text-primary">{observation.case.key} · sample {observation.sampleIndex + 1}</p><CardTitle className="mt-2 text-xl">{observation.case.name}</CardTitle><CardDescription className="mt-2">{observation.requestedModel || "Model unavailable"} → {observation.returnedModel || "No returned model"}</CardDescription></div>
-          <div className="flex flex-wrap gap-2"><RunStatusBadge status={observation.status} />{observation.completionState && <Badge variant="outline">{label(observation.completionState)}</Badge>}{failures > 0 && <Badge variant="destructive">{failures} rule issue{failures === 1 ? "" : "s"}</Badge>}</div>
+          <div className="flex flex-wrap gap-2"><RunStatusBadge status={observation.status} />{observation.completionState && <Badge variant="outline">{label(observation.completionState)}</Badge>}{contractFailures > 0 && <Badge variant="destructive">{contractFailures} contract issue{contractFailures === 1 ? "" : "s"}</Badge>}{expectationFailures > 0 && <Badge variant="destructive">{expectationFailures} expectation issue{expectationFailures === 1 ? "" : "s"}</Badge>}</div>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -491,16 +494,32 @@ function ReviewStatus({ decision, history }: { decision: ReviewDecision | null; 
 function EvaluationBlock({ evaluation }: { evaluation: Evaluation }) {
   return (
     <div className="rounded-xl border p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-medium">Root rule: <span className="font-mono text-sm">{evaluation.rootRuleId}</span></p><p className="mt-1 text-xs text-muted-foreground">Engine {evaluation.evaluatorEngineVersion} · {formatUtc(evaluation.evaluatedAt)}</p></div><RunStatusBadge status={evaluation.status} /></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-medium">Deterministic evaluation</p><p className="mt-1 text-xs text-muted-foreground">Engine {evaluation.evaluatorEngineVersion} · {formatUtc(evaluation.evaluatedAt)}</p></div><div className="flex flex-wrap gap-2"><Badge variant="outline">Overall: {label(evaluation.status)}</Badge><Badge variant="outline">Contract: {label(evaluation.contractStatus)}</Badge><Badge variant="outline">Case: {label(evaluation.caseExpectationStatus)}</Badge></div></div>
       {evaluation.error && <div className="mt-4"><StructuredEvidence value={evaluation.error} /></div>}
-      <div className="mt-4 space-y-3">
-        {evaluation.ruleResults.map(rule => (
-          <div key={rule.id} className="rounded-lg bg-muted/35 p-4">
-            <div className="flex flex-wrap items-center gap-2"><Badge variant="outline" className="font-mono">{rule.ruleId}</Badge><Badge variant="secondary">{label(rule.ruleType)}</Badge><SeverityBadge severity={rule.severity} /><RunStatusBadge status={rule.status} /></div>
-            <p className="mt-3 text-sm leading-6">{rule.explanation}</p>
-            {rule.evidence !== null && <details className="group mt-3"><summary className="cursor-pointer text-xs font-medium text-primary">Inspect rule evidence</summary><div className="mt-3"><StructuredEvidence value={rule.evidence} /></div></details>}
-          </div>
-        ))}
+      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <section className="space-y-3 rounded-xl border bg-muted/15 p-4">
+          <div><h4 className="font-medium">Shared contract</h4><p className="mt-1 text-xs text-muted-foreground">Root <span className="font-mono">{evaluation.rootRuleId}</span> · fingerprint {shortId(evaluation.contractFingerprint)}</p></div>
+          {evaluation.ruleResults.map(rule => (
+            <div key={rule.id} className="rounded-lg bg-background p-4">
+              <div className="flex flex-wrap items-center gap-2"><Badge variant="outline" className="font-mono">{rule.ruleId}</Badge><Badge variant="secondary">{label(rule.ruleType)}</Badge><SeverityBadge severity={rule.severity} /><RunStatusBadge status={rule.status} /></div>
+              <p className="mt-3 text-sm leading-6">{rule.explanation}</p>
+              {rule.evidence !== null && <details className="group mt-3"><summary className="cursor-pointer text-xs font-medium text-primary">Inspect contract evidence</summary><div className="mt-3"><StructuredEvidence value={rule.evidence} /></div></details>}
+            </div>
+          ))}
+        </section>
+        <section className="space-y-3 rounded-xl border border-primary/15 bg-primary/5 p-4">
+          <div><h4 className="font-medium">Case-specific expectation</h4><p className="mt-1 break-all text-xs text-muted-foreground">{label(evaluation.caseExpectationSchemaVersion)} · fingerprint {shortId(evaluation.caseExpectationFingerprint)}</p></div>
+          {evaluation.caseExpectationStatus === "not_configured" ? (
+            <p className="rounded-lg border border-dashed bg-background p-4 text-sm text-muted-foreground">This immutable case explicitly has no case-specific expectation.</p>
+          ) : evaluation.caseExpectationResults.checks.map(check => (
+            <div key={check.checkId} className="rounded-lg bg-background p-4">
+              <div className="flex flex-wrap items-center gap-2"><Badge variant="outline" className="font-mono">{check.checkId}</Badge><Badge variant="secondary">{label(check.checkType)}</Badge><RunStatusBadge status={check.status} /></div>
+              <p className="mt-3 text-sm leading-6">{check.explanation}</p>
+              {check.evidence !== null && <details className="group mt-3"><summary className="cursor-pointer text-xs font-medium text-primary">Inspect expectation evidence</summary><div className="mt-3"><StructuredEvidence value={check.evidence} /></div></details>}
+            </div>
+          ))}
+          {evaluation.caseExpectationError && <StructuredEvidence value={evaluation.caseExpectationError} />}
+        </section>
       </div>
     </div>
   )

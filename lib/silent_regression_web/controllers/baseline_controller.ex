@@ -314,6 +314,12 @@ defmodule SilentRegressionWeb.BaselineController do
   defp evaluation_prop(evaluation) do
     %{
       status: evaluation.status,
+      contract_status: evaluation.contract_status,
+      case_expectation_schema_version: evaluation.case_expectation_schema_version,
+      case_expectation_fingerprint: evaluation.case_expectation_fingerprint,
+      case_expectation_status: evaluation.case_expectation_status,
+      case_expectation_results: expectation_results_prop(evaluation.case_expectation_results),
+      case_expectation_error: evaluation.case_expectation_error,
       error: evaluation.error,
       rule_results:
         Enum.map(evaluation.rule_results, fn result ->
@@ -329,6 +335,24 @@ defmodule SilentRegressionWeb.BaselineController do
     }
   end
 
+  defp expectation_results_prop(%{"checks" => checks}) when is_list(checks) do
+    %{
+      checks:
+        Enum.map(checks, fn check ->
+          %{
+            check_id: check["check_id"],
+            check_type: check["check_type"],
+            status: check["status"],
+            code: check["code"],
+            explanation: check["explanation"],
+            evidence: check["evidence"]
+          }
+        end)
+    }
+  end
+
+  defp expectation_results_prop(_results), do: %{checks: []}
+
   defp health_prop(nil), do: nil
 
   defp health_prop(health) do
@@ -343,6 +367,8 @@ defmodule SilentRegressionWeb.BaselineController do
       status_counts: health.status_counts,
       completion_counts: health.completion_counts,
       evaluation_counts: health.evaluation_counts,
+      contract_evaluation_counts: health.contract_evaluation_counts,
+      case_expectation_counts: health.case_expectation_counts,
       deterministic_failure_count: health.deterministic_failure_count,
       model_mismatch_count: health.model_mismatch_count,
       input_tokens: health.input_tokens,
