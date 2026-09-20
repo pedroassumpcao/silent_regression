@@ -30,11 +30,49 @@ defmodule SilentRegression.Monitors.InputTest do
                CaseImport.parse(~s({"schema_version":1,"cases":[],"other":true}))
 
       assert {:error, %{reason: :invalid_schema}} =
-               CaseImport.parse(~s({"schema_version":2,"cases":[]}))
+               CaseImport.parse(~s({"schema_version":3,"cases":[]}))
 
       assert {:error, %{reason: :invalid_json}} = CaseImport.parse("{")
 
       assert {:error, %{reason: :invalid_schema}} = CaseImport.parse("[]")
+    end
+
+    test "keeps v1 imports expectation-free and accepts bounded v2 expectations" do
+      legacy =
+        Jason.encode!(%{
+          schema_version: 1,
+          cases: [active_case("legacy")]
+        })
+
+      assert {:ok, [legacy_case]} = CaseImport.parse(legacy)
+      assert legacy_case.expectation_schema_version == "no_case_expectation"
+      assert legacy_case.expectation == %{}
+
+      expectation = %{
+        "checks" => [
+          %{"id" => "route", "type" => "label", "allowed_values" => ["billing"]}
+        ]
+      }
+
+      versioned =
+        Jason.encode!(%{
+          schema_version: 2,
+          cases: [Map.put(active_case("versioned"), :expectation, expectation)]
+        })
+
+      assert {:ok, [versioned_case]} = CaseImport.parse(versioned)
+      assert versioned_case.expectation_schema_version == "case_expectation_v1"
+      assert versioned_case.expectation == expectation
+      refute versioned_case.expectation_fingerprint == legacy_case.expectation_fingerprint
+
+      invalid_legacy =
+        Jason.encode!(%{
+          schema_version: 1,
+          cases: [Map.put(active_case("invalid"), :expectation, expectation)]
+        })
+
+      assert {:error, %{field: :expectation, reason: :unsupported_in_schema_v1}} =
+               CaseImport.parse(invalid_legacy)
     end
 
     test "rejects malformed scalar case fields without raising" do
@@ -216,6 +254,16 @@ defmodule SilentRegression.Monitors.InputTest do
         %{base | cases: [%{case_attributes | status: "disabled"}, active_case("fallback")]},
         %{base | cases: [%{case_attributes | input_variables: %{question: "Changed"}}]},
         %{base | cases: [%{case_attributes | frozen_context: "Changed context"}]},
+        %{
+          base
+          | cases: [
+              Map.put(case_attributes, :expectation, %{
+                checks: [
+                  %{id: "route", type: "label", allowed_values: ["billing"]}
+                ]
+              })
+            ]
+        },
         %{
           base
           | provider: "anthropic",

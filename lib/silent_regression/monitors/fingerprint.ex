@@ -11,13 +11,25 @@ defmodule SilentRegression.Monitors.Fingerprint do
     |> Base.encode16(case: :lower)
   end
 
-  def case_digest(case_attributes) do
+  def case_digest(%{expectation_schema_version: "no_case_expectation"} = case_attributes) do
     digest(%{
       "fingerprint_schema" => "case-version-v1",
       "case_key" => case_attributes.case_key,
       "status" => Atom.to_string(case_attributes.status),
       "input_variables" => case_attributes.input_variables,
       "frozen_context" => case_attributes.frozen_context
+    })
+  end
+
+  def case_digest(case_attributes) do
+    digest(%{
+      "fingerprint_schema" => "case-version-v2",
+      "case_key" => case_attributes.case_key,
+      "status" => Atom.to_string(case_attributes.status),
+      "input_variables" => case_attributes.input_variables,
+      "frozen_context" => case_attributes.frozen_context,
+      "expectation_schema_version" => case_attributes.expectation_schema_version,
+      "expectation_fingerprint" => case_attributes.expectation_fingerprint
     })
   end
 

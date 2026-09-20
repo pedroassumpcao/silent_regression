@@ -132,4 +132,38 @@ defmodule SilentRegression.ContractAuthoring.RescorerTest do
       summary |> Ecto.Changeset.change(pass_count: 999) |> Repo.update!()
     end
   end
+
+  test "historical rescoring retains each observation's exact case expectation", %{scope: scope} do
+    fixture =
+      operational_monitor_fixture(scope, %{
+        cases: [
+          %{
+            case_key: "case-aware-label",
+            name: "Case-aware label",
+            input_variables_json: ~s({"question":"Which route applies?"}),
+            frozen_context: "This case should remain approved.",
+            expectation_json:
+              Jason.encode!(%{
+                checks: [
+                  %{id: "route", type: "label", allowed_values: ["approved"]}
+                ]
+              }),
+            status: "active"
+          }
+        ]
+      })
+
+    [case_version] = fixture.version.cases
+    assert {:ok, _draft} = ContractAuthoring.create_revision(scope, fixture.monitor.id)
+    assert {:ok, approved} = ContractAuthoring.approve(scope, fixture.monitor.id)
+
+    evaluation = Repo.get_by!(CaptureEvaluation, contract_version_id: approved.id)
+    assert evaluation.contract_status == :pass
+    assert evaluation.case_expectation_status == :pass
+    assert evaluation.status == :pass
+    assert evaluation.case_expectation_fingerprint == case_version.expectation_fingerprint
+
+    assert get_in(evaluation.case_expectation_results, ["checks", Access.at(0), "check_id"]) ==
+             "route"
+  end
 end

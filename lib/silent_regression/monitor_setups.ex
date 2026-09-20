@@ -6,6 +6,7 @@ defmodule SilentRegression.MonitorSetups do
   import Ecto.Query
 
   alias SilentRegression.Accounts.{Scope, User}
+  alias SilentRegression.CaseExpectations
   alias SilentRegression.MonitorSetups.Setup
 
   alias SilentRegression.Monitors.{
@@ -611,7 +612,8 @@ defmodule SilentRegression.MonitorSetups do
   end
 
   defp normalize_manual_case(attributes, position) when is_map(attributes) do
-    with {:ok, input_variables} <- input_variables(attributes) do
+    with {:ok, input_variables} <- input_variables(attributes),
+         {:ok, expectation} <- expectation(attributes) do
       {:ok,
        %{
          "case_key" => value(attributes, :case_key, ""),
@@ -619,7 +621,9 @@ defmodule SilentRegression.MonitorSetups do
          "position" => position,
          "status" => value(attributes, :status, "active"),
          "input_variables" => input_variables,
-         "frozen_context" => value(attributes, :frozen_context, "")
+         "frozen_context" => value(attributes, :frozen_context, ""),
+         "expectation_schema_version" => expectation.schema_version,
+         "expectation" => expectation.expectation
        }}
     end
   end
@@ -670,6 +674,38 @@ defmodule SilentRegression.MonitorSetups do
 
   defp decode_input_variables(_encoded), do: {:error, :invalid_input_variables}
 
+  defp expectation(attributes) do
+    case value(attributes, :expectation, nil) do
+      expectation when is_map(expectation) ->
+        CaseExpectations.normalize(
+          value(attributes, :expectation_schema_version, CaseExpectations.schema_version()),
+          expectation
+        )
+
+      nil ->
+        decode_expectation(value(attributes, :expectation_json, ""))
+
+      _expectation ->
+        {:error, :invalid_expectation}
+    end
+  end
+
+  defp decode_expectation(encoded) when is_binary(encoded) do
+    case String.trim(encoded) do
+      "" ->
+        CaseExpectations.normalize(nil, nil)
+
+      encoded ->
+        with {:ok, expectation} when is_map(expectation) <- Jason.decode(encoded) do
+          CaseExpectations.normalize(CaseExpectations.schema_version(), expectation)
+        else
+          _reason -> {:error, :invalid_expectation}
+        end
+    end
+  end
+
+  defp decode_expectation(_encoded), do: {:error, :invalid_expectation}
+
   defp persist_cases(setup, normalized) do
     serialized = Enum.map(normalized, &serialize_case/1)
 
@@ -686,7 +722,9 @@ defmodule SilentRegression.MonitorSetups do
       "position" => case_attributes.position,
       "status" => Atom.to_string(case_attributes.status),
       "input_variables" => case_attributes.input_variables,
-      "frozen_context" => case_attributes.frozen_context
+      "frozen_context" => case_attributes.frozen_context,
+      "expectation_schema_version" => case_attributes.expectation_schema_version,
+      "expectation" => case_attributes.expectation
     }
   end
 

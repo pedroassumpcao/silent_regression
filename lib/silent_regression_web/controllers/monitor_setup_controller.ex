@@ -3,7 +3,7 @@ defmodule SilentRegressionWeb.MonitorSetupController do
 
   import Inertia.Controller, only: [assign_errors: 2]
 
-  alias SilentRegression.{MonitorSetups, ProviderCredentials}
+  alias SilentRegression.{CaseExpectations, MonitorSetups, ProviderCredentials}
   alias SilentRegression.Monitors.{Limits, ModelCatalog}
 
   @steps ~w(purpose connection prompt cases review)
@@ -261,11 +261,18 @@ defmodule SilentRegressionWeb.MonitorSetupController do
   end
 
   defp case_prop(case_attributes) do
-    Map.put(
-      case_attributes,
+    expectation = Map.get(case_attributes, "expectation", %{})
+
+    case_attributes
+    |> Map.put(
       "input_variables_json",
       Jason.encode!(case_attributes["input_variables"], pretty: true)
     )
+    |> Map.put(
+      "expectation_json",
+      if(expectation == %{}, do: "", else: Jason.encode!(expectation, pretty: true))
+    )
+    |> Map.put_new("expectation_schema_version", CaseExpectations.none_schema())
   end
 
   defp credential_prop(credential) do
@@ -299,6 +306,8 @@ defmodule SilentRegressionWeb.MonitorSetupController do
       max_request_template_bytes: Limits.fetch!(:max_request_template_bytes),
       max_context_bytes: Limits.fetch!(:max_context_bytes),
       max_variables_bytes: Limits.fetch!(:max_variables_bytes),
+      max_expectation_bytes: CaseExpectations.max_expectation_bytes(),
+      max_expectation_checks: CaseExpectations.max_checks(),
       max_import_bytes: Limits.fetch!(:max_import_bytes),
       max_output_tokens: Limits.fetch!(:max_output_tokens)
     }

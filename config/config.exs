@@ -109,6 +109,8 @@ config :phoenix, :filter_parameters, [
   "frozen_context",
   "input_variables",
   "input_variables_json",
+  "expectation",
+  "expectation_json",
   "case_import",
   "output",
   "output_text",

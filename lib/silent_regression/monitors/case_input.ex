@@ -1,9 +1,19 @@
 defmodule SilentRegression.Monitors.CaseInput do
   @moduledoc false
 
+  alias SilentRegression.CaseExpectations
   alias SilentRegression.Monitors.{Fingerprint, JsonValue, Limits}
 
-  @keys ~w(case_key name position status input_variables frozen_context)
+  @keys ~w(
+    case_key
+    name
+    position
+    status
+    input_variables
+    frozen_context
+    expectation_schema_version
+    expectation
+  )
   @statuses %{"active" => :active, "disabled" => :disabled}
 
   def normalize_many(cases) when is_list(cases) and cases != [] do
@@ -29,14 +39,38 @@ defmodule SilentRegression.Monitors.CaseInput do
           status: status,
           input_variables: _input_variables,
           frozen_context: _frozen_context,
+          expectation_schema_version: _expectation_schema_version,
+          expectation: _expectation,
+          expectation_fingerprint: _expectation_fingerprint,
           fingerprint: _fingerprint
         } = attributes,
         default_position
       )
       when status in [:active, :disabled] do
     attributes
-    |> Map.delete(:fingerprint)
+    |> Map.drop([:fingerprint, :expectation_fingerprint])
     |> Map.put(:status, Atom.to_string(status))
+    |> normalize(default_position)
+  end
+
+  def normalize(
+        %{
+          case_key: _case_key,
+          name: _name,
+          position: _position,
+          status: status,
+          input_variables: _input_variables,
+          frozen_context: _frozen_context,
+          fingerprint: _fingerprint
+        } = attributes,
+        default_position
+      )
+      when status in [:active, :disabled] do
+    attributes
+    |> Map.drop([:fingerprint, :expectation_fingerprint])
+    |> Map.put(:status, Atom.to_string(status))
+    |> Map.put_new(:expectation_schema_version, CaseExpectations.none_schema())
+    |> Map.put_new(:expectation, %{})
     |> normalize(default_position)
   end
 
@@ -48,14 +82,22 @@ defmodule SilentRegression.Monitors.CaseInput do
          {:ok, position} <- position(attributes, default_position),
          {:ok, status} <- status(attributes),
          {:ok, input_variables} <- input_variables(attributes),
-         {:ok, frozen_context} <- frozen_context(attributes) do
+         {:ok, frozen_context} <- frozen_context(attributes),
+         {:ok, expectation} <-
+           CaseExpectations.normalize(
+             Map.get(attributes, "expectation_schema_version"),
+             Map.get(attributes, "expectation")
+           ) do
       normalized = %{
         case_key: case_key,
         name: name,
         position: position,
         status: status,
         input_variables: input_variables,
-        frozen_context: frozen_context
+        frozen_context: frozen_context,
+        expectation_schema_version: expectation.schema_version,
+        expectation: expectation.expectation,
+        expectation_fingerprint: expectation.fingerprint
       }
 
       {:ok, Map.put(normalized, :fingerprint, Fingerprint.case_digest(normalized))}

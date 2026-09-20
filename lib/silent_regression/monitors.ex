@@ -503,6 +503,9 @@ defmodule SilentRegression.Monitors do
         :status,
         :input_variables,
         :frozen_context,
+        :expectation_schema_version,
+        :expectation,
+        :expectation_fingerprint,
         :fingerprint
       ])
     end)

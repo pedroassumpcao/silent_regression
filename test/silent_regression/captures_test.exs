@@ -178,6 +178,37 @@ defmodule SilentRegression.CapturesTest do
       assert length(hd(repeated.observations).evaluations) == 1
     end
 
+    test "fails a case-specific label even when the shared contract allows the output", %{
+      scope: scope
+    } do
+      fixture =
+        baseline_ready_monitor_fixture(scope, %{
+          cases: [case_with_label_expectation("denied")]
+        })
+
+      assert {:ok, run} = planned_and_enqueued(scope, fixture)
+      assert :ok = perform_job(ObservationWorker, worker_args(run))
+      assert {:ok, completed} = Captures.get_run(scope, run.id)
+      assert [observation] = completed.observations
+      assert [evaluation] = observation.evaluations
+
+      assert observation.output_text == "approved"
+      assert evaluation.contract_status == :pass
+      assert evaluation.case_expectation_status == :fail
+      assert evaluation.status == :fail
+      assert evaluation.case_expectation_schema_version == "case_expectation_v1"
+
+      assert %{
+               "checks" => [
+                 %{
+                   "check_id" => "route",
+                   "status" => "fail",
+                   "code" => "expected_label_mismatch"
+                 }
+               ]
+             } = evaluation.case_expectation_results
+    end
+
     test "retries a known retryable failure within the persisted call budget", %{scope: scope} do
       fixture = baseline_ready_monitor_fixture(scope, %{cases: [retry_case()]})
 
@@ -437,6 +468,22 @@ defmodule SilentRegression.CapturesTest do
       name: "Failed answer",
       input_variables_json: ~s({"question":"Which plan includes SSO?"}),
       frozen_context: "[fake:provider-failure] The provider is unavailable.",
+      status: "active"
+    }
+  end
+
+  defp case_with_label_expectation(label) do
+    %{
+      case_key: "case-aware-label",
+      name: "Case-aware label",
+      input_variables_json: ~s({"question":"Which route applies?"}),
+      frozen_context: "The shared contract permits approved, but this case has its own label.",
+      expectation_json:
+        Jason.encode!(%{
+          checks: [
+            %{id: "route", type: "label", allowed_values: [label]}
+          ]
+        }),
       status: "active"
     }
   end

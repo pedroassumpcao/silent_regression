@@ -960,9 +960,9 @@ shapes and values.
 
 - [x] Define a bounded expectation schema for labels, typed JSON Pointer values, alternatives,
   numeric tolerances, source IDs, and abstention.
-- [ ] Add immutable expectation data and schema identity to case versions.
+- [x] Add immutable expectation data and schema identity to case versions.
 - [ ] Extend manual setup and versioned import with usable expectation authoring.
-- [ ] Evaluate observations against both the shared contract and exact case expectation fingerprint.
+- [x] Evaluate observations against both the shared contract and exact case expectation fingerprint.
 - [ ] Present expectation evidence separately from generic contract evidence.
 - [ ] Add conformance, held-out, historical-rescore, and end-to-end coverage.
 

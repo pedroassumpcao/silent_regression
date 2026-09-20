@@ -76,8 +76,8 @@ latency. Task 16 is complete.
   evaluator, rescore, setup/import, result, and alert paths.
 - [x] Finalize the bounded expectation schema and legacy/import compatibility policy.
 - [x] Implement expectation parsing, evaluation, fingerprints, and fixtures.
-- [ ] Add additive immutable persistence and legacy backfills.
-- [ ] Bind capture and historical-rescore evaluation to exact case expectations.
+- [x] Add additive immutable persistence and legacy backfills.
+- [x] Bind capture and historical-rescore evaluation to exact case expectations.
 - [ ] Extend setup/import and review authoring.
 - [ ] Present expectation evidence separately in results and alerts.
 - [ ] Run all verification gates and record focused commits.

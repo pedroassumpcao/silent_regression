@@ -136,9 +136,11 @@ of five types:
 
 The schema excludes regular expressions, scripts, semantic similarity, arbitrary predicates, and
 cross-case state. Payload size, check count, identifiers, pointers, alternatives, and evidence are
-bounded. The expectation fingerprint covers the schema identity and normalized payload; the case
-fingerprint for newly created versions covers that expectation fingerprint as behavior. Existing
-case fingerprints remain untouched so historical provenance stays reproducible.
+bounded. The expectation fingerprint covers the schema identity and normalized payload. Configured
+expectations use a v2 case fingerprint that covers the expectation fingerprint; explicit
+no-expectation cases retain the v1 behavior fingerprint. Existing case fingerprints remain
+untouched so historical provenance stays reproducible and an otherwise unchanged legacy successor
+does not become incompatible solely because the schema gained optional fields.
 
 Capture evaluation keeps the shared-contract result and case-expectation result separate, while its
 top-level status fails if either configured deterministic layer fails and becomes an evaluator error
