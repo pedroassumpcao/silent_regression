@@ -12,6 +12,7 @@ defmodule SilentRegression.WorkspaceLifecycle do
   alias SilentRegression.Accounts.{Scope, User}
   alias SilentRegression.Audit
   alias SilentRegression.Captures
+  alias SilentRegression.ContractAuthoring.{ContractVersion, Rescorer, RescoreRun}
   alias SilentRegression.Monitors.Monitor
   alias SilentRegression.Notifications.Delivery
   alias SilentRegression.ProviderCredentials.ProviderCredential
@@ -187,11 +188,11 @@ defmodule SilentRegression.WorkspaceLifecycle do
     )
     |> Repo.update_all(set: [status: :revoked, revoked_at: now, updated_at: now])
 
-    cancel_notification_jobs(workspace.id)
+    cancel_background_jobs(workspace.id)
     :ok
   end
 
-  defp cancel_notification_jobs(workspace_id) do
+  defp cancel_background_jobs(workspace_id) do
     delivery_ids =
       Delivery
       |> where([delivery], delivery.workspace_id == ^workspace_id)
@@ -209,6 +210,35 @@ defmodule SilentRegression.WorkspaceLifecycle do
             )
 
       _cancelled = Oban.cancel_all_jobs(query)
+    end
+
+    rescore_run_ids =
+      RescoreRun
+      |> join(:inner, [run], contract in ContractVersion,
+        on: contract.id == run.contract_version_id
+      )
+      |> where(
+        [run, contract],
+        contract.workspace_id == ^workspace_id and run.status in [:pending, :running]
+      )
+      |> select([run], run.id)
+      |> Repo.all()
+
+    if rescore_run_ids != [] do
+      query =
+        from job in Oban.Job,
+          where:
+            fragment(
+              "?->>'rescore_run_id' = ANY(?)",
+              job.args,
+              type(^rescore_run_ids, {:array, :string})
+            )
+
+      _cancelled = Oban.cancel_all_jobs(query)
+
+      Enum.each(rescore_run_ids, fn run_id ->
+        {:ok, :ok} = Rescorer.fail_infrastructure(run_id, :workspace_closed)
+      end)
     end
 
     :ok
@@ -307,7 +337,12 @@ defmodule SilentRegression.WorkspaceLifecycle do
       """
       DELETE FROM oban_jobs WHERE
         args->>'capture_run_id' IN (SELECT id::text FROM capture_runs WHERE workspace_id = $1) OR
-        args->>'delivery_id' IN (SELECT id::text FROM notification_deliveries WHERE workspace_id = $1)
+        args->>'delivery_id' IN (SELECT id::text FROM notification_deliveries WHERE workspace_id = $1) OR
+        args->>'rescore_run_id' IN (
+          SELECT run.id::text FROM contract_rescore_runs AS run
+          JOIN contract_versions AS contract ON contract.id = run.contract_version_id
+          WHERE contract.workspace_id = $1
+        )
       """,
       "UPDATE capture_runs SET baseline_snapshot_id = NULL WHERE workspace_id = $1",
       "UPDATE result_alerts SET resolution_review_decision_id = NULL WHERE workspace_id = $1",
@@ -323,6 +358,16 @@ defmodule SilentRegression.WorkspaceLifecycle do
         (SELECT id FROM baseline_snapshots WHERE workspace_id = $1)
       """,
       "DELETE FROM baseline_snapshots WHERE workspace_id = $1",
+      """
+      DELETE FROM contract_rescore_items WHERE contract_rescore_run_id IN
+        (SELECT run.id FROM contract_rescore_runs AS run
+          JOIN contract_versions AS contract ON contract.id = run.contract_version_id
+          WHERE contract.workspace_id = $1)
+      """,
+      """
+      DELETE FROM contract_rescore_runs WHERE contract_version_id IN
+        (SELECT id FROM contract_versions WHERE workspace_id = $1)
+      """,
       "DELETE FROM capture_runs WHERE workspace_id = $1",
       """
       DELETE FROM contract_rescore_summaries WHERE contract_version_id IN
@@ -330,6 +375,10 @@ defmodule SilentRegression.WorkspaceLifecycle do
       """,
       """
       DELETE FROM contract_fixtures WHERE contract_version_id IN
+        (SELECT id FROM contract_versions WHERE workspace_id = $1)
+      """,
+      """
+      DELETE FROM contract_coverage_waivers WHERE contract_version_id IN
         (SELECT id FROM contract_versions WHERE workspace_id = $1)
       """,
       "DELETE FROM contract_versions WHERE workspace_id = $1",

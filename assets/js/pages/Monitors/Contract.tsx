@@ -42,7 +42,7 @@ import { Textarea } from "@/components/ui/textarea"
 import type { SharedPageProps } from "@/types/page"
 
 type AssistanceMode = "self_serve" | "founder_assisted" | "codex_assisted"
-type ContractStatus = "draft" | "approved"
+type ContractStatus = "draft" | "pending_rescore" | "rescore_failed" | "approved" | "retired"
 type RuleStatus = "pass" | "fail" | "evaluator_error"
 type JsonScalar = string | number | boolean | null
 type Rule = {
@@ -163,6 +163,21 @@ type RescoreSummary = {
   rescoredAt: string
   predecessorContractVersionId: string | null
 }
+type RescoreRun = {
+  id: string
+  status: "pending" | "running" | "succeeded" | "failed"
+  batchSize: number
+  totalCount: number
+  processedCount: number
+  passCount: number
+  failCount: number
+  evaluatorErrorCount: number
+  errorCode: string | null
+  requestedAt: string
+  startedAt: string | null
+  completedAt: string | null
+  predecessorContractVersionId: string | null
+}
 type RevisionOrigin = {
   id: string
   reviewDecisionId: string
@@ -183,6 +198,7 @@ export type ContractAuthoringProps = {
   monitor: { id: string; name: string; description: string; state: string; version: number }
   readiness: { ready: boolean; blockers: Blocker[] }
   releaseStage: string
+  rescoreRun: RescoreRun | null
   rescoreSummary: RescoreSummary | null
   revisionOrigins: RevisionOrigin[]
   templates: Template[]
@@ -219,7 +235,7 @@ export function ContractAuthoringView({ errors, flash, ...props }: ContractAutho
   if (!workspace) return null
 
   const path = `/app/${workspace.slug}/monitors/${props.monitor.id}/contract`
-  const sealed = props.contract?.status === "approved"
+  const readOnly = Boolean(props.contract && props.contract.status !== "draft")
 
   return (
     <ProductShell
@@ -288,6 +304,22 @@ export function ContractAuthoringView({ errors, flash, ...props }: ContractAutho
           </Alert>
         )}
 
+        {props.approvedContract && props.contract?.status === "pending_rescore" && (
+          <Alert id="contract-rescore-pending" className="border-primary/20 bg-primary/5">
+            <LoaderCircle className="animate-spin" />
+            <AlertTitle>Approved version {props.approvedContract.version} remains active</AlertTitle>
+            <AlertDescription>Candidate version {props.contract.version} is sealed while its pinned historical outputs are rescored in bounded batches. It activates only after every item succeeds.</AlertDescription>
+          </Alert>
+        )}
+
+        {props.approvedContract && props.contract?.status === "rescore_failed" && (
+          <Alert id="contract-rescore-failed" variant="destructive">
+            <AlertTriangle />
+            <AlertTitle>Candidate version {props.contract.version} did not activate</AlertTitle>
+            <AlertDescription>Approved version {props.approvedContract.version} is still active. The failed candidate and its pinned rescore evidence remain sealed; create a retry draft to continue.</AlertDescription>
+          </Alert>
+        )}
+
         {props.revisionOrigins.length > 0 && (
           <Alert id="review-origin" className="border-primary/20 bg-primary/5">
             <GitBranch />
@@ -296,7 +328,7 @@ export function ContractAuthoringView({ errors, flash, ...props }: ContractAutho
           </Alert>
         )}
 
-        {!sealed && (
+        {!readOnly && (
           <ContractEditor
             contract={props.contract}
             errors={errors}
@@ -314,7 +346,7 @@ export function ContractAuthoringView({ errors, flash, ...props }: ContractAutho
               fixtures={props.fixtures}
               limits={props.limits}
               path={path}
-              readOnly={sealed}
+              readOnly={readOnly}
             />
             {props.coverage && (
               <CoverageSection
@@ -324,7 +356,7 @@ export function ContractAuthoringView({ errors, flash, ...props }: ContractAutho
                 errors={errors}
                 fixtures={props.fixtures}
                 path={path}
-                readOnly={sealed}
+                readOnly={readOnly}
               />
             )}
             <ApprovalPanel
@@ -333,6 +365,7 @@ export function ContractAuthoringView({ errors, flash, ...props }: ContractAutho
               fixtureCount={props.fixtures.length}
               path={path}
               readiness={props.readiness}
+              rescoreRun={props.rescoreRun}
               rescoreSummary={props.rescoreSummary}
             />
           </>
@@ -343,11 +376,19 @@ export function ContractAuthoringView({ errors, flash, ...props }: ContractAutho
 }
 
 function WorkflowSteps({ contract, fixtureCount, ready }: { contract: ContractVersion | null; fixtureCount: number; ready: boolean }) {
+  const approvalDetail = contract?.status === "approved"
+    ? "Sealed"
+    : contract?.status === "pending_rescore"
+      ? "Rescoring history"
+      : contract?.status === "rescore_failed"
+        ? "Retry required"
+        : "Pending"
+
   const steps = [
     { label: "Choose a template", complete: Boolean(contract), detail: contract ? "Selected" : "Start here" },
     { label: "Define rules", complete: Boolean(contract), detail: contract ? `${contract!.root.rules.length} rules` : "Not started" },
     { label: "Prove examples", complete: ready, detail: fixtureCount ? `${fixtureCount} fixture${fixtureCount === 1 ? "" : "s"}` : "Need pass + fail" },
-    { label: "Owner approval", complete: contract?.status === "approved", detail: contract?.status === "approved" ? "Sealed" : "Pending" },
+    { label: "Owner approval", complete: contract?.status === "approved", detail: approvalDetail },
   ]
 
   return (
@@ -875,19 +916,35 @@ function CoverageBranch({ fixtureIds, fixtureNames, label, proven }: { fixtureId
   )
 }
 
-function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness, rescoreSummary }: { canApprove: boolean; contract: ContractVersion; fixtureCount: number; path: string; readiness: ContractAuthoringProps["readiness"]; rescoreSummary: RescoreSummary | null }) {
+function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness, rescoreRun, rescoreSummary }: { canApprove: boolean; contract: ContractVersion; fixtureCount: number; path: string; readiness: ContractAuthoringProps["readiness"]; rescoreRun: RescoreRun | null; rescoreSummary: RescoreSummary | null }) {
   const form = useForm({})
   const approved = contract.status === "approved"
+  const pending = contract.status === "pending_rescore"
+  const failed = contract.status === "rescore_failed"
   const baselinePath = path.replace(/\/contract$/, "/baseline")
+  const title = approved
+    ? `Contract version ${contract.version} is sealed`
+    : pending
+      ? `Candidate version ${contract.version} is rescoring history`
+      : failed
+        ? `Candidate version ${contract.version} failed safely`
+        : "Approve the exact behavior snapshot"
+  const description = approved
+    ? "Rules, fixture judgments, evaluator version, fingerprints, approver, and timestamp are immutable. Editing begins a successor draft."
+    : pending
+      ? "The exact observation set is pinned. Work continues in durable batches while the predecessor remains active."
+      : failed
+        ? "No partial activation occurred. This candidate and its failure evidence are sealed; a retry begins from a new draft."
+        : "Approval binds these rules to this exact fixture set. Only a workspace owner can make that commitment."
 
   return (
     <section aria-labelledby="approval-heading">
-      <Card className={approved ? "border-success/25 bg-success/5" : readiness.ready ? "border-primary/25" : ""}>
+      <Card className={approved ? "border-success/25 bg-success/5" : failed ? "border-destructive/30" : readiness.ready ? "border-primary/25" : ""}>
         <CardHeader className="gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
             <p className="text-sm font-medium text-primary">Step 4</p>
-            <CardTitle id="approval-heading" className="mt-1 text-2xl">{approved ? `Contract version ${contract.version} is sealed` : "Approve the exact behavior snapshot"}</CardTitle>
-            <CardDescription className="mt-2 leading-6">{approved ? "Rules, fixture judgments, evaluator version, fingerprints, approver, and timestamp are immutable. Editing begins a successor draft." : "Approval binds these rules to this exact fixture set. Only a workspace owner can make that commitment."}</CardDescription>
+            <CardTitle id="approval-heading" className="mt-1 text-2xl">{title}</CardTitle>
+            <CardDescription className="mt-2 leading-6">{description}</CardDescription>
           </div>
           <ContractJsonDialog root={contract.root} />
         </CardHeader>
@@ -914,7 +971,26 @@ function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness, re
             </div>
           )}
 
-          {!approved && !readiness.ready && (
+          {(pending || failed) && rescoreRun && (
+            <div id="contract-rescore-progress" className="rounded-xl border bg-background/80 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-medium">Pinned historical rescore</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{rescoreRun.processedCount} of {rescoreRun.totalCount} stored outputs processed · batches of {rescoreRun.batchSize} · 0 provider calls</p>
+                </div>
+                <Badge variant={failed ? "destructive" : "outline"}>{failed ? `Failed · ${rescoreRun.errorCode || "unknown"}` : rescoreRun.status}</Badge>
+              </div>
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted" aria-label="Historical rescore progress"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.round((rescoreRun.processedCount / rescoreRun.totalCount) * 100)}%` }} /></div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                <ProofMetric label="Pinned outputs" value={String(rescoreRun.totalCount)} />
+                <ProofMetric label="Passed" value={String(rescoreRun.passCount)} />
+                <ProofMetric label="Failed" value={String(rescoreRun.failCount)} />
+                <ProofMetric label="Evaluator errors" value={String(rescoreRun.evaluatorErrorCount)} />
+              </div>
+            </div>
+          )}
+
+          {contract.status === "draft" && !readiness.ready && (
             <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4">
               <p className="flex items-center gap-2 text-sm font-medium"><AlertTriangle className="size-4 text-amber-600" /> Resolve before approval</p>
               <ul className="mt-3 space-y-2 text-sm text-muted-foreground">{readiness.blockers.map((blocker, index) => <li key={`${blocker.code}-${index}`} className="flex gap-2"><ChevronRight className="mt-0.5 size-4 shrink-0" />{blocker.message}</li>)}</ul>
@@ -922,12 +998,16 @@ function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness, re
           )}
 
           <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">{approved ? `Approved ${formatDate(contract.approvedAt)} · fingerprint ${contract.fingerprint}` : canApprove ? "Your approval will be attributable to your account." : "A workspace owner must perform final approval."}</p>
+            <p className="text-sm text-muted-foreground">{approved ? `Approved ${formatDate(contract.approvedAt)} · fingerprint ${contract.fingerprint}` : pending ? "Activation is automatic only after the pinned set finishes without evaluator errors." : failed ? "The predecessor stayed active; no monitor or baseline was silently switched." : canApprove ? "Your approval will be attributable to your account." : "A workspace owner must perform final approval."}</p>
             {approved ? (
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button id="create-contract-revision" type="button" variant="outline" disabled={form.processing} onClick={() => form.post(`${path}/revise`)}>{form.processing ? <LoaderCircle className="animate-spin" /> : <Pencil />} Create successor draft</Button>
                 <Button id="continue-to-baseline" asChild><Link href={baselinePath}><FlaskConical /> Preview baseline capture</Link></Button>
               </div>
+            ) : failed ? (
+              <Button id="retry-contract-revision" type="button" variant="outline" disabled={form.processing} onClick={() => form.post(`${path}/revise`)}>{form.processing ? <LoaderCircle className="animate-spin" /> : <GitBranch />} Create retry draft</Button>
+            ) : pending ? (
+              <Badge variant="outline"><LoaderCircle className="animate-spin" /> Rescore in progress</Badge>
             ) : (
               <Button id="approve-contract" type="button" disabled={!canApprove || !readiness.ready || form.processing} onClick={() => form.post(`${path}/approve`)}>{form.processing ? <LoaderCircle className="animate-spin" /> : <LockKeyhole />} Approve and seal contract</Button>
             )}
@@ -939,7 +1019,11 @@ function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness, re
 }
 
 function ContractStatusBadge({ contract }: { contract: ContractVersion }) {
-  return <Badge className={contract.status === "approved" ? "border-success/25 bg-success/10 text-success" : "border-primary/25 bg-primary/5 text-primary"} variant="outline">{contract.status === "approved" ? <LockKeyhole /> : <Pencil />}Version {contract.version} · {contract.status}</Badge>
+  const successful = contract.status === "approved"
+  const failed = contract.status === "rescore_failed"
+  const pending = contract.status === "pending_rescore"
+  const classes = successful ? "border-success/25 bg-success/10 text-success" : failed ? "border-destructive/25 bg-destructive/10 text-destructive" : "border-primary/25 bg-primary/5 text-primary"
+  return <Badge className={classes} variant="outline">{successful ? <LockKeyhole /> : pending ? <LoaderCircle className="animate-spin" /> : failed ? <AlertTriangle /> : <Pencil />}Version {contract.version} · {contract.status.replaceAll("_", " ")}</Badge>
 }
 
 function ContractJsonDialog({ root }: { root: Root }) {

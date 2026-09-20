@@ -12,7 +12,9 @@ defmodule SilentRegression.BaselinesTest do
   alias SilentRegression.Baselines.BaselineSnapshot
   alias SilentRegression.Captures.Workers.ObservationWorker
   alias SilentRegression.ContractAuthoring
+  alias SilentRegression.ContractAuthoring.ContractVersion
   alias SilentRegression.ContractAuthoring.Templates
+  alias SilentRegression.ContractAuthoring.Workers.RescoreWorker
   alias SilentRegression.MonitorOperations
   alias SilentRegression.Monitors
   alias SilentRegression.Repo
@@ -438,8 +440,15 @@ defmodule SilentRegression.BaselinesTest do
                )
     end)
 
-    assert {:ok, corrected} = ContractAuthoring.approve(scope, monitor_id)
-    corrected
+    assert {:ok, pending} = ContractAuthoring.approve(scope, monitor_id)
+
+    assert :ok =
+             perform_job(RescoreWorker, %{
+               rescore_run_id: pending.rescore_run.id,
+               generation: 0
+             })
+
+    Repo.get!(ContractVersion, pending.id)
   end
 
   defp exceptional_approval do

@@ -47,7 +47,7 @@ config :silent_regression, Oban,
       {"* * * * *", SilentRegression.MonitorOperations.Workers.DispatcherWorker, max_attempts: 1}
     ]
   ],
-  queues: [capture: 4, scheduler: 1, notifications: 2],
+  queues: [capture: 4, scheduler: 1, notifications: 2, contract_rescore: 1],
   repo: SilentRegression.Repo
 
 config :silent_regression, :provider_adapters,

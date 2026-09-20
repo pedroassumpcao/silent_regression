@@ -126,6 +126,7 @@ const baseProps: ContractAuthoringProps = {
     blockers: [{ code: "contract_missing", message: "Save a valid contract draft first.", fixtureId: null }],
   },
   releaseStage: "Private alpha",
+  rescoreRun: null,
   rescoreSummary: null,
   revisionOrigins: [],
   templates,
@@ -163,6 +164,22 @@ const coverage: NonNullable<ContractAuthoringProps["coverage"]> = {
       waiver: null,
     },
   ],
+}
+
+const rescoreRun: NonNullable<ContractAuthoringProps["rescoreRun"]> = {
+  id: "rescore-run-id",
+  status: "running",
+  batchSize: 50,
+  totalCount: 80,
+  processedCount: 50,
+  passCount: 48,
+  failCount: 2,
+  evaluatorErrorCount: 0,
+  errorCode: null,
+  requestedAt: "2026-09-16T18:00:00Z",
+  startedAt: "2026-09-16T18:00:01Z",
+  completedAt: null,
+  predecessorContractVersionId: "previous-contract-id",
 }
 
 describe("ContractAuthoringView", () => {
@@ -247,5 +264,47 @@ describe("ContractAuthoringView", () => {
     expect(screen.getByText("Contract version 1 is sealed")).toBeInTheDocument()
     expect(screen.getByText("Historical outputs rescored before activation")).toBeInTheDocument()
     expect(screen.getByText("New baseline required")).toBeInTheDocument()
+  })
+
+  it("keeps a pending candidate read-only and shows durable rescore progress", () => {
+    render(
+      <ContractAuthoringView
+        {...baseProps}
+        approvedContract={{ id: "previous-contract-id", version: 1, status: "approved", fingerprint: "9".repeat(64), approvedAt: "2026-09-15T18:00:00Z" }}
+        contract={{ ...contract, version: 2, status: "pending_rescore", predecessorId: "previous-contract-id", proofFingerprint: "f".repeat(64), proofSchemaVersion: "rule_coverage_v1" }}
+        coverage={coverage}
+        errors={{}}
+        fixtures={fixtures}
+        flash={{}}
+        readiness={{ ready: true, blockers: [] }}
+        rescoreRun={rescoreRun}
+      />,
+    )
+
+    expect(screen.getByText("Approved version 1 remains active")).toBeInTheDocument()
+    expect(screen.getByText("50 of 80 stored outputs processed · batches of 50 · 0 provider calls")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Save and validate rules" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Approve and seal contract" })).not.toBeInTheDocument()
+    expect(screen.getByText("Rescore in progress")).toBeInTheDocument()
+  })
+
+  it("shows safe failure and offers a retry draft without claiming activation", () => {
+    render(
+      <ContractAuthoringView
+        {...baseProps}
+        approvedContract={{ id: "previous-contract-id", version: 1, status: "approved", fingerprint: "9".repeat(64), approvedAt: "2026-09-15T18:00:00Z" }}
+        contract={{ ...contract, version: 2, status: "rescore_failed", predecessorId: "previous-contract-id", proofFingerprint: "f".repeat(64), proofSchemaVersion: "rule_coverage_v1" }}
+        coverage={coverage}
+        errors={{}}
+        fixtures={fixtures}
+        flash={{}}
+        readiness={{ ready: true, blockers: [] }}
+        rescoreRun={{ ...rescoreRun, status: "failed", errorCode: "historical_evaluator_error", completedAt: "2026-09-16T18:05:00Z" }}
+      />,
+    )
+
+    expect(screen.getByText("Candidate version 2 did not activate")).toBeInTheDocument()
+    expect(screen.getByText("The predecessor stayed active; no monitor or baseline was silently switched.")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Create retry draft" })).toBeEnabled()
   })
 })

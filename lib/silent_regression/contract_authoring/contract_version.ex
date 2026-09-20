@@ -11,14 +11,21 @@ defmodule SilentRegression.ContractAuthoring.ContractVersion do
   import Ecto.Changeset
 
   alias SilentRegression.Accounts.User
-  alias SilentRegression.ContractAuthoring.{ContractFixture, CoverageWaiver, RescoreSummary}
+
+  alias SilentRegression.ContractAuthoring.{
+    ContractFixture,
+    CoverageWaiver,
+    RescoreRun,
+    RescoreSummary
+  }
+
   alias SilentRegression.Monitors.{Monitor, MonitorVersion}
   alias SilentRegression.Workspaces.Workspace
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
-  @statuses [:draft, :approved, :retired]
+  @statuses [:draft, :pending_rescore, :rescore_failed, :approved, :retired]
   @assistance_modes [:self_serve, :founder_assisted, :codex_assisted]
   @fingerprint_fields [:contract_fingerprint, :fixture_set_fingerprint, :fingerprint]
   @approval_proof_fields [:proof_schema_version, :proof_fingerprint]
@@ -48,6 +55,7 @@ defmodule SilentRegression.ContractAuthoring.ContractVersion do
     belongs_to :approved_by_user, User
     has_many :fixtures, ContractFixture
     has_many :coverage_waivers, CoverageWaiver
+    has_one :rescore_run, RescoreRun
     has_one :rescore_summary, RescoreSummary
 
     timestamps(type: :utc_datetime)
@@ -83,7 +91,30 @@ defmodule SilentRegression.ContractAuthoring.ContractVersion do
     |> add_error(:status, "only a draft contract can be edited")
   end
 
-  def approve_changeset(%__MODULE__{status: :draft} = contract_version, %User{} = user, at, attrs) do
+  def request_rescore_changeset(%__MODULE__{status: :draft} = contract_version, attrs) do
+    contract_version
+    |> change(Map.take(attrs, @fingerprint_fields ++ @approval_proof_fields))
+    |> change(status: :pending_rescore)
+    |> validate_content()
+    |> validate_required(@approval_proof_fields)
+    |> validate_length(:proof_schema_version, min: 1, max: 80)
+    |> validate_format(:proof_fingerprint, ~r/^[0-9a-f]{64}$/)
+    |> add_constraints()
+  end
+
+  def request_rescore_changeset(%__MODULE__{} = contract_version, _attrs) do
+    contract_version
+    |> change()
+    |> add_error(:status, "only a draft contract can request historical rescoring")
+  end
+
+  def approve_changeset(
+        %__MODULE__{status: status} = contract_version,
+        %User{} = user,
+        at,
+        attrs
+      )
+      when status in [:draft, :pending_rescore] do
     contract_version
     |> change(Map.take(attrs, @fingerprint_fields ++ @approval_proof_fields))
     |> change(status: :approved, approved_by_user_id: user.id, approved_at: at)
@@ -98,6 +129,18 @@ defmodule SilentRegression.ContractAuthoring.ContractVersion do
     contract_version
     |> change()
     |> add_error(:status, "only a draft contract can be approved")
+  end
+
+  def rescore_failed_changeset(%__MODULE__{status: :pending_rescore} = contract_version) do
+    contract_version
+    |> change(status: :rescore_failed)
+    |> add_constraints()
+  end
+
+  def rescore_failed_changeset(%__MODULE__{} = contract_version) do
+    contract_version
+    |> change()
+    |> add_error(:status, "only a pending contract rescore can fail")
   end
 
   def retire_changeset(%__MODULE__{status: :approved} = contract_version, at) do
@@ -164,6 +207,7 @@ defmodule SilentRegression.ContractAuthoring.ContractVersion do
     |> foreign_key_constraint(:approved_by_user_id)
     |> unique_constraint([:monitor_id, :version])
     |> unique_constraint(:monitor_id, name: :contract_versions_one_draft_index)
+    |> unique_constraint(:monitor_id, name: :contract_versions_one_active_candidate_index)
     |> unique_constraint(:monitor_id, name: :contract_versions_one_approved_index)
     |> check_constraint(:version, name: :contract_versions_version_check)
     |> check_constraint(:schema_version, name: :contract_versions_schema_version_check)

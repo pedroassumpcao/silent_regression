@@ -177,6 +177,14 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
 
   def approve(conn, %{"monitor_id" => monitor_id}) do
     case ContractAuthoring.approve(conn.assigns.current_scope, monitor_id) do
+      {:ok, %ContractVersion{status: :pending_rescore}} ->
+        conn
+        |> put_flash(
+          :info,
+          "Approval recorded. Historical outputs are being rescored; the current approved contract remains active."
+        )
+        |> redirect(to: contract_path(conn, monitor_id))
+
       {:ok, _contract_version} ->
         conn
         |> put_flash(:info, "Contract approved and sealed with its exact fixture set.")
@@ -195,6 +203,9 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
       {:error, :not_found} ->
         send_resp(conn, :not_found, "Not found")
 
+      {:error, :approval_in_progress} ->
+        mutation_failed(conn, monitor_id, "Wait for the historical rescore to finish first.")
+
       {:error, _reason} ->
         mutation_failed(conn, monitor_id, "The contract could not be approved.")
     end
@@ -209,6 +220,9 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
 
       {:error, :not_found} ->
         send_resp(conn, :not_found, "Not found")
+
+      {:error, :approval_in_progress} ->
+        mutation_failed(conn, monitor_id, "Wait for the historical rescore to finish first.")
 
       {:error, _reason} ->
         mutation_failed(conn, monitor_id, "A successor draft could not be created.")
@@ -238,6 +252,7 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
       readiness: readiness_prop(state.readiness),
       release_stage: "Private alpha",
       rescore_summary: rescore_summary_prop(state.rescore_summary),
+      rescore_run: rescore_run_prop(state.rescore_run),
       revision_origins: revision_origin_props(state.contract_version),
       templates: Enum.map(ContractAuthoring.templates(), &template_prop/1)
     })
@@ -351,6 +366,26 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
       interpretation_changed: summary.interpretation_changed,
       rescored_at: summary.rescored_at,
       predecessor_contract_version_id: summary.predecessor_contract_version_id
+    }
+  end
+
+  defp rescore_run_prop(nil), do: nil
+
+  defp rescore_run_prop(run) do
+    %{
+      id: run.id,
+      status: run.status,
+      batch_size: run.batch_size,
+      total_count: run.total_count,
+      processed_count: run.processed_count,
+      pass_count: run.pass_count,
+      fail_count: run.fail_count,
+      evaluator_error_count: run.evaluator_error_count,
+      error_code: run.error && run.error["code"],
+      requested_at: run.requested_at,
+      started_at: run.started_at,
+      completed_at: run.completed_at,
+      predecessor_contract_version_id: run.predecessor_contract_version_id
     }
   end
 

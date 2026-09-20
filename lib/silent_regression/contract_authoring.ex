@@ -21,6 +21,7 @@ defmodule SilentRegression.ContractAuthoring do
     Fingerprints,
     FixtureJudgment,
     Rescorer,
+    RescoreRun,
     RescoreSummary,
     Templates
   }
@@ -45,8 +46,10 @@ defmodule SilentRegression.ContractAuthoring do
          {:ok, monitor} <- fetch_monitor(workspace_id, monitor_id),
          {:ok, monitor_version} <- fetch_current_monitor_version(monitor) do
       draft = load_contract(monitor.id, :draft)
+      pending = load_contract(monitor.id, :pending_rescore)
+      failed = latest_failed_contract(monitor.id)
       approved = load_contract(monitor.id, :approved)
-      current = draft || approved
+      current = draft || pending || failed || approved
       fixtures = if current, do: load_fixtures(current.id), else: []
       fixture_results = evaluate_fixtures(current, fixtures)
       waivers = if current, do: load_coverage_waivers(current.id), else: []
@@ -59,6 +62,7 @@ defmodule SilentRegression.ContractAuthoring do
          contract_version: current,
          draft_contract_version: draft,
          approved_contract_version: approved,
+         rescore_run: rescore_run(current),
          rescore_summary: rescore_summary(current),
          fixtures: fixtures,
          fixture_results: fixture_results,
@@ -315,7 +319,7 @@ defmodule SilentRegression.ContractAuthoring do
     with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id) do
       Repo.transaction(fn ->
         with %Monitor{} <- locked_monitor(workspace_id, monitor_id),
-             %ContractVersion{} = draft <- load_contract(monitor_id, :draft, lock: true),
+             {:ok, draft} <- draft_for_approval(monitor_id),
              fixtures <- load_fixtures(draft.id, lock: true),
              waivers <- load_coverage_waivers(draft.id, lock: true),
              results <- evaluate_fixtures(draft, fixtures),
@@ -323,53 +327,34 @@ defmodule SilentRegression.ContractAuthoring do
              %{ready?: true} <- approval_readiness(draft, fixtures, results, coverage),
              {:ok, draft} <- refresh_fingerprints(draft),
              previous <- load_contract(monitor_id, :approved, lock: true),
-             {:ok, rescore_summary} <- Rescorer.rescore(draft, previous),
-             :ok <- retire_current_approved(previous),
-             {:ok, approved} <-
+             proof_attrs <-
                draft
-               |> ContractVersion.approve_changeset(
+               |> fingerprint_attributes(load_fixtures(draft.id))
+               |> Map.merge(%{
+                 proof_schema_version: coverage.schema_version,
+                 proof_fingerprint: coverage.fingerprint
+               }),
+             observation_ids <- Rescorer.successful_observation_ids(monitor_id),
+             {:ok, contract_version} <-
+               activate_or_request_rescore(
+                 draft,
+                 previous,
                  user,
-                 DateTime.utc_now(:second),
-                 draft
-                 |> fingerprint_attributes(load_fixtures(draft.id))
-                 |> Map.merge(%{
-                   proof_schema_version: coverage.schema_version,
-                   proof_fingerprint: coverage.fingerprint
-                 })
-               )
-               |> Repo.update() do
-          record_contract_event!(approved, user, "contract_version.approved", %{
-            "fixture_count" => length(fixtures),
-            "rescore_observation_count" => rescore_summary.observation_count,
-            "rescore_pass_count" => rescore_summary.pass_count,
-            "rescore_fail_count" => rescore_summary.fail_count,
-            "interpretation_changed" => rescore_summary.interpretation_changed,
-            "proof_schema_version" => coverage.schema_version,
-            "proof_fingerprint" => coverage.fingerprint,
-            "coverage_waiver_count" => Enum.count(coverage.rules, & &1.waiver)
-          })
-
-          Repo.preload(approved, [:fixtures, :rescore_summary], force: true)
+                 fixtures,
+                 coverage,
+                 proof_attrs,
+                 observation_ids
+               ) do
+          Repo.preload(contract_version, [:fixtures, :rescore_summary, :rescore_run], force: true)
         else
           nil ->
             Repo.rollback(:not_found)
 
-          %{ready?: false, blockers: blockers} ->
-            Repo.rollback({:approval_blocked, blockers})
-
-          {:error, {:rescore_failed, observation_id, _reason}} ->
-            Repo.rollback(
-              {:approval_blocked,
-               [
-                 blocker(
-                   "historical_rescore_failed",
-                   "Stored observation #{observation_id} could not be safely rescored."
-                 )
-               ]}
-            )
-
           {:error, reason} ->
             Repo.rollback(reason)
+
+          %{ready?: false, blockers: blockers} ->
+            Repo.rollback({:approval_blocked, blockers})
         end
       end)
     else
@@ -391,15 +376,18 @@ defmodule SilentRegression.ContractAuthoring do
       Repo.transaction(fn ->
         with %Monitor{} = monitor <- locked_monitor(workspace_id, monitor_id),
              nil <- load_contract(monitor_id, :draft),
+             nil <- load_contract(monitor_id, :pending_rescore),
              %ContractVersion{} = approved <- load_contract(monitor_id, :approved, lock: true),
-             {:ok, revision} <- insert_revision(approved, monitor, user) do
+             source <- latest_failed_contract(monitor_id) || approved,
+             {:ok, revision} <- insert_revision(source, approved, monitor, user) do
           record_contract_event!(revision, user, "contract_version.revision_created", %{
             "predecessor_id" => approved.id
           })
 
           Repo.preload(revision, :fixtures, force: true)
         else
-          %ContractVersion{} = draft -> draft
+          %ContractVersion{status: :draft} = draft -> draft
+          %ContractVersion{status: :pending_rescore} -> Repo.rollback(:approval_in_progress)
           nil -> Repo.rollback(:not_found)
           {:error, reason} -> Repo.rollback(reason)
         end
@@ -734,28 +722,94 @@ defmodule SilentRegression.ContractAuthoring do
     Repo.get_by(RescoreSummary, contract_version_id: contract_version.id)
   end
 
-  defp insert_revision(approved, monitor, user) do
-    fixtures = load_fixtures(approved.id, lock: true)
+  defp rescore_run(nil), do: nil
+
+  defp rescore_run(contract_version) do
+    Repo.get_by(RescoreRun, contract_version_id: contract_version.id)
+  end
+
+  defp activate_or_request_rescore(
+         draft,
+         previous,
+         user,
+         fixtures,
+         coverage,
+         proof_attrs,
+         []
+       ) do
+    with {:ok, summary} <- Rescorer.create_empty_summary(draft, previous),
+         :ok <- retire_current_approved(previous),
+         {:ok, approved} <-
+           draft
+           |> ContractVersion.approve_changeset(
+             user,
+             DateTime.utc_now(:second),
+             proof_attrs
+           )
+           |> Repo.update() do
+      record_contract_event!(approved, user, "contract_version.approved", %{
+        "fixture_count" => length(fixtures),
+        "rescore_observation_count" => summary.observation_count,
+        "rescore_pass_count" => summary.pass_count,
+        "rescore_fail_count" => summary.fail_count,
+        "interpretation_changed" => summary.interpretation_changed,
+        "proof_schema_version" => coverage.schema_version,
+        "proof_fingerprint" => coverage.fingerprint,
+        "coverage_waiver_count" => Enum.count(coverage.rules, & &1.waiver)
+      })
+
+      {:ok, approved}
+    end
+  end
+
+  defp activate_or_request_rescore(
+         draft,
+         previous,
+         user,
+         _fixtures,
+         coverage,
+         proof_attrs,
+         observation_ids
+       ) do
+    with {:ok, pending} <-
+           draft
+           |> ContractVersion.request_rescore_changeset(proof_attrs)
+           |> Repo.update(),
+         {:ok, run} <- Rescorer.create_run(pending, previous, user, observation_ids) do
+      record_contract_event!(pending, user, "contract_version.approval_requested", %{
+        "rescore_run_id" => run.id,
+        "rescore_observation_count" => run.total_count,
+        "proof_schema_version" => coverage.schema_version,
+        "proof_fingerprint" => coverage.fingerprint,
+        "coverage_waiver_count" => Enum.count(coverage.rules, & &1.waiver)
+      })
+
+      {:ok, pending}
+    end
+  end
+
+  defp insert_revision(source, approved, monitor, user) do
+    fixtures = load_fixtures(source.id, lock: true)
     fixture_set_fingerprint = Fingerprints.fixture_set([])
 
     attrs = %{
       version: next_contract_version(monitor.id),
-      schema_version: approved.schema_version,
-      evaluator_engine_version: approved.evaluator_engine_version,
-      template_key: approved.template_key,
-      template_usage: approved.template_usage,
-      assistance_mode: approved.assistance_mode,
-      root: approved.root,
-      contract_fingerprint: approved.contract_fingerprint,
+      schema_version: source.schema_version,
+      evaluator_engine_version: source.evaluator_engine_version,
+      template_key: source.template_key,
+      template_usage: source.template_usage,
+      assistance_mode: source.assistance_mode,
+      root: source.root,
+      contract_fingerprint: source.contract_fingerprint,
       fixture_set_fingerprint: fixture_set_fingerprint
     }
 
     attrs = Map.put(attrs, :fingerprint, Fingerprints.version(attrs))
 
     associations = %{
-      workspace: %{id: approved.workspace_id},
+      workspace: %{id: source.workspace_id},
       monitor: monitor,
-      monitor_version: %{id: approved.monitor_version_id},
+      monitor_version: %{id: source.monitor_version_id},
       predecessor_id: approved.id,
       user: user
     }
@@ -913,6 +967,29 @@ defmodule SilentRegression.ContractAuthoring do
 
     query = if options[:lock], do: lock(query, "FOR UPDATE"), else: query
     Repo.one(query)
+  end
+
+  defp latest_failed_contract(monitor_id) do
+    ContractVersion
+    |> where(
+      [contract_version],
+      contract_version.monitor_id == ^monitor_id and contract_version.status == :rescore_failed
+    )
+    |> order_by([contract_version], desc: contract_version.version)
+    |> limit(1)
+    |> Repo.one()
+  end
+
+  defp draft_for_approval(monitor_id) do
+    case load_contract(monitor_id, :draft, lock: true) do
+      %ContractVersion{} = draft ->
+        {:ok, draft}
+
+      nil ->
+        if load_contract(monitor_id, :pending_rescore),
+          do: {:error, :approval_in_progress},
+          else: {:error, :not_found}
+    end
   end
 
   defp load_fixtures(contract_version_id, options \\ []) do
