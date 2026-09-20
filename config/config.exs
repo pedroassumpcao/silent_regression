@@ -44,10 +44,11 @@ config :silent_regression, Oban,
   notifier: Oban.Notifiers.Postgres,
   cron: [
     crontab: [
-      {"* * * * *", SilentRegression.MonitorOperations.Workers.DispatcherWorker, max_attempts: 1}
+      {"* * * * *", SilentRegression.MonitorOperations.Workers.DispatcherWorker, max_attempts: 1},
+      {"*/15 * * * *", SilentRegression.WorkspaceLifecycle.Workers.PurgeWorker, max_attempts: 3}
     ]
   ],
-  queues: [capture: 4, scheduler: 1, notifications: 2, contract_rescore: 1],
+  queues: [capture: 4, scheduler: 1, notifications: 2, contract_rescore: 1, maintenance: 1],
   repo: SilentRegression.Repo
 
 config :silent_regression, :provider_adapters,
@@ -81,6 +82,8 @@ config :silent_regression, :capture_domain,
 config :silent_regression, :monitor_operations,
   repeated_authentication_failure_limit: 2,
   dispatcher_batch_size: 100
+
+config :silent_regression, :workspace_lifecycle, purge_batch_size: 25
 
 config :silent_regression, :rate_limits,
   login: [limit: 10, window_seconds: 900],

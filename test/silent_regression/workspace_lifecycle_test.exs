@@ -1,5 +1,6 @@
 defmodule SilentRegression.WorkspaceLifecycleTest do
   use SilentRegression.DataCase, async: false
+  use Oban.Testing, repo: SilentRegression.Repo
 
   import SilentRegression.ContractAuthoringFixtures
   import SilentRegression.MonitorsFixtures
@@ -21,6 +22,7 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
   alias SilentRegression.RunResults.Incident
   alias SilentRegression.WorkspaceLifecycle
   alias SilentRegression.WorkspaceLifecycle.DeletionReceipt
+  alias SilentRegression.WorkspaceLifecycle.Workers.PurgeWorker
   alias SilentRegression.Workspaces.Workspace
 
   describe "close_workspace/4" do
@@ -206,6 +208,35 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
 
       assert Repo.get!(User, first_scope.user.id).id == second.user.id
       assert Repo.get!(Workspace, second.workspace.id).status == :active
+    end
+
+    test "periodic maintenance purges only due workspaces in bounded batches" do
+      due_scope = workspace_scope_fixture()
+      retained_scope = workspace_scope_fixture()
+      at = ~U[2026-09-20 12:00:00Z]
+
+      assert {:ok, _closure} =
+               WorkspaceLifecycle.close_workspace(
+                 due_scope,
+                 :explicit_request,
+                 due_scope.workspace.slug,
+                 at: at
+               )
+
+      assert {:ok, _closure} =
+               WorkspaceLifecycle.close_workspace(
+                 retained_scope,
+                 :closure_retention,
+                 retained_scope.workspace.slug,
+                 at: at
+               )
+
+      assert {:ok, %{selected: 1, purged: 1, failed: 0}} =
+               WorkspaceLifecycle.purge_due_workspaces(at: at, limit: 1)
+
+      assert Repo.get(Workspace, due_scope.workspace.id) == nil
+      assert Repo.get!(Workspace, retained_scope.workspace.id).status == :closed
+      assert :ok = perform_job(PurgeWorker, %{})
     end
   end
 

@@ -18,6 +18,7 @@ defmodule SilentRegression.WorkspaceLifecycle do
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
   alias SilentRegression.WorkspaceLifecycle.DeletionReceipt
+  alias SilentRegression.WorkspaceLifecycle.DeletionLedger
   alias SilentRegression.Workspaces.{Invitation, Membership, Workspace}
 
   @closure_retention_days 30
@@ -132,21 +133,83 @@ defmodule SilentRegression.WorkspaceLifecycle do
       with %Workspace{} = workspace <- lock_workspace_by_slug(workspace_slug),
            :ok <- purgeable?(workspace, now),
            %DeletionReceipt{} = receipt <- pending_receipt(workspace, request_type(workspace)) do
-        user_ids = workspace_user_ids(workspace.id)
-        enable_customer_purge!()
-        remove_workspace_data!(workspace.id)
-        remove_unowned_users!(user_ids)
-
-        receipt
-        |> DeletionReceipt.complete_changeset(now)
-        |> Repo.update!()
-
-        %{request_id: receipt.request_id, completed_at: now}
+        purge_locked_workspace!(workspace, receipt, now)
       else
         nil -> Repo.rollback(:not_found)
         {:error, reason} -> Repo.rollback(reason)
       end
     end)
+  end
+
+  @doc "Purges a bounded batch of due workspaces for periodic maintenance."
+  def purge_due_workspaces(opts \\ []) do
+    now = Keyword.get(opts, :at, DateTime.utc_now(:second)) |> DateTime.truncate(:second)
+
+    limit =
+      Keyword.get_lazy(opts, :limit, fn ->
+        Application.fetch_env!(:silent_regression, :workspace_lifecycle)
+        |> Keyword.fetch!(:purge_batch_size)
+      end)
+
+    workspace_ids =
+      Workspace
+      |> where(
+        [workspace],
+        workspace.status == :closed and not is_nil(workspace.purge_after) and
+          workspace.purge_after <= ^now
+      )
+      |> order_by([workspace], asc: workspace.purge_after, asc: workspace.id)
+      |> limit(^limit)
+      |> select([workspace], workspace.id)
+      |> Repo.all()
+
+    results = Enum.map(workspace_ids, &purge_due_workspace_id(&1, now))
+    failures = Enum.count(results, &match?({:error, _reason}, &1))
+
+    if failures == 0 do
+      {:ok, %{selected: length(workspace_ids), purged: length(results), failed: 0}}
+    else
+      {:error,
+       %{selected: length(workspace_ids), purged: length(results) - failures, failed: failures}}
+    end
+  end
+
+  @doc "Previews or executes deletion reconciliation from a verified content-free ledger."
+  def reconcile_deletion_ledger(ledger, opts \\ []) when is_map(ledger) do
+    now = Keyword.get(opts, :at, DateTime.utc_now(:second)) |> DateTime.truncate(:second)
+    execute? = Keyword.get(opts, :execute, false)
+
+    with {:ok, entries} <- DeletionLedger.verify(ledger) do
+      actionable = Enum.filter(entries, &ledger_entry_actionable?(&1, now))
+
+      results =
+        Enum.map(actionable, fn entry ->
+          case workspace_id_for_fingerprint(entry.workspace_fingerprint) do
+            nil ->
+              {:absent, entry.request_id}
+
+            workspace_id when execute? ->
+              case reconcile_workspace_deletion(workspace_id, entry, now) do
+                {:ok, _receipt} -> {:reapplied, entry.request_id}
+                {:error, reason} -> {:failed, entry.request_id, reason}
+              end
+
+            _workspace_id ->
+              {:would_reapply, entry.request_id}
+          end
+        end)
+
+      {:ok,
+       %{
+         ledger_entries: length(entries),
+         actionable: length(actionable),
+         absent: Enum.count(results, &match?({:absent, _request_id}, &1)),
+         would_reapply: Enum.count(results, &match?({:would_reapply, _request_id}, &1)),
+         reapplied: Enum.count(results, &match?({:reapplied, _request_id}, &1)),
+         failed: Enum.count(results, &match?({:failed, _request_id, _reason}, &1)),
+         request_ids: Enum.map(results, &elem(&1, 1))
+       }}
+    end
   end
 
   defp halt_execution(scope, workspace, user, now) do
@@ -272,6 +335,132 @@ defmodule SilentRegression.WorkspaceLifecycle do
     |> order_by([receipt], desc: receipt.requested_at)
     |> limit(1)
     |> lock("FOR UPDATE")
+    |> Repo.one()
+  end
+
+  defp purge_due_workspace_id(workspace_id, now) do
+    Repo.transaction(fn ->
+      with %Workspace{} = workspace <- lock_workspace(workspace_id),
+           :ok <- purgeable?(workspace, now),
+           %DeletionReceipt{} = receipt <- pending_receipt(workspace, request_type(workspace)) do
+        purge_locked_workspace!(workspace, receipt, now)
+      else
+        nil -> Repo.rollback(:not_found)
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp purge_locked_workspace!(workspace, receipt, now) do
+    user_ids = workspace_user_ids(workspace.id)
+    enable_customer_purge!()
+    remove_workspace_data!(workspace.id)
+    remove_unowned_users!(user_ids)
+
+    if receipt.status != :completed do
+      receipt
+      |> DeletionReceipt.complete_changeset(now)
+      |> Repo.update!()
+    end
+
+    %{request_id: receipt.request_id, completed_at: receipt.completed_at || now}
+  end
+
+  defp ledger_entry_actionable?(%{status: :completed}, _now), do: true
+
+  defp ledger_entry_actionable?(%{purge_due_at: purge_due_at}, now) do
+    DateTime.compare(purge_due_at, now) in [:lt, :eq]
+  end
+
+  defp workspace_id_for_fingerprint(fingerprint) do
+    Workspace
+    |> select([workspace], workspace.id)
+    |> Repo.all()
+    |> Enum.find(fn workspace_id ->
+      Plug.Crypto.secure_compare(workspace_fingerprint(workspace_id), fingerprint)
+    end)
+  end
+
+  defp reconcile_workspace_deletion(workspace_id, entry, now) do
+    Repo.transaction(fn ->
+      with %Workspace{} = workspace <- lock_workspace(workspace_id),
+           :ok <- verify_workspace_fingerprint(workspace, entry.workspace_fingerprint),
+           {:ok, receipt} <- ensure_authoritative_receipt(entry),
+           {:ok, closed} <- ensure_workspace_closed_for_reconciliation(workspace, entry) do
+        purge_locked_workspace!(closed, receipt, now)
+      else
+        nil -> Repo.rollback(:not_found)
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp verify_workspace_fingerprint(workspace, fingerprint) do
+    if Plug.Crypto.secure_compare(workspace_fingerprint(workspace.id), fingerprint),
+      do: :ok,
+      else: {:error, :workspace_fingerprint_mismatch}
+  end
+
+  defp ensure_authoritative_receipt(entry) do
+    case Repo.get_by(DeletionReceipt, request_id: entry.request_id) do
+      nil ->
+        %DeletionReceipt{}
+        |> DeletionReceipt.pending_changeset(%{
+          request_id: entry.request_id,
+          workspace_fingerprint: entry.workspace_fingerprint,
+          request_type: entry.request_type,
+          requested_at: entry.requested_at,
+          purge_due_at: entry.purge_due_at
+        })
+        |> Repo.insert()
+
+      %DeletionReceipt{} = receipt ->
+        if receipt.workspace_fingerprint == entry.workspace_fingerprint and
+             receipt.request_type == entry.request_type do
+          {:ok, receipt}
+        else
+          {:error, :receipt_identity_mismatch}
+        end
+    end
+  end
+
+  defp ensure_workspace_closed_for_reconciliation(
+         %Workspace{status: :closed} = workspace,
+         _entry
+       ),
+       do: {:ok, workspace}
+
+  defp ensure_workspace_closed_for_reconciliation(%Workspace{status: :active} = workspace, entry) do
+    with {%Membership{} = membership, %User{} = owner} <- first_owner(workspace.id),
+         scope <- Scope.for_workspace(owner, workspace, membership),
+         :ok <- halt_execution(scope, workspace, owner, entry.requested_at) do
+      workspace
+      |> Workspace.close_changeset(
+        owner,
+        entry.request_type,
+        entry.requested_at,
+        entry.purge_due_at
+      )
+      |> Repo.update()
+    else
+      nil -> {:error, :owner_not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp ensure_workspace_closed_for_reconciliation(%Workspace{}, _entry),
+    do: {:error, :workspace_unavailable}
+
+  defp first_owner(workspace_id) do
+    Membership
+    |> join(:inner, [membership], user in assoc(membership, :user))
+    |> where(
+      [membership, _user],
+      membership.workspace_id == ^workspace_id and membership.role == :owner
+    )
+    |> order_by([membership, _user], asc: membership.inserted_at, asc: membership.id)
+    |> select([membership, user], {membership, user})
+    |> limit(1)
     |> Repo.one()
   end
 
