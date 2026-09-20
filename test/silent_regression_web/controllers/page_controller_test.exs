@@ -14,6 +14,12 @@ defmodule SilentRegressionWeb.PageControllerTest do
     assert LazyHTML.query(document, "#limitations") |> LazyHTML.text() =~
              "does not claim semantic understanding"
 
+    evidence_example = LazyHTML.query(document, "#contract-evidence-example") |> LazyHTML.text()
+
+    assert evidence_example =~ "configured fact needs an approved trailing source"
+    assert evidence_example =~ "[policy-7]"
+    refute evidence_example =~ "every factual claim"
+
     assert LazyHTML.attribute(
              LazyHTML.query(document, "a[href='/design-partner/apply']"),
              "href"
