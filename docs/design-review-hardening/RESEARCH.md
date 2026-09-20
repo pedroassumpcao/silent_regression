@@ -309,6 +309,37 @@ for the same monitor, configuration, case/rule signature, and failure kind. Occu
 successive runs. Notifications distinguish a new incident, bounded recurrence updates, and
 recovery.
 
+#### Task 23 incident contract
+
+The current `result_alerts` identity is intentionally run-specific, so worker retries are
+idempotent but the same failure over ten runs becomes ten independent action items and ten possible
+emails. Task 23 retains those rows as exact occurrence evidence and adds a separate incident layer:
+
+- `incident_signature_v1` begins with monitor-version identity, category, severity, and code.
+  Contract failures add case fingerprint, contract semantics, and sorted decisive rule IDs; case
+  expectations add case/expectation fingerprints plus sorted failed check IDs and codes; operational
+  findings add only their bounded root-cause identity (for example failure category, provenance
+  mismatches, returned-model pairs, or evaluator error codes). Raw customer/provider content is not
+  signature material;
+- one partial unique index permits only one active (`open` or `acknowledged`) episode for a
+  workspace/signature. A matching finding after `resolved` or `recovered` creates the next episode
+  and links back to the prior incident;
+- each immutable occurrence points to the existing immutable alert and capture run, records its
+  ordinal and bounded case fingerprints, and marks whether the pinned reviewed reference was an
+  exceptional approval. Exceptional approval remains disclosure, never a finding exemption;
+- recovery is deliberately conservative: only a successful run with exact reviewed-reference
+  provenance, complete provider outcomes, successful evaluation, and no derived finding can recover
+  active incidents for that exact configuration. Missing or partial evidence leaves them active;
+- recurrence delivery is capped at opening plus counts 5, 20, and 50 per episode and recipient.
+  These thresholds are a private-alpha policy constant and durable deduplication keys make worker
+  retries harmless; and
+- existing alerts backfill one-to-one with a `legacy_alert_identity_v1` signature. Inferring that
+  old alerts belong together would manufacture provenance that was never persisted.
+
+The action queue uses ordinary page-number pagination at 20 incidents per page and occurrence
+history at 25 per page. Counts come from database aggregates rather than the visible page, so broad
+failure volume cannot make the workspace summary misleading.
+
 ## Data-model impact
 
 A local data wipe is **not required or recommended**. The changes can be additive and the existing

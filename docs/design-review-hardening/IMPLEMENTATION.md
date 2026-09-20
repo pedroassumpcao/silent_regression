@@ -166,10 +166,23 @@ atomically changes future execution and enters the existing replacement-referenc
 
 ### Task 23: incident-centered alerting
 
-- Introduce durable incidents and occurrence history.
-- Group by a reviewed stable signature, bound recurrence notifications, surface recovery, and add
-  pagination/counts.
-- Keep exact observation/evaluation evidence accessible.
+1. Add workspace/monitor/configuration-scoped incidents and immutable occurrences. Backfill each
+   legacy result alert into its own explicit legacy incident rather than inventing historical
+   grouping.
+2. Derive `incident_signature_v1` from content-free common identity plus failure-specific
+   case/rule/check/root-cause components. Store every exact run finding as the existing immutable
+   alert and attach it transactionally as an occurrence.
+3. Keep one open/acknowledged episode per signature. Resolved or recovered recurrence creates a
+   linked next episode; never rewrite prior lifecycle history.
+4. Mark recovery only after a fully successful exact-provenance run with no finding. Record the
+   recovery run and preserve every occurrence and human decision.
+5. Notify recipients on incident opening and occurrence counts 5, 20, and 50 only, with durable
+   content-free deduplication. Preserve personal preferences and the existing outbox/worker path.
+6. Make incidents the workspace action queue and lifecycle object, add an occurrence-history page,
+   page both queues, expose first/last seen and distinct affected cases/runs, and flag exceptional
+   reviewed-reference provenance without suppressing findings.
+7. Verify same-signature grouping, material-signature splits, idempotency, episode recurrence,
+   conservative recovery, bounded high-volume delivery, tenancy/roles, legacy migration, and purge.
 
 ### Task 24: reviewed reference capture language
 

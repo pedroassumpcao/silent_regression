@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–22 complete; Task 23 is next; Gates A–B are complete and Gates C–D block the first design-partner pilot
+> **Status:** Tasks 1–22 complete; Task 23 is in progress; Gates A–B are complete and Gates C–D block the first design-partner pilot
 >
-> **Progress:** 22 of 27 tasks complete; Task 23 is next
+> **Progress:** 22 of 27 tasks complete; Task 23 is in progress
 >
 > **Last revised:** 2026-09-20
 >
@@ -320,7 +320,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 20 | Authentication-breaker recovery | 19 | Complete | `b2e6d80`, `e639ce6`, `5d42d0a`, `6403357` |
 | 21 | Temporary capacity and coverage state | 20 | Complete | `628ea87`, `0b06ca8`, `54b23fc` |
 | 22 | Successor workflow configuration | 17, 19–21 | Complete | `3383065`, `20367c0` |
-| 23 | Incident-centered alerting | 18, 22 | Not started | — |
+| 23 | Incident-centered alerting | 18, 22 | In progress | — |
 | 24 | Reviewed reference capture language | 16–18, 23 | Not started | — |
 | 25 | Credential-free demo and focused imports | 17, 18, 24 | Not started | — |
 | 26 | Reproducible verification and toolchain | 15–25 | Not started | — |
@@ -1122,7 +1122,7 @@ asset build.
 
 ### Task 23 — Incident-centered alerting
 
-**Status:** Not started
+**Status:** In progress
 
 **Gate:** C — Pilot usability
 

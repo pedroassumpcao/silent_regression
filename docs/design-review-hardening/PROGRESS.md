@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate B — Recoverable monitoring
-- Current task: Task 23 — incident-centered alerting (next)
+- Current task: Task 23 — incident-centered alerting (in progress)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -20,7 +20,7 @@
 | 20 | Authentication breaker recovery | Complete (`e639ce6`, `5d42d0a`, `6403357`) |
 | 21 | Temporary capacity and coverage state | Complete (`0b06ca8`) |
 | 22 | Successor workflow configuration | Complete (`20367c0`) |
-| 23 | Incident-centered alerting | Not started |
+| 23 | Incident-centered alerting | In progress |
 | 24 | Reviewed reference capture language | Not started |
 | 25 | Credential-free demo and focused imports | Not started |
 | 26 | Reproducible verification and toolchain | Not started |
@@ -318,3 +318,36 @@ through mutable and immutable draft preparation, stale activation rolls back, ex
 active-run guards fail closed, activation carries forward exact contract proof, a replacement
 reviewed reference is required, and explicit schedule activation restores service. Workspace purge
 also removes the full successor-origin graph. Task 22 and Gate B are complete; Task 23 is next.
+
+## Task 23 log
+
+- [x] Inspect per-run alert identity, derivation signatures, review binding, notification outbox,
+  result presentation, workspace purge, and existing local alert history.
+- [x] Define stable content-free incident signatures, immutable occurrences, and episode behavior.
+- [x] Define conservative recovery, exceptional-reference disclosure, bounded recurrence delivery,
+  and pagination contracts.
+- [ ] Add additive incident/occurrence persistence and legacy alert backfill.
+- [ ] Synchronize new and recurring findings without suppressing materially different signatures.
+- [ ] Move the action queue and lifecycle to incidents while retaining exact per-run evidence.
+- [ ] Prove grouping, splitting, recovery, recurrence volume, migration, and purge behavior.
+- [ ] Run all verification gates and record focused commits.
+
+Decisions:
+
+- A result alert remains immutable evidence for one run. An incident is the mutable action item, and
+  an immutable occurrence links each matching alert/run to one incident episode.
+- Signature v1 includes monitor configuration identity, category, severity, and code, plus the
+  failure-specific case/rule/check/root-cause components needed to prevent materially different
+  failures from collapsing together. It never includes prompt, context, output, or provider body.
+- Resolved or recovered incidents never reopen in place. A later matching finding starts a new
+  numbered episode linked to its predecessor; only one open/acknowledged episode may exist for a
+  signature.
+- Automatic recovery requires a fully successful, exact-provenance run with no finding. Partial,
+  failed, mismatched, or evaluator-error runs cannot imply recovery.
+- Email is bounded to the new incident plus occurrence counts 5, 20, and 50. Repeated worker wakes
+  and every other recurrence create no additional delivery.
+- An exceptionally approved reviewed reference never suppresses an incident. Each occurrence
+  records that provenance and the UI explains it as accepted reference evidence, not proof that a
+  later failure is acceptable.
+- Existing alerts are retained and backfilled one-to-one into legacy incidents. The migration does
+  not infer historical grouping that the old rows cannot prove.
