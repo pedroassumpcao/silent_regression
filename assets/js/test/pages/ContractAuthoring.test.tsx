@@ -257,13 +257,13 @@ describe("ContractAuthoringView", () => {
 
     expect(screen.queryByRole("button", { name: "Save and validate rules" })).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Create successor draft" })).toBeEnabled()
-    expect(screen.getByRole("link", { name: "Preview baseline capture" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Preview reviewed reference capture" })).toHaveAttribute(
       "href",
       "/app/acme-ai/monitors/monitor-id/baseline",
     )
     expect(screen.getByText("Contract version 1 is sealed")).toBeInTheDocument()
     expect(screen.getByText("Historical outputs rescored before activation")).toBeInTheDocument()
-    expect(screen.getByText("New baseline required")).toBeInTheDocument()
+    expect(screen.getByText("New reviewed reference required")).toBeInTheDocument()
   })
 
   it("keeps a pending candidate read-only and shows durable rescore progress", () => {
@@ -304,7 +304,7 @@ describe("ContractAuthoringView", () => {
     )
 
     expect(screen.getByText("Candidate version 2 did not activate")).toBeInTheDocument()
-    expect(screen.getByText("The predecessor stayed active; no monitor or baseline was silently switched.")).toBeInTheDocument()
+    expect(screen.getByText("The predecessor stayed active; no monitor or reviewed reference was silently switched.")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Create retry draft" })).toBeEnabled()
   })
 })

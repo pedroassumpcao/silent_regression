@@ -960,7 +960,7 @@ function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness, re
             <div id="contract-rescore-summary" className="rounded-xl border bg-background/80 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div><p className="font-medium">Historical outputs rescored before activation</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Local deterministic evaluation only · 0 provider calls · {formatDate(rescoreSummary.rescoredAt)}</p></div>
-                <Badge variant="outline">{rescoreSummary.interpretationChanged ? "New baseline required" : "Baseline semantics unchanged"}</Badge>
+                <Badge variant="outline">{rescoreSummary.interpretationChanged ? "New reviewed reference required" : "Reference semantics unchanged"}</Badge>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-4">
                 <ProofMetric label="Stored outputs" value={String(rescoreSummary.observationCount)} />
@@ -998,11 +998,11 @@ function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness, re
           )}
 
           <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">{approved ? `Approved ${formatDate(contract.approvedAt)} · fingerprint ${contract.fingerprint}` : pending ? "Activation is automatic only after the pinned set finishes without evaluator errors." : failed ? "The predecessor stayed active; no monitor or baseline was silently switched." : canApprove ? "Your approval will be attributable to your account." : "A workspace owner must perform final approval."}</p>
+            <p className="text-sm text-muted-foreground">{approved ? `Approved ${formatDate(contract.approvedAt)} · fingerprint ${contract.fingerprint}` : pending ? "Activation is automatic only after the pinned set finishes without evaluator errors." : failed ? "The predecessor stayed active; no monitor or reviewed reference was silently switched." : canApprove ? "Your approval will be attributable to your account." : "A workspace owner must perform final approval."}</p>
             {approved ? (
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button id="create-contract-revision" type="button" variant="outline" disabled={form.processing} onClick={() => form.post(`${path}/revise`)}>{form.processing ? <LoaderCircle className="animate-spin" /> : <Pencil />} Create successor draft</Button>
-                <Button id="continue-to-baseline" asChild><Link href={baselinePath}><FlaskConical /> Preview baseline capture</Link></Button>
+                <Button id="continue-to-baseline" asChild><Link href={baselinePath}><FlaskConical /> Preview reviewed reference capture</Link></Button>
               </div>
             ) : failed ? (
               <Button id="retry-contract-revision" type="button" variant="outline" disabled={form.processing} onClick={() => form.post(`${path}/revise`)}>{form.processing ? <LoaderCircle className="animate-spin" /> : <GitBranch />} Create retry draft</Button>

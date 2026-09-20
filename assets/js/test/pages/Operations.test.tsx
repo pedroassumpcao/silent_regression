@@ -89,6 +89,7 @@ describe("OperationsView", () => {
     expect(screen.getByRole("button", { name: "Activate monitor" })).toBeEnabled()
     expect(screen.getByRole("button", { name: "Run now" })).toBeDisabled()
     expect(screen.getByRole("button", { name: "Revise configuration" })).toBeDisabled()
+    expect(screen.getByText("Maximum reserved calls")).toBeInTheDocument()
     expect(screen.getByText(/only owners can authorize schedule changes and provider spend/i)).toBeInTheDocument()
   })
 
@@ -110,6 +111,8 @@ describe("OperationsView", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: "Authorize this bounded provider run?" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Authorize up to 2 calls" })).toBeEnabled()
+    expect(screen.getAllByText("Maximum reserved calls").length).toBeGreaterThan(0)
+    expect(screen.getByText(/currency estimate unavailable/i)).toBeInTheDocument()
     expect(screen.getByText(/19 of 20 runs and 198 of 200 calls remain/i)).toBeInTheDocument()
   })
 

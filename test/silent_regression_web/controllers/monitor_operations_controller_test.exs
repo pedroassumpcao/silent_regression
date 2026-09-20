@@ -131,7 +131,10 @@ defmodule SilentRegressionWeb.MonitorOperationsControllerTest do
 
     denied = patch(conn, path <> "/schedule", %{"schedule" => %{"cadence" => "daily"}})
     assert redirected_to(denied) == path
-    assert Phoenix.Flash.get(denied.assigns.flash, :error) =~ "Approve a compatible baseline"
+
+    assert Phoenix.Flash.get(denied.assigns.flash, :error) =~
+             "Approve a compatible reviewed reference"
+
     assert [] = all_enqueued(worker: ObservationWorker)
   end
 

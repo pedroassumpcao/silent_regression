@@ -58,7 +58,7 @@ describe("ResultsView", () => {
   it("makes missing baseline compatibility an explicit blocking state", () => {
     render(<ResultsView {...props} currentBaseline={null} flash={{}} />)
 
-    expect(screen.getByText("No current approved baseline")).toBeInTheDocument()
+    expect(screen.getByText("No current approved reviewed reference")).toBeInTheDocument()
     expect(screen.getByText("Unavailable")).toBeInTheDocument()
   })
 })

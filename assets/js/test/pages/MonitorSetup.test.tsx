@@ -157,7 +157,8 @@ describe("MonitorSetupView", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Review and finish" })).toBeInTheDocument()
     expect(screen.getByText("Setup and completion:")).toBeInTheDocument()
-    expect(screen.getByText(/future single-sample capture would make 1 provider call/i)).toBeInTheDocument()
+    expect(screen.getByText(/one-sample reviewed reference would plan 1 provider call/i)).toBeInTheDocument()
+    expect(screen.getByText(/maximum reserved calls including retries/i)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /finish and lock setup/i })).toBeInTheDocument()
     expect(screen.getAllByText(/0 calls during setup/i).length).toBeGreaterThan(0)
     expect(screen.getByRole("heading", { name: "Exact provider-visible requests" })).toBeInTheDocument()

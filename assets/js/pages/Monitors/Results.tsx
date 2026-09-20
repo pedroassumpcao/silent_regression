@@ -90,7 +90,7 @@ export function ResultsView({
               <p className="text-sm font-medium text-primary">{monitor.name}</p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Runs, evidence, and actionable alerts</h1>
               <p className="mt-3 text-base leading-7 text-muted-foreground">
-                Inspect explicit outcomes against the pinned baseline. Shared-contract failures, case-specific mismatches, and operational anomalies remain separate throughout the evidence trail.
+                Inspect sampled outcomes against the pinned reviewed reference. Shared-contract failures, case-specific mismatches, and operational anomalies remain separate; a passing run is evidence for its exact executions, not universal model health.
               </p>
             </div>
             <Button asChild variant="outline">
@@ -102,8 +102,8 @@ export function ResultsView({
         {!currentBaseline && (
           <Alert id="results-baseline-missing" variant="destructive">
             <ShieldAlert />
-            <AlertTitle>No current approved baseline</AlertTitle>
-            <AlertDescription>Historical evidence remains visible, but new baseline-relative comparisons must not run until compatibility is restored.</AlertDescription>
+            <AlertTitle>No current approved reviewed reference</AlertTitle>
+            <AlertDescription>Historical evidence remains visible, but new reference-relative operational comparisons must not run until exact provenance compatibility is restored.</AlertDescription>
           </Alert>
         )}
 
@@ -111,7 +111,7 @@ export function ResultsView({
           <Metric label="Monitoring runs" value={runs.length} detail="Latest 25 manual and scheduled runs" />
           <Metric label="Unresolved alerts" value={unresolved.length} detail={critical > 0 ? `${critical} critical` : "No critical alerts"} tone={unresolved.length > 0 ? "warning" : "success"} />
           <Metric label="Latest outcome" value={latest ? latest.status.replaceAll("_", " ") : "No runs"} detail={latest ? formatUtc(latest.completedAt || latest.insertedAt) : "Run the active monitor to begin"} />
-          <Metric label="Pinned baseline" value={currentBaseline ? "Available" : "Unavailable"} detail={currentBaseline ? `${currentBaseline.provider} · ${currentBaseline.requestedModel}` : "Comparisons are blocked"} tone={currentBaseline ? "success" : "danger"} />
+          <Metric label="Pinned reviewed reference" value={currentBaseline ? "Available" : "Unavailable"} detail={currentBaseline ? `${currentBaseline.provider} · ${currentBaseline.requestedModel}` : "Operational comparisons are blocked"} tone={currentBaseline ? "success" : "danger"} />
         </section>
 
         <section aria-labelledby="monitor-alerts-heading" className="space-y-4">

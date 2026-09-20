@@ -311,7 +311,7 @@ describe("RunView", () => {
   it("blocks relative interpretation when provenance differs", () => {
     render(<RunView {...props} flash={{}} result={{ ...props.result, provenance: { ...props.result.provenance, compatible: false, mismatches: ["contract_fingerprint"] } }} />)
 
-    expect(screen.getByText("Baseline provenance does not match this run")).toBeInTheDocument()
+    expect(screen.getByText("Reviewed-reference provenance does not match this run")).toBeInTheDocument()
     expect(screen.getByText(/latency and usage findings were deliberately skipped/i)).toBeInTheDocument()
   })
 })

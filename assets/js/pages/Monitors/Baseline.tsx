@@ -214,22 +214,24 @@ export function BaselineView({
           <div className="max-w-3xl">
             <p className="text-sm font-medium text-primary">{props.monitor.name}</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-              {replacementNeeded ? "Restore a compatible reference" : "Capture the reference you will monitor"}
+              {replacementNeeded ? "Restore a compatible reviewed reference" : "Create a reviewed operating reference"}
             </h1>
             <p className="mt-3 text-base leading-7 text-muted-foreground">
               {replacementNeeded
-                ? "Current contract semantics changed. Preserve the historical evidence, authorize a fresh managed replay, and approve it before monitoring resumes."
-                : "Preview the exact provider-call envelope, authorize the first managed replay, then inspect every output and deterministic judgment before sealing the baseline."}
+                ? "Current contract semantics changed. Preserve the historical evidence, authorize a fresh managed replay, and approve its exact membership before monitoring resumes."
+                : "Preview the provider-call envelope, authorize a managed replay, and inspect every output before sealing its exact provenance as the reviewed reference. This does not estimate a universal output distribution."}
             </p>
           </div>
 
           <WorkflowSteps approved={approved} hasSnapshot={hasSnapshot} polling={props.polling} replacement={replacementNeeded} />
         </header>
 
+        <ReferenceMethod />
+
         {flash.info && (
           <Alert id="baseline-success" className="border-success/25 bg-success/5">
             <CheckCircle2 />
-            <AlertTitle>Baseline updated</AlertTitle>
+            <AlertTitle>Reviewed reference updated</AlertTitle>
             <AlertDescription>{flash.info}</AlertDescription>
           </Alert>
         )}
@@ -237,7 +239,7 @@ export function BaselineView({
         {flash.error && (
           <Alert id="baseline-error" variant="destructive">
             <AlertTriangle />
-            <AlertTitle>Baseline needs attention</AlertTitle>
+            <AlertTitle>Reviewed reference needs attention</AlertTitle>
             <AlertDescription>{flash.error}</AlertDescription>
           </Alert>
         )}
@@ -245,7 +247,7 @@ export function BaselineView({
         {replacementNeeded && (
           <Alert id="replacement-baseline-required" className="border-amber-500/25 bg-amber-500/5">
             <ShieldAlert className="text-amber-600" />
-            <AlertTitle>Replacement baseline required</AlertTitle>
+            <AlertTitle>Replacement reviewed reference required</AlertTitle>
             <AlertDescription>
               The approved reference below remains sealed as historical evidence. It will be superseded only after you capture, inspect, and approve a compatible replacement.
             </AlertDescription>
@@ -298,7 +300,7 @@ function WorkflowSteps({ approved, hasSnapshot, polling, replacement }: { approv
   ]
 
   return (
-    <ol aria-label="Baseline progress" className="grid overflow-hidden rounded-xl border bg-card sm:grid-cols-4">
+    <ol aria-label="Reviewed reference progress" className="grid overflow-hidden rounded-xl border bg-card sm:grid-cols-4">
       {steps.map((step, index) => (
         <li key={step.label} className="flex items-center gap-3 border-b p-4 last:border-b-0 sm:border-r sm:border-b-0 sm:last:border-r-0">
           <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-semibold ${step.complete ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}`}>
@@ -311,6 +313,33 @@ function WorkflowSteps({ approved, hasSnapshot, polling, replacement }: { approv
         </li>
       ))}
     </ol>
+  )
+}
+
+function ReferenceMethod() {
+  const layers = [
+    ["1", "Shared contract", "Configuration-wide deterministic constraints approved before this capture."],
+    ["2", "Case expectations", "Case-specific answer properties evaluated independently from the shared contract."],
+    ["3", "Reviewed reference", "Exact inspected outputs and provider, model, configuration, usage, and latency provenance."],
+    ["4", "Recurring samples", "New evidence for the configured cases at the selected cadence; not universal model health."],
+  ]
+
+  return (
+    <Card id="reviewed-reference-method" className="border-primary/20 bg-primary/5">
+      <CardHeader>
+        <CardTitle className="text-xl">What this reference establishes—and what it does not</CardTitle>
+        <CardDescription className="leading-6">These evidence layers have different jobs. A passing capture or recurring run supports only the exact sampled executions; it does not measure a failure probability or prove all possible outputs are healthy.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {layers.map(([number, title, detail]) => (
+          <div key={number} className="rounded-xl border bg-background/80 p-4">
+            <span className="grid size-7 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{number}</span>
+            <p className="mt-3 text-sm font-medium">{title}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -355,10 +384,10 @@ function PreflightPanel({ authorizationKey, canDecide, contractPath, credentials
       <Card id="baseline-preflight" className={preflight.ready ? "border-primary/25" : ""}>
         <CardHeader>
           <p className="text-sm font-medium text-primary">Step 1 · {replacement ? "replacement preview" : "exact preview"}</p>
-          <CardTitle className="text-2xl">{replacement ? "Capture a reference for the current contract" : "Know the maximum before any completion call"}</CardTitle>
+          <CardTitle className="text-2xl">{replacement ? "Capture a reviewed reference for the current contract" : "Know the reserved maximum before any completion call"}</CardTitle>
           <CardDescription className="leading-6">
             {replacement
-              ? "This exact provider-call envelope creates new evidence. The historical baseline remains approved until you approve its replacement."
+              ? "This exact provider-call envelope creates new evidence. The historical reviewed reference remains sealed until you approve its replacement."
               : "Model-access verification is a provider metadata request. The authorization below is the boundary that permits billable completion calls."}
           </CardDescription>
         </CardHeader>
@@ -366,7 +395,7 @@ function PreflightPanel({ authorizationKey, canDecide, contractPath, credentials
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <Metric icon={FlaskConical} label="Active cases" value={preflight.caseCount} />
             <Metric icon={Gauge} label="Planned calls" value={preflight.plannedCallCount} />
-            <Metric icon={RefreshCw} label="Maximum calls" value={preflight.maximumCallCount} />
+            <Metric icon={RefreshCw} label="Maximum reserved calls" value={preflight.maximumCallCount} />
             <Metric icon={Coins} label="Output-token ceiling" value={formatNumber(preflight.maximumOutputTokens)} />
           </div>
 
@@ -386,7 +415,7 @@ function PreflightPanel({ authorizationKey, canDecide, contractPath, credentials
                 </SelectContent>
               </Select>
               <p className="text-xs leading-5 text-muted-foreground">
-                Private-alpha default: one. Each planned call may retry once after a known retryable failure.
+                Private-alpha default: one. Each planned call may retry once after a known retryable failure. One sample can reveal a violation, but a pass does not establish a failure rate or universal health.
               </p>
             </div>
             <div className="space-y-2 text-sm">
@@ -398,6 +427,12 @@ function PreflightPanel({ authorizationKey, canDecide, contractPath, credentials
               </p>
             </div>
           </div>
+
+          <Alert id="reference-cost-estimate-unavailable">
+            <Coins />
+            <AlertTitle>Currency estimate unavailable</AlertTitle>
+            <AlertDescription>Silent Regression has no versioned provider price and currency snapshot. The reserved maximum controls calls and output-token capacity; actual calls and tokens are reported after capture and may be lower.</AlertDescription>
+          </Alert>
 
           <div>
             <p className="text-sm font-medium">Included cases</p>
@@ -515,7 +550,7 @@ function CaptureSummary({ compatibility, health, polling, snapshot }: {
         {polling && <Badge variant="outline" className="border-primary/25 text-primary"><LoaderCircle className="animate-spin" /> Polling durable state</Badge>}
       </CardHeader>
       <CardContent className="space-y-5">
-        <Progress value={progress} aria-label="Baseline capture progress" />
+        <Progress value={progress} aria-label="Reviewed reference capture progress" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <ProofMetric label="Terminal samples" value={`${terminalCount}/${snapshot.plannedCallCount}`} />
           <ProofMetric label="Actual calls" value={String(health?.actualCallCount ?? snapshot.run.actualCallCount ?? 0)} />
@@ -695,7 +730,7 @@ function ApprovalPanel({ canDecide, compatibility, errors, health, operationsPat
       <Card id="baseline-historical" className="border-amber-500/25 bg-amber-500/5">
         <CardHeader>
           <p className="text-sm font-medium text-amber-700">Historical evidence</p>
-          <CardTitle className="flex items-center gap-2 text-2xl"><ShieldAlert className="size-6" /> Approved baseline retained</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-2xl"><ShieldAlert className="size-6" /> Approved reviewed reference retained</CardTitle>
           <CardDescription className="leading-6">
             {snapshot.memberCount} sealed observation{snapshot.memberCount === 1 ? "" : "s"} remain attributable and auditable. This reference will be superseded only when a compatible replacement is approved.
           </CardDescription>
@@ -709,7 +744,7 @@ function ApprovalPanel({ canDecide, compatibility, errors, health, operationsPat
       <Card id="baseline-approved" className="border-success/25 bg-success/5">
         <CardHeader>
           <p className="text-sm font-medium text-success">Step 4 · sealed</p>
-          <CardTitle className="flex items-center gap-2 text-2xl"><ShieldCheck className="size-6" /> Approved baseline</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-2xl"><ShieldCheck className="size-6" /> Approved reviewed reference</CardTitle>
           <CardDescription className="leading-6">{snapshot.memberCount} exact observation{snapshot.memberCount === 1 ? "" : "s"} sealed {formatDate(snapshot.approvedAt)} with {snapshot.approvalMode} approval.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -743,7 +778,7 @@ function ApprovalPanel({ canDecide, compatibility, errors, health, operationsPat
           <Alert className="border-amber-500/25 bg-amber-500/5">
             <AlertTriangle className="text-amber-600" />
             <AlertTitle>{health.deterministicFailureCount} deterministic failure{health.deterministicFailureCount === 1 ? "" : "s"}</AlertTitle>
-            <AlertDescription>Normal approval is blocked. Exceptional approval is available only when all provider and evaluator evidence is operationally complete.</AlertDescription>
+            <AlertDescription>Normal approval is blocked. Exceptional approval is available only when all provider and evaluator evidence is operationally complete. Recording an exception does not weaken the contract or suppress a later incident.</AlertDescription>
           </Alert>
         ) : null}
 
@@ -751,7 +786,7 @@ function ApprovalPanel({ canDecide, compatibility, errors, health, operationsPat
           <div className="space-y-3 rounded-xl border border-amber-500/25 bg-amber-500/5 p-5">
             <div>
               <Label htmlFor="approval-rationale">Exceptional approval rationale</Label>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Explain why these deterministic failures are acceptable for this initial reference. This note becomes immutable approval evidence.</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Explain why these deterministic failures are acceptable in this exact reference membership. This note becomes immutable approval evidence; later matching failures still create incidents and are flagged as using an exceptional reference.</p>
             </div>
             <Textarea
               id="approval-rationale"
@@ -775,7 +810,7 @@ function ApprovalPanel({ canDecide, compatibility, errors, health, operationsPat
         )}
 
         <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground">{canDecide ? "Your decision is attributable to your account." : "A workspace owner must approve or reject the baseline."}</p>
+          <p className="text-sm text-muted-foreground">{canDecide ? "Your decision is attributable to your account." : "A workspace owner must approve or reject the reviewed reference."}</p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button
               id="reject-baseline"
@@ -790,7 +825,7 @@ function ApprovalPanel({ canDecide, compatibility, errors, health, operationsPat
               disabled={!canDecide || !compatibility.compatible || !health?.normalApprovable || !pending || decisionForm.processing}
               onClick={() => router.post(`${path}/approve`, { baseline: { approval_mode: "normal" } })}
             >
-              <LockKeyhole /> Approve and seal baseline
+              <LockKeyhole /> Approve and seal reviewed reference
             </Button>
           </div>
         </div>
@@ -822,7 +857,7 @@ function StatusBadge({ status }: { status: string }) {
 function BaselineStatusBadge({ compatibility, polling, snapshot }: { compatibility: BaselineProps["compatibility"]; polling: boolean; snapshot: Snapshot | null }) {
   if (!snapshot) return <Badge variant="outline"><CircleDashed /> Not authorized</Badge>
   if (snapshot.status === "approved" && !compatibility.compatible) return <Badge variant="outline" className="border-amber-500/25 text-amber-700"><ShieldAlert /> Replacement required</Badge>
-  if (snapshot.status === "approved") return <Badge variant="outline" className="border-success/25 bg-success/10 text-success"><ShieldCheck /> Approved baseline</Badge>
+  if (snapshot.status === "approved") return <Badge variant="outline" className="border-success/25 bg-success/10 text-success"><ShieldCheck /> Approved reference</Badge>
   if (snapshot.status === "rejected") return <Badge variant="outline" className="border-destructive/25 text-destructive"><XCircle /> Rejected</Badge>
   if (polling) return <Badge variant="outline" className="border-primary/25 text-primary"><Clock3 /> Capturing</Badge>
   return <Badge variant="outline" className="border-amber-500/25 text-amber-700"><ShieldAlert /> Awaiting review</Badge>
@@ -858,7 +893,7 @@ export default function Baseline(props: BaselineProps) {
 
   return (
     <>
-      <Head title={`Baseline · ${props.monitor.name}`} />
+      <Head title={`Reviewed reference · ${props.monitor.name}`} />
       <BaselineView {...props} errors={errors} flash={flash} />
     </>
   )

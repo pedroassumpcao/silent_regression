@@ -14,9 +14,14 @@ defmodule SilentRegressionWeb.BaselineController do
     case Baselines.get_state(conn.assigns.current_scope, monitor_id, %{
            samples_per_case: samples_per_case
          }) do
-      {:ok, state} -> render_baseline(conn, state)
-      {:error, :not_found} -> send_resp(conn, :not_found, "Not found")
-      {:error, _reason} -> baseline_failed(conn, monitor_id, "Baseline state is unavailable.")
+      {:ok, state} ->
+        render_baseline(conn, state)
+
+      {:error, :not_found} ->
+        send_resp(conn, :not_found, "Not found")
+
+      {:error, _reason} ->
+        baseline_failed(conn, monitor_id, "Reviewed reference state is unavailable.")
     end
   end
 
@@ -59,7 +64,7 @@ defmodule SilentRegressionWeb.BaselineController do
          ) do
       {:ok, _snapshot} ->
         conn
-        |> put_flash(:info, "Baseline capture authorized and queued.")
+        |> put_flash(:info, "Reviewed reference capture authorized and queued.")
         |> redirect(to: baseline_path(conn, monitor_id))
 
       {:error, {:preflight_blocked, blockers}} ->
@@ -80,7 +85,7 @@ defmodule SilentRegressionWeb.BaselineController do
         )
 
       {:error, :capture_in_progress} ->
-        baseline_failed(conn, monitor_id, "A baseline capture is already in progress.")
+        baseline_failed(conn, monitor_id, "A reviewed reference capture is already in progress.")
 
       {:error, :workspace_run_limit} ->
         baseline_failed(
@@ -100,7 +105,7 @@ defmodule SilentRegressionWeb.BaselineController do
         baseline_failed(
           conn,
           monitor_id,
-          "This baseline would exceed the workspace per-run provider-call limit."
+          "This reviewed reference capture would exceed the workspace per-run provider-call limit."
         )
 
       {:error, :owner_required} ->
@@ -110,7 +115,11 @@ defmodule SilentRegressionWeb.BaselineController do
         send_resp(conn, :not_found, "Not found")
 
       {:error, _reason} ->
-        baseline_failed(conn, monitor_id, "The baseline capture could not be authorized.")
+        baseline_failed(
+          conn,
+          monitor_id,
+          "The reviewed reference capture could not be authorized."
+        )
     end
   end
 
@@ -127,7 +136,7 @@ defmodule SilentRegressionWeb.BaselineController do
          ) do
       {:ok, _snapshot} ->
         conn
-        |> put_flash(:info, "Baseline approved and sealed with its exact observations.")
+        |> put_flash(:info, "Reviewed reference approved and sealed with its exact observations.")
         |> redirect(to: baseline_path(conn, monitor_id))
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -142,17 +151,17 @@ defmodule SilentRegressionWeb.BaselineController do
         baseline_failed(
           conn,
           monitor_id,
-          "The monitor or contract changed after capture. Authorize a compatible replacement baseline."
+          "The monitor or contract changed after capture. Authorize a compatible replacement reviewed reference."
         )
 
       {:error, :owner_required} ->
-        owner_required(conn, monitor_id, "approve a baseline")
+        owner_required(conn, monitor_id, "approve a reviewed reference")
 
       {:error, :not_found} ->
         send_resp(conn, :not_found, "Not found")
 
       {:error, _reason} ->
-        baseline_failed(conn, monitor_id, "The baseline could not be approved.")
+        baseline_failed(conn, monitor_id, "The reviewed reference could not be approved.")
     end
   end
 
@@ -160,17 +169,17 @@ defmodule SilentRegressionWeb.BaselineController do
     case Baselines.reject(conn.assigns.current_scope, monitor_id) do
       {:ok, _snapshot} ->
         conn
-        |> put_flash(:info, "Pending baseline rejected. Any queued work was cancelled.")
+        |> put_flash(:info, "Pending reviewed reference rejected. Any queued work was cancelled.")
         |> redirect(to: baseline_path(conn, monitor_id))
 
       {:error, :owner_required} ->
-        owner_required(conn, monitor_id, "reject a baseline")
+        owner_required(conn, monitor_id, "reject a reviewed reference")
 
       {:error, :not_found} ->
         send_resp(conn, :not_found, "Not found")
 
       {:error, _reason} ->
-        baseline_failed(conn, monitor_id, "The baseline could not be rejected.")
+        baseline_failed(conn, monitor_id, "The reviewed reference could not be rejected.")
     end
   end
 
@@ -178,7 +187,7 @@ defmodule SilentRegressionWeb.BaselineController do
     health = health_prop(state.health)
 
     conn
-    |> assign(:page_title, "Baseline · #{state.preflight.monitor.name}")
+    |> assign(:page_title, "Reviewed reference · #{state.preflight.monitor.name}")
     |> render_inertia("Monitors/Baseline", %{
       authorization_key: Ecto.UUID.generate(),
       can_decide: conn.assigns.current_scope.membership.role == :owner,
@@ -396,7 +405,7 @@ defmodule SilentRegressionWeb.BaselineController do
           "#{blocker.message}#{suffix}"
 
         [] ->
-          "Resolve the baseline blockers first."
+          "Resolve the reviewed-reference blockers first."
       end
 
     baseline_failed(conn, monitor_id, message)

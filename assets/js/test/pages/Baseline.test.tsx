@@ -156,11 +156,15 @@ describe("BaselineView", () => {
   it("makes the first paid-call boundary and exact maximum visible", () => {
     render(<BaselineView {...baseProps} errors={{}} flash={{}} />)
 
-    expect(screen.getByRole("heading", { level: 1, name: "Capture the reference you will monitor" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { level: 1, name: "Create a reviewed operating reference" })).toBeInTheDocument()
     expect(screen.getByText("Planned calls")).toBeInTheDocument()
+    expect(screen.getByText("Maximum reserved calls")).toBeInTheDocument()
     expect(screen.getByText("Output-token ceiling")).toBeInTheDocument()
     expect(screen.getByText("512")).toBeInTheDocument()
     expect(screen.getByText("Exact model access verified")).toBeInTheDocument()
+    expect(screen.getByText("Currency estimate unavailable")).toBeInTheDocument()
+    expect(screen.getByText(/does not measure a failure probability/i)).toBeInTheDocument()
+    expect(screen.getByText(/not universal model health/i)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Authorize up to 2 calls" })).toBeEnabled()
     expect(screen.getByText(/does not approve the resulting outputs/i)).toBeInTheDocument()
   })
@@ -197,7 +201,7 @@ describe("BaselineView", () => {
     expect(screen.getByText("allowed_label")).toBeInTheDocument()
     expect(screen.getByText("The normalized output matches an allowed label.")).toBeInTheDocument()
     expect(screen.getByText("10 in · 1 out")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Approve and seal baseline" })).toBeEnabled()
+    expect(screen.getByRole("button", { name: "Approve and seal reviewed reference" })).toBeEnabled()
   })
 
   it("shows case-specific evidence separately from a passing shared contract", () => {
@@ -244,7 +248,7 @@ describe("BaselineView", () => {
       />,
     )
 
-    expect(screen.getByText("Shared contract")).toBeInTheDocument()
+    expect(screen.getAllByText("Shared contract").length).toBeGreaterThan(0)
     expect(screen.getByText("Case-specific expectation")).toBeInTheDocument()
     expect(screen.getByText("The case-specific label did not match.")).toBeInTheDocument()
   })
@@ -272,7 +276,7 @@ describe("BaselineView", () => {
 
     expect(screen.getByText("Returned-model mismatch")).toBeInTheDocument()
     expect(screen.getByText(/operational evidence blocks approval/i)).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Approve and seal baseline" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Approve and seal reviewed reference" })).toBeDisabled()
     expect(screen.queryByRole("button", { name: "Approve with recorded exception" })).not.toBeInTheDocument()
   })
 
@@ -349,7 +353,8 @@ describe("BaselineView", () => {
     expect(screen.getByLabelText("Exceptional approval rationale")).toBeInTheDocument()
     expect(screen.getByText("should be at least 20 character(s)")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Approve with recorded exception" })).toBeEnabled()
-    expect(screen.getByRole("button", { name: "Approve and seal baseline" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Approve and seal reviewed reference" })).toBeDisabled()
+    expect(screen.getByText(/later matching failures still create incidents/i)).toBeInTheDocument()
   })
 
   it("continues an approved baseline into monitor operations", () => {
@@ -395,10 +400,10 @@ describe("BaselineView", () => {
       />,
     )
 
-    expect(screen.getByRole("heading", { level: 1, name: "Restore a compatible reference" })).toBeInTheDocument()
-    expect(screen.getByText("Replacement baseline required")).toBeInTheDocument()
+    expect(screen.getByRole("heading", { level: 1, name: "Restore a compatible reviewed reference" })).toBeInTheDocument()
+    expect(screen.getByText("Replacement reviewed reference required")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Authorize replacement up to 2 calls" })).toBeEnabled()
-    expect(screen.getByText(/historical baseline remains approved until you approve its replacement/i)).toBeInTheDocument()
+    expect(screen.getByText(/historical reviewed reference remains sealed until you approve its replacement/i)).toBeInTheDocument()
     expect(screen.getByText(/will be superseded only when a compatible replacement is approved/i)).toBeInTheDocument()
     expect(screen.queryByRole("link", { name: /continue to operations/i })).not.toBeInTheDocument()
   })

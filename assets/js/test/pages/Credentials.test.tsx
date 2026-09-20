@@ -97,7 +97,7 @@ describe("CredentialsView", () => {
 
     expect(screen.getByText("Review replacement impact")).toBeInTheDocument()
     expect(screen.getByText("Billing classifier")).toBeInTheDocument()
-    expect(screen.getByText("New baseline required")).toBeInTheDocument()
+    expect(screen.getByText("New reviewed reference required")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Activate" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Rotate" })).not.toBeInTheDocument()
   })

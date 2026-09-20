@@ -575,7 +575,7 @@ function ActivateReplacementDialog({
             <p className="font-medium">Reviewed-reference consequence</p>
             <p className="mt-1 text-muted-foreground">
               {replacementReferences > 0
-                ? `${replacementReferences} ${replacementReferences === 1 ? "monitor" : "monitors"} will pause until an owner captures and approves a replacement baseline.`
+                ? `${replacementReferences} ${replacementReferences === 1 ? "monitor" : "monitors"} will pause until an owner captures and approves a replacement reviewed reference.`
                 : "No approved monitor reference needs replacement."}
             </p>
           </div>
@@ -611,12 +611,12 @@ function CredentialRecoveryPanel({
         <ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-600" />
         <div className="min-w-0 flex-1">
           <p className="font-medium">
-            {pending ? "Review replacement impact" : "Replacement baseline required"}
+            {pending ? "Review replacement impact" : "Replacement reviewed reference required"}
           </p>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             {pending
               ? "The predecessor remains attached. Activation validates every model below and changes only future execution references; historical runs keep their original credential identity."
-              : "The credential cutover is complete. Monitoring stays paused until the reviewed reference is replaced through the normal baseline flow."}
+              : "The credential cutover is complete. Monitoring stays paused until a replacement reviewed reference is captured, inspected, and approved."}
           </p>
 
           {monitors.length === 0 ? (
@@ -638,7 +638,7 @@ function CredentialRecoveryPanel({
                   </div>
                   {monitor.referenceReplacementRequired && (
                     <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
-                      <span className="text-xs text-amber-700">New baseline required</span>
+                      <span className="text-xs text-amber-700">New reviewed reference required</span>
                       {!pending && (
                         <Button asChild size="sm" variant="outline">
                           <Link href={`/app/${workspaceSlug}/monitors/${monitor.id}/baseline`}>

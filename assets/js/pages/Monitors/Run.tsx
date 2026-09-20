@@ -74,7 +74,7 @@ const classifications: Array<{ value: ReviewClassification; label: string; descr
   { value: "confirmed_regression", label: "Confirmed regression", description: "The alert identifies a real output regression." },
   { value: "acceptable_variation", label: "Acceptable variation / false alert", description: "The output is acceptable; the alert is too strict." },
   { value: "contract_needs_revision", label: "Contract needs revision", description: "The rules do not express the intended requirement." },
-  { value: "test_case_or_baseline_problem", label: "Test case or baseline problem", description: "The comparison evidence needs correction." },
+  { value: "test_case_or_baseline_problem", label: "Test case or reviewed reference problem", description: "The case or pinned comparison evidence needs correction." },
   { value: "passed_but_should_have_failed", label: "Passed but should have failed", description: "A missed regression was not caught by the contract." },
   { value: "unsure", label: "Unsure / requires review", description: "More domain judgment is required." },
   { value: "operational_anomaly", label: "Operational / provider anomaly", description: "This concerns execution, not output quality." },
@@ -220,9 +220,9 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
         {!result.provenance.compatible && (
           <Alert id="provenance-mismatch" variant="destructive">
             <Fingerprint />
-            <AlertTitle>Baseline provenance does not match this run</AlertTitle>
+            <AlertTitle>Reviewed-reference provenance does not match this run</AlertTitle>
             <AlertDescription>
-              Baseline-relative latency and usage findings were deliberately skipped. Mismatches: {result.provenance.mismatches.map(label).join(", ") || "baseline unavailable"}.
+              Reference-relative latency and usage findings were deliberately skipped. Mismatches: {result.provenance.mismatches.map(label).join(", ") || "reviewed reference unavailable"}.
             </AlertDescription>
           </Alert>
         )}
@@ -332,7 +332,7 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
         </section>
 
         <div className="rounded-2xl border bg-muted/20 p-4 text-xs leading-6 text-muted-foreground">
-          Alert policy: latency requires more than {result.alertPolicy.latencyMultiplier}× baseline and +{formatNumber(result.alertPolicy.latencyMinimumDeltaMs)} ms; usage requires more than {result.alertPolicy.usageMultiplier}× baseline and +{formatNumber(result.alertPolicy.usageMinimumDeltaTokens)} tokens. Thresholds are shown for auditability, not presented as a composite score.
+          Operational alert policy: latency requires more than {result.alertPolicy.latencyMultiplier}× the reviewed-reference maximum and +{formatNumber(result.alertPolicy.latencyMinimumDeltaMs)} ms; usage requires more than {result.alertPolicy.usageMultiplier}× the reviewed-reference maximum and +{formatNumber(result.alertPolicy.usageMinimumDeltaTokens)} tokens. These sampled thresholds are audit evidence, not a composite score or proof that failure probability increased.
         </div>
       </div>
 
@@ -385,11 +385,11 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
 function ProvenanceCard({ baseline, current, compatible, mismatches }: { baseline: Provenance | null; current: Provenance; compatible: boolean; mismatches: string[] }) {
   return (
     <Card id="run-provenance" className={compatible ? "border-success/20" : "border-destructive/30"}>
-      <CardHeader><CardTitle className="flex items-center gap-2"><Fingerprint className="size-5 text-primary" /> Baseline provenance</CardTitle><CardDescription>{compatible ? "The pinned baseline and this run share every comparison-critical identity." : "Comparison-critical identity differs; relative alert policies were skipped."}</CardDescription></CardHeader>
+      <CardHeader><CardTitle className="flex items-center gap-2"><Fingerprint className="size-5 text-primary" /> Reviewed-reference provenance</CardTitle><CardDescription>{compatible ? "The pinned reviewed reference and this run share every comparison-critical identity." : "Comparison-critical identity differs; relative operational alert policies were skipped."}</CardDescription></CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">{compatible ? <Badge variant="outline" className="border-success/30 text-success">Compatible</Badge> : mismatches.map(value => <Badge key={value} variant="destructive">{label(value)}</Badge>)}</div>
         <div className="grid gap-4 lg:grid-cols-2">
-          <ProvenanceColumn title="Pinned baseline" value={baseline} />
+          <ProvenanceColumn title="Pinned reviewed reference" value={baseline} />
           <ProvenanceColumn title="Current run" value={current} />
         </div>
       </CardContent>

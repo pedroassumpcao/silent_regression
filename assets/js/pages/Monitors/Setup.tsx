@@ -1121,7 +1121,7 @@ function ReviewStep({
             <AlertDescription className="space-y-2">
               <p><strong>Setup and completion:</strong> 0 provider calls.</p>
               <p>
-                A future single-sample capture would make {activeCaseCount} provider call{activeCaseCount === 1 ? "" : "s"}: one per active case. Baseline sample count and the exact capped total will be shown before execution in a later task.
+                A one-sample reviewed reference would plan {activeCaseCount} provider call{activeCaseCount === 1 ? "" : "s"}: one per active case. Its capture page shows the selected sample count, maximum reserved calls including retries, and unavailable currency estimate before execution.
               </p>
             </AlertDescription>
           </Alert>

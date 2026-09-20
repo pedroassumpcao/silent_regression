@@ -167,8 +167,8 @@ describe("DashboardView", () => {
       />,
     )
 
-    expect(screen.getByText("Baseline capture and approval")).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: /review baseline/i })).toHaveAttribute(
+    expect(screen.getByText("Reviewed reference capture and approval")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /review reference/i })).toHaveAttribute(
       "href",
       "/app/acme-ai/monitors/monitor-id/baseline",
     )

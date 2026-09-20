@@ -223,7 +223,7 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
     operation_failed(
       conn,
       monitor_id,
-      "Approve a compatible baseline before activating monitoring."
+      "Approve a compatible reviewed reference before activating monitoring."
     )
   end
 
@@ -231,7 +231,7 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
     operation_failed(
       conn,
       monitor_id,
-      "The approved baseline no longer matches the active behavior. Capture a compatible replacement."
+      "The approved reviewed reference no longer matches the active behavior. Capture a compatible replacement."
     )
   end
 

@@ -123,7 +123,7 @@ defmodule SilentRegressionWeb.ProviderCredentialController do
         conn
         |> put_flash(
           :error,
-          "Finish or reject the affected in-progress run or baseline capture before activating this replacement."
+          "Finish or reject the affected in-progress run or reviewed reference capture before activating this replacement."
         )
         |> redirect(to: credentials_path(conn))
 
@@ -180,7 +180,7 @@ defmodule SilentRegressionWeb.ProviderCredentialController do
 
     if result.reference_replacement_count > 0 do
       base <>
-        " #{result.reference_replacement_count} #{pluralize(result.reference_replacement_count, "monitor requires", "monitors require")} a replacement baseline before monitoring resumes."
+        " #{result.reference_replacement_count} #{pluralize(result.reference_replacement_count, "monitor requires", "monitors require")} a replacement reviewed reference before monitoring resumes."
     else
       base
     end

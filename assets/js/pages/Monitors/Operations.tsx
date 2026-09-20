@@ -261,9 +261,9 @@ export function OperationsView({
         {!approvedBaseline && (
           <Alert id="operations-baseline-required" variant="destructive">
             <ShieldCheck />
-            <AlertTitle>A compatible approved baseline is required</AlertTitle>
+            <AlertTitle>A compatible approved reviewed reference is required</AlertTitle>
             <AlertDescription>
-              The behavior changed or approval is incomplete. <Link className="font-medium underline underline-offset-4" href={baselinePath}>Review the baseline</Link> before authorizing runs.
+              The behavior changed or approval is incomplete. <Link className="font-medium underline underline-offset-4" href={baselinePath}>Review the pinned reference</Link> before authorizing runs.
             </AlertDescription>
           </Alert>
         )}
@@ -487,7 +487,7 @@ export function OperationsView({
               <CardContent className="space-y-5">
                 <div className="grid grid-cols-2 gap-3">
                   <SpendMetric label="Active cases" value={spend.caseCount} />
-                  <SpendMetric label="Maximum calls" value={spend.maximumCallCount} />
+                  <SpendMetric label="Maximum reserved calls" value={spend.maximumCallCount} />
                 </div>
                 <Dialog open={runDialogOpen} onOpenChange={setRunDialogOpen}>
                   <DialogTrigger asChild>
@@ -499,18 +499,19 @@ export function OperationsView({
                     <DialogHeader>
                       <DialogTitle>Authorize this bounded provider run?</DialogTitle>
                       <DialogDescription>
-                        Silent Regression will enqueue {spend.caseCount} case{spend.caseCount === 1 ? "" : "s"} against {monitor.requestedModel}. Retries cannot exceed the displayed ceiling.
+                        Silent Regression will enqueue {spend.caseCount} case{spend.caseCount === 1 ? "" : "s"} against {monitor.requestedModel}. The reserved ceiling includes bounded retries; actual provider calls are recorded after execution and may be lower.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-3 py-2">
                       <SpendMetric label="Planned calls" value={spend.caseCount} />
-                      <SpendMetric label="Absolute maximum" value={spend.maximumCallCount} />
+                      <SpendMetric label="Maximum reserved calls" value={spend.maximumCallCount} />
                     </div>
                     <Alert>
                       <Gauge />
                       <AlertTitle>Workspace guardrail</AlertTitle>
-                      <AlertDescription>{spend.workspaceRemainingRunsToday} of {spend.workspaceRunLimit} runs and {spend.workspaceRemainingCallsToday} of {spend.workspaceCallLimit} calls remain in today&apos;s UTC envelope.</AlertDescription>
+                    <AlertDescription>{spend.workspaceRemainingRunsToday} of {spend.workspaceRunLimit} runs and {spend.workspaceRemainingCallsToday} of {spend.workspaceCallLimit} calls remain in today&apos;s UTC envelope.</AlertDescription>
                     </Alert>
+                    <p className="text-xs leading-5 text-muted-foreground">Currency estimate unavailable: this product has no versioned provider price/currency snapshot. The reserved maximum includes retry capacity; actual calls and tokens appear in run evidence and may be lower.</p>
                     <DialogFooter>
                       <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
                       <Button id="confirm-run-now" disabled={processing !== null} onClick={runNow}>
@@ -528,10 +529,10 @@ export function OperationsView({
             <Card id="workspace-guardrail-card">
               <CardHeader>
                 <CardTitle className="text-lg">Today&apos;s workspace envelope</CardTitle>
-                <CardDescription>Conservative maximum calls committed in UTC, including retry capacity.</CardDescription>
+                <CardDescription>Maximum reserved calls committed in UTC, including retry capacity—not actual provider usage.</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="mb-2 flex items-center justify-between text-sm"><span>{spend.workspaceCommittedCallsToday} calls committed</span><span className="text-muted-foreground">{spend.workspaceCallLimit} limit</span></div>
+                <div className="mb-2 flex items-center justify-between text-sm"><span>{spend.workspaceCommittedCallsToday} calls reserved</span><span className="text-muted-foreground">{spend.workspaceCallLimit} limit</span></div>
                 <Progress value={Math.min((spend.workspaceCommittedCallsToday / spend.workspaceCallLimit) * 100, 100)} aria-label="Workspace provider-call envelope" />
                 <div className="mt-4 flex items-center justify-between border-t pt-4 text-sm"><span>{spend.workspaceRunsToday} runs authorized</span><span className="text-muted-foreground">{spend.workspaceRunLimit} limit</span></div>
                 <Progress value={Math.min((spend.workspaceRunsToday / spend.workspaceRunLimit) * 100, 100)} aria-label="Workspace authorized-run envelope" className="mt-2" />
@@ -553,13 +554,13 @@ export function OperationsView({
                 <RunFact label="Status" value={statusLabel(lastRun.status)} />
                 <RunFact label="Started" value={formatUtc(lastRun.startedAt || lastRun.insertedAt)} />
                 <RunFact label="Completed" value={formatUtc(lastRun.completedAt)} />
-                <RunFact label="Call envelope" value={`${lastRun.plannedCallCount} planned · ${lastRun.maximumCallCount} max`} />
+                <RunFact label="Call authorization" value={`${lastRun.plannedCallCount} planned · ${lastRun.maximumCallCount} reserved max`} />
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed bg-muted/20 px-6 py-8 text-center">
                 <Clock3 className="mx-auto size-6 text-muted-foreground" />
                 <p className="mt-3 font-medium">No manual or scheduled run yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">Your approved baseline remains the reference; it is not counted as a monitoring run.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Your approved reviewed reference is tracked separately; it is not counted as a monitoring run.</p>
               </div>
             )}
           </CardContent>
@@ -607,7 +608,7 @@ function pauseReason(reason: string | null) {
   return ({
     owner_paused: "Paused by a workspace owner.",
     credential_unavailable: "The exact provider credential is unavailable.",
-    incompatible_configuration: "The active behavior no longer matches its baseline.",
+    incompatible_configuration: "The active behavior no longer matches its reviewed reference.",
     repeated_authentication_failures: "The provider rejected two consecutive runs.",
     workspace_call_limit: "Today’s workspace call envelope is exhausted.",
     workspace_run_limit: "Today’s workspace run envelope is exhausted.",

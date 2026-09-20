@@ -162,7 +162,7 @@ function ActivationCard({ activation }: { activation: ActivationChecklist }) {
           </CardTitle>
           <CardDescription className="mt-2 max-w-2xl leading-6">
             This checklist is derived from durable workspace evidence. It updates automatically if
-            a credential is revoked, a baseline becomes incompatible, or monitoring is paused.
+            a credential is revoked, a reviewed reference becomes incompatible, or monitoring is paused.
           </CardDescription>
         </div>
         <div className="min-w-40">
@@ -275,8 +275,8 @@ function MonitorCard({ monitor, workspaceSlug }: { monitor: MonitorSummary; work
     ? `/app/${workspaceSlug}/monitors/${monitor.id}/${operational ? "operations" : baselinePending ? "baseline" : "contract"}`
     : `/app/${workspaceSlug}/monitors/${monitor.id}/setup`
   const operationalLabel = monitor.state === "active" ? "Active monitoring" : monitor.state === "paused" ? "Monitoring paused" : "Ready to activate"
-  const completeDetail = operational ? operationalLabel : baselinePending ? "Baseline capture and approval" : "Ready for contract authoring"
-  const completeAction = operational ? monitor.state === "baseline_pending" ? "Activate monitor" : "Manage monitor" : baselinePending ? "Review baseline" : "Define contract"
+  const completeDetail = operational ? operationalLabel : baselinePending ? "Reviewed reference capture and approval" : "Ready for contract authoring"
+  const completeAction = operational ? monitor.state === "baseline_pending" ? "Activate monitor" : "Manage monitor" : baselinePending ? "Review reference" : "Define contract"
 
   return (
     <Card id={`monitor-${monitor.id}`} className="group transition-shadow hover:shadow-md">
