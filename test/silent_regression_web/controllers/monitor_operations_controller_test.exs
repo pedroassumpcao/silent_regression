@@ -53,6 +53,8 @@ defmodule SilentRegressionWeb.MonitorOperationsControllerTest do
     assert inertia_component(page) == "Monitors/Operations"
     assert inertia_props(page).approvedBaseline
     assert inertia_props(page).canManage
+    assert inertia_props(page).coverage.status == :manual
+    refute inertia_props(page).coverage.overdue
     assert inertia_props(page).monitor.state == :baseline_pending
     assert inertia_props(page).spend.maximumCallCount == 2
     assert inertia_props(page).spend.perRunCallLimit == 200

@@ -229,7 +229,7 @@ defmodule SilentRegression.Captures do
 
   defp normalize_plan(_attrs, _case_count), do: {:error, :capture_not_ready}
 
-  defp normalize_plan(:authentication_probe, identity_key, _attrs, _case_count) do
+  defp normalize_plan(:authentication_probe, identity_key, attrs, _case_count) do
     {:ok,
      %{
        identity_key: identity_key,
@@ -237,7 +237,8 @@ defmodule SilentRegression.Captures do
        samples_per_case: 1,
        retry_limit: 0,
        planned_call_count: 1,
-       maximum_call_count: 1
+       maximum_call_count: 1,
+       capacity_at: capacity_at(attrs)
      }}
   end
 
@@ -266,7 +267,8 @@ defmodule SilentRegression.Captures do
            samples_per_case: samples_per_case,
            retry_limit: retry_limit,
            planned_call_count: planned_call_count,
-           maximum_call_count: maximum_call_count
+           maximum_call_count: maximum_call_count,
+           capacity_at: capacity_at(attrs)
          }}
       end
     end
@@ -293,7 +295,8 @@ defmodule SilentRegression.Captures do
         with :ok <-
                PilotPolicies.authorize_new_run(
                  resources.workspace_id,
-                 plan.maximum_call_count
+                 plan.maximum_call_count,
+                 plan.capacity_at
                ) do
           case active_run_for_monitor(resources.monitor.id) do
             nil -> insert_run(resources, user, plan)
@@ -380,6 +383,13 @@ defmodule SilentRegression.Captures do
       run.retry_limit == plan.retry_limit and
       run.planned_call_count == plan.planned_call_count and
       run.maximum_call_count == plan.maximum_call_count
+  end
+
+  defp capacity_at(attrs) do
+    case value(attrs, :capacity_at) do
+      %DateTime{} = at -> DateTime.truncate(at, :second)
+      _at -> DateTime.utc_now()
+    end
   end
 
   defp attach_baseline_snapshot(_scope, _monitor_id, resources, %{kind: :baseline}) do

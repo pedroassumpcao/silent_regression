@@ -131,6 +131,7 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
       approved_baseline: state.approved_baseline?,
       authentication_recovery: authentication_recovery_prop(state.authentication_recovery),
       can_manage: state.can_manage?,
+      coverage: coverage_prop(state.coverage),
       last_run: run_prop(state.last_run),
       monitor: %{
         id: monitor.id,
@@ -194,6 +195,19 @@ defmodule SilentRegressionWeb.MonitorOperationsController do
       validation_call_count: recovery.validation_call_count,
       maximum_call_count: recovery.maximum_call_count,
       retry_limit: recovery.retry_limit
+    }
+  end
+
+  defp coverage_prop(coverage) do
+    %{
+      status: coverage.status,
+      capacity_reason: coverage.capacity_reason,
+      retry_at: coverage.retry_at,
+      intended_at: coverage.intended_at,
+      interrupted_at: coverage.interrupted_at,
+      last_successful_at: coverage.last_successful_at,
+      overdue: coverage.overdue?,
+      overdue_since: coverage.overdue_since
     }
   end
 

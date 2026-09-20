@@ -7,8 +7,9 @@ defmodule SilentRegression.Notifications do
 
   alias SilentRegression.Accounts.{Scope, User}
   alias SilentRegression.Mailer
-  alias SilentRegression.Notifications.{AlertEmail, Delivery, Preference}
-  alias SilentRegression.Notifications.Workers.AlertEmailWorker
+  alias SilentRegression.Monitors.Monitor
+  alias SilentRegression.Notifications.{AlertEmail, CoverageEmail, Delivery, Preference}
+  alias SilentRegression.Notifications.Workers.{AlertEmailWorker, CoverageEmailWorker}
   alias SilentRegression.Repo
   alias SilentRegression.RunResults.Alert
   alias SilentRegression.Workspaces.{Membership, Workspace}
@@ -118,6 +119,85 @@ defmodule SilentRegression.Notifications do
     _error -> {:error, :delivery_exception}
   end
 
+  @doc false
+  def prepare_capacity_wait!(
+        %Monitor{} = monitor,
+        reason,
+        %DateTime{} = intended_at,
+        %DateTime{} = retry_at
+      ) do
+    now = DateTime.utc_now()
+    intended_at = DateTime.truncate(intended_at, :second)
+    retry_at = DateTime.truncate(retry_at, :second)
+    deduplication_key = capacity_wait_deduplication_key(monitor.id, reason, intended_at)
+
+    entries =
+      monitor.workspace_id
+      |> eligible_owner_recipient_ids()
+      |> Enum.map(fn user_id ->
+        %{
+          id: Ecto.UUID.generate(),
+          kind: :coverage_interrupted,
+          channel: :email,
+          status: :pending,
+          attempts: 0,
+          workspace_id: monitor.workspace_id,
+          monitor_id: monitor.id,
+          recipient_user_id: user_id,
+          deduplication_key: deduplication_key,
+          coverage_reason: reason,
+          coverage_retry_at: retry_at,
+          coverage_intended_at: intended_at,
+          inserted_at: now,
+          updated_at: now
+        }
+      end)
+
+    {_count, inserted} =
+      Repo.insert_all(Delivery, entries,
+        on_conflict: :nothing,
+        returning: [:id]
+      )
+
+    Enum.each(inserted || [], fn %{id: delivery_id} ->
+      %{"delivery_id" => delivery_id}
+      |> CoverageEmailWorker.new()
+      |> Oban.insert!()
+    end)
+
+    :ok
+  end
+
+  @doc false
+  def deliver_coverage_email(delivery_id) do
+    with {:ok, delivery_id} <- Ecto.UUID.cast(delivery_id),
+         {:ok, delivery} <- claim_delivery(delivery_id) do
+      case delivery do
+        %Delivery{status: status} when status in [:sent, :skipped] ->
+          :ok
+
+        %Delivery{} ->
+          email =
+            CoverageEmail.build(
+              delivery,
+              delivery.monitor,
+              delivery.recipient_user,
+              delivery.workspace.slug
+            )
+
+          case Mailer.deliver(email) do
+            {:ok, _metadata} -> complete_delivery(delivery.id, :sent)
+            {:error, _reason} -> complete_delivery(delivery.id, :failed)
+          end
+      end
+    else
+      :error -> {:discard, :invalid_delivery_id}
+      {:error, :not_found} -> {:discard, :delivery_not_found}
+    end
+  rescue
+    _error -> {:error, :delivery_exception}
+  end
+
   def list_deliveries(%Scope{
         workspace: %Workspace{id: workspace_id},
         membership: %Membership{}
@@ -147,6 +227,23 @@ defmodule SilentRegression.Notifications do
     |> Repo.all()
   end
 
+  defp eligible_owner_recipient_ids(workspace_id) do
+    Membership
+    |> join(:inner, [membership], user in assoc(membership, :user))
+    |> join(:left, [membership, _user], preference in Preference,
+      on:
+        preference.workspace_id == membership.workspace_id and
+          preference.user_id == membership.user_id
+    )
+    |> where(
+      [membership, _user, preference],
+      membership.workspace_id == ^workspace_id and membership.role == :owner and
+        (is_nil(preference.id) or preference.actionable_alert_email_enabled)
+    )
+    |> select([_membership, user, _preference], user.id)
+    |> Repo.all()
+  end
+
   defp claim_delivery(delivery_id) do
     Repo.transaction(fn ->
       case locked_delivery(delivery_id) do
@@ -162,13 +259,13 @@ defmodule SilentRegression.Notifications do
               delivery
               |> Delivery.attempt_changeset(DateTime.utc_now())
               |> Repo.update!()
-              |> Repo.preload([:recipient_user, result_alert: [:monitor, :workspace]])
+              |> preload_delivery()
 
             {:skip, reason} ->
               delivery
               |> Delivery.skipped_changeset(reason)
               |> Repo.update!()
-              |> tap(&refresh_alert_notification_state!(&1.result_alert_id))
+              |> tap(&refresh_alert_notification_state_if_present!/1)
           end
       end
     end)
@@ -176,12 +273,10 @@ defmodule SilentRegression.Notifications do
   end
 
   defp delivery_eligibility(delivery) do
-    member? =
-      Repo.exists?(
-        from membership in Membership,
-          where:
-            membership.workspace_id == ^delivery.workspace_id and
-              membership.user_id == ^delivery.recipient_user_id
+    membership =
+      Repo.get_by(Membership,
+        workspace_id: delivery.workspace_id,
+        user_id: delivery.recipient_user_id
       )
 
     preference =
@@ -191,9 +286,17 @@ defmodule SilentRegression.Notifications do
       )
 
     cond do
-      not member? -> {:skip, :recipient_unavailable}
-      preference && not preference.actionable_alert_email_enabled -> {:skip, :preference_disabled}
-      true -> :eligible
+      is_nil(membership) ->
+        {:skip, :recipient_unavailable}
+
+      delivery.kind == :coverage_interrupted and membership.role != :owner ->
+        {:skip, :recipient_unavailable}
+
+      preference && not preference.actionable_alert_email_enabled ->
+        {:skip, :preference_disabled}
+
+      true ->
+        :eligible
     end
   end
 
@@ -216,7 +319,7 @@ defmodule SilentRegression.Notifications do
 
             changeset
             |> Repo.update!()
-            |> tap(&refresh_alert_notification_state!(&1.result_alert_id))
+            |> tap(&refresh_alert_notification_state_if_present!/1)
         end
       end)
 
@@ -232,6 +335,20 @@ defmodule SilentRegression.Notifications do
     |> where([delivery], delivery.id == ^delivery_id)
     |> lock("FOR UPDATE")
     |> Repo.one()
+  end
+
+  defp preload_delivery(%Delivery{kind: :actionable_alert} = delivery) do
+    Repo.preload(delivery, [:recipient_user, result_alert: [:monitor, :workspace]])
+  end
+
+  defp preload_delivery(%Delivery{kind: :coverage_interrupted} = delivery) do
+    Repo.preload(delivery, [:recipient_user, :workspace, :monitor])
+  end
+
+  defp refresh_alert_notification_state_if_present!(%Delivery{result_alert_id: nil}), do: :ok
+
+  defp refresh_alert_notification_state_if_present!(%Delivery{result_alert_id: alert_id}) do
+    refresh_alert_notification_state!(alert_id)
   end
 
   defp refresh_alert_notification_state!(alert_id) do
@@ -260,4 +377,8 @@ defmodule SilentRegression.Notifications do
 
   defp unwrap_transaction({:ok, value}), do: {:ok, value}
   defp unwrap_transaction({:error, reason}), do: {:error, reason}
+
+  defp capacity_wait_deduplication_key(monitor_id, reason, intended_at) do
+    "capacity-wait:#{monitor_id}:#{reason}:#{DateTime.to_unix(intended_at, :microsecond)}"
+  end
 end

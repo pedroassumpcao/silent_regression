@@ -273,28 +273,116 @@ defmodule SilentRegression.MonitorOperationsTest do
       assert monitor.pause_reason == :repeated_authentication_failures
     end
 
-    test "the workspace call envelope auto-pauses before another bounded run", %{
+    test "daily run exhaustion waits until UTC reset and retries the original slot", %{
       fixture: fixture,
       scope: scope
     } do
+      activated_at = ~U[2026-09-19 12:00:00Z]
+      due_at = ~U[2026-09-20 12:00:00Z]
+      retry_at = ~U[2026-09-21 00:00:00Z]
+
       PilotPolicies.update_limits!(scope.workspace.id, %{
-        daily_run_limit: 20,
-        daily_call_limit: 4,
+        daily_run_limit: 2,
+        daily_call_limit: 20,
         per_run_call_limit: 4
       })
 
       assert {:ok, _monitor} =
-               MonitorOperations.configure(scope, fixture.monitor.id, %{cadence: :manual})
+               MonitorOperations.configure(scope, fixture.monitor.id, %{cadence: :daily},
+                 at: activated_at
+               )
 
-      assert {:ok, run} = MonitorOperations.run_now(scope, fixture.monitor.id)
+      assert {:ok, run} =
+               MonitorOperations.run_now(scope, fixture.monitor.id,
+                 at: DateTime.add(due_at, -60, :second)
+               )
+
       assert [job] = jobs_for_run(run.id)
       assert :ok = perform_job(ObservationWorker, job.args)
 
-      assert {:ok, %{paused: 1}} = MonitorOperations.sweep_ineligible()
+      assert {:ok, %{eligible: 1, paused: 0}} =
+               MonitorOperations.sweep_ineligible(DateTime.add(due_at, -30, :second))
+
+      assert {:ok, %{waiting: 1, paused: 0, scheduled: 0}} =
+               MonitorOperations.dispatch_due(due_at)
 
       monitor = Repo.get!(Monitor, fixture.monitor.id)
-      assert monitor.state == :paused
-      assert monitor.pause_reason == :workspace_call_limit
+      assert monitor.state == :active
+      assert monitor.pause_reason == nil
+      assert monitor.capacity_wait_reason == :workspace_run_limit
+      assert monitor.capacity_intended_at == due_at
+      assert monitor.capacity_retry_at == retry_at
+      assert monitor.next_run_at == retry_at
+      assert monitor.coverage_interrupted_at == due_at
+
+      assert {:ok, state} = MonitorOperations.get_state(scope, fixture.monitor.id)
+      assert state.coverage.status == :waiting_capacity
+      assert state.coverage.capacity_reason == :workspace_run_limit
+      assert state.coverage.retry_at == retry_at
+      assert state.coverage.intended_at == due_at
+      assert state.coverage.overdue?
+      assert state.coverage.last_successful_at
+
+      assert {:ok, %{scheduled: 1, waiting: 0}} =
+               MonitorOperations.dispatch_due(retry_at)
+
+      recovered = Repo.get!(Monitor, fixture.monitor.id)
+      assert recovered.state == :active
+      assert recovered.capacity_wait_reason == nil
+      assert recovered.capacity_retry_at == nil
+      assert recovered.capacity_intended_at == nil
+      assert recovered.coverage_interrupted_at == nil
+      assert recovered.last_scheduled_at == due_at
+      assert recovered.next_run_at == ~U[2026-09-21 12:00:00Z]
+
+      scheduled =
+        Repo.one!(
+          from scheduled in CaptureRun,
+            where: scheduled.monitor_id == ^fixture.monitor.id and scheduled.kind == :scheduled
+        )
+
+      assert scheduled.identity_key ==
+               "scheduled:#{fixture.monitor.id}:2026-09-20T12:00:00Z"
+
+      events = Audit.list_workspace_events(scope)
+      assert Enum.any?(events, &(&1.action == "monitor.capacity_wait_started"))
+      assert Enum.any?(events, &(&1.action == "monitor.capacity_wait_recovered"))
+    end
+
+    test "daily call exhaustion is labeled accurately and per-run overflow pauses", %{
+      fixture: fixture,
+      scope: scope
+    } do
+      activated_at = ~U[2026-09-19 12:00:00Z]
+      due_at = ~U[2026-09-20 12:00:00Z]
+
+      assert {:ok, _monitor} =
+               MonitorOperations.configure(scope, fixture.monitor.id, %{cadence: :daily},
+                 at: activated_at
+               )
+
+      PilotPolicies.update_limits!(scope.workspace.id, %{
+        daily_run_limit: 20,
+        daily_call_limit: 2,
+        per_run_call_limit: 2
+      })
+
+      assert {:ok, %{waiting: 1}} = MonitorOperations.dispatch_due(due_at)
+      waiting = Repo.get!(Monitor, fixture.monitor.id)
+      assert waiting.state == :active
+      assert waiting.capacity_wait_reason == :workspace_call_limit
+
+      PilotPolicies.update_limits!(scope.workspace.id, %{
+        daily_run_limit: 20,
+        daily_call_limit: 20,
+        per_run_call_limit: 1
+      })
+
+      assert {:ok, %{paused: 1}} = MonitorOperations.sweep_ineligible(due_at)
+      paused = Repo.get!(Monitor, fixture.monitor.id)
+      assert paused.state == :paused
+      assert paused.pause_reason == :per_run_call_limit
+      assert paused.capacity_wait_reason == nil
     end
 
     test "the recurring worker sweeps and dispatches due monitors", %{

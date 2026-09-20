@@ -45,6 +45,18 @@ defmodule SilentRegression.PilotPolicies do
   end
 
   @doc false
+  def check_run_limit(workspace_id, maximum_calls) do
+    policy = ensure_policy!(workspace_id)
+
+    if maximum_calls > policy.per_run_call_limit,
+      do: {:error, :per_run_call_limit},
+      else: :ok
+  end
+
+  @doc false
+  def next_reset_at(at), do: next_utc_day(at)
+
+  @doc false
   def authorize_new_run(workspace_id, maximum_calls, at \\ DateTime.utc_now()) do
     policy = locked_policy!(workspace_id)
     ensure_capacity(policy, usage_for_workspace(workspace_id, at), maximum_calls)

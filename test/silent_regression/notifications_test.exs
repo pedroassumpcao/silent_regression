@@ -12,7 +12,7 @@ defmodule SilentRegression.NotificationsTest do
   alias SilentRegression.MonitorOperations
   alias SilentRegression.Notifications
   alias SilentRegression.Notifications.Delivery
-  alias SilentRegression.Notifications.Workers.AlertEmailWorker
+  alias SilentRegression.Notifications.Workers.{AlertEmailWorker, CoverageEmailWorker}
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
   alias SilentRegression.RunResults
@@ -125,6 +125,56 @@ defmodule SilentRegression.NotificationsTest do
     assert [] = Notifications.list_deliveries(scope)
     assert [] = all_enqueued(worker: AlertEmailWorker)
     refute_email_sent()
+  end
+
+  test "capacity interruption email is owner-only, content-free, and deduplicated" do
+    scope = workspace_scope_fixture()
+    _member = invite_and_accept_member(scope)
+    fixture = operational_monitor_fixture(scope)
+    intended_at = ~U[2026-09-20 12:00:00Z]
+    retry_at = ~U[2026-09-21 00:00:00Z]
+
+    assert :ok =
+             Notifications.prepare_capacity_wait!(
+               fixture.monitor,
+               :workspace_call_limit,
+               intended_at,
+               retry_at
+             )
+
+    assert :ok =
+             Notifications.prepare_capacity_wait!(
+               fixture.monitor,
+               :workspace_call_limit,
+               intended_at,
+               retry_at
+             )
+
+    assert [delivery] = Notifications.list_deliveries(scope)
+    assert delivery.kind == :coverage_interrupted
+    assert delivery.recipient_user_id == scope.user.id
+    assert delivery.result_alert_id == nil
+    assert delivery.monitor_id == fixture.monitor.id
+    assert delivery.coverage_reason == :workspace_call_limit
+
+    assert [job] = all_enqueued(worker: CoverageEmailWorker)
+    assert :ok = perform_job(CoverageEmailWorker, job.args)
+
+    assert_email_sent(fn email ->
+      assert email.to == [{"", scope.user.email}]
+      assert email.subject == "Monitoring coverage is waiting for #{fixture.monitor.name}"
+      assert email.text_body =~ "Daily workspace call limit reached"
+      assert email.text_body =~ "2026-09-20T12:00:00Z"
+      assert email.text_body =~ "2026-09-21T00:00:00Z"
+
+      assert email.text_body =~
+               "/app/#{scope.workspace.slug}/monitors/#{fixture.monitor.id}/operations"
+
+      refute email.text_body =~ "prompt_messages"
+      true
+    end)
+
+    assert Repo.get!(Delivery, delivery.id).status == :sent
   end
 
   defp jobs_for_run(run_id) do

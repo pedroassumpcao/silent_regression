@@ -11,6 +11,8 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
   alias SilentRegression.MonitorOperations
   alias SilentRegression.MonitorOperations.AuthenticationRecovery
   alias SilentRegression.Monitors.Monitor
+  alias SilentRegression.Notifications
+  alias SilentRegression.Notifications.Delivery
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
   alias SilentRegression.WorkspaceLifecycle
@@ -113,7 +115,18 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
       recovery = authentication_recovery_fixture(scope, fixture)
       at = ~U[2026-09-16 12:00:00Z]
 
+      assert :ok =
+               Notifications.prepare_capacity_wait!(
+                 fixture.monitor,
+                 :workspace_run_limit,
+                 at,
+                 DateTime.add(at, 12, :hour)
+               )
+
+      [delivery] = Notifications.list_deliveries(scope)
+
       assert Repo.get!(AuthenticationRecovery, recovery.id)
+      assert Repo.get!(Delivery, delivery.id)
 
       assert {:ok, %{receipt: receipt}} =
                WorkspaceLifecycle.close_workspace(
@@ -139,6 +152,7 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
       assert Repo.get(Monitor, fixture.monitor.id) == nil
       assert Repo.get(ProviderCredential, fixture.credential.id) == nil
       assert Repo.get(AuthenticationRecovery, recovery.id) == nil
+      assert Repo.get(Delivery, delivery.id) == nil
 
       assert %{status: :completed, completed_at: ^at} =
                Repo.get!(DeletionReceipt, receipt.id)

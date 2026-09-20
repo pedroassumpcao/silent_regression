@@ -21,6 +21,7 @@ defmodule SilentRegression.Monitors.Monitor do
 
   @states [:draft, :validating, :ready, :baseline_pending, :active, :paused, :archived]
   @cadences [:manual, :daily, :weekly]
+  @capacity_wait_reasons [:workspace_run_limit, :workspace_call_limit]
 
   @pause_reasons [
     :owner_paused,
@@ -29,6 +30,7 @@ defmodule SilentRegression.Monitors.Monitor do
     :repeated_authentication_failures,
     :workspace_call_limit,
     :workspace_run_limit,
+    :per_run_call_limit,
     :workspace_closed,
     :schedule_owner_unavailable
   ]
@@ -44,6 +46,10 @@ defmodule SilentRegression.Monitors.Monitor do
     field :last_scheduled_at, :utc_datetime
     field :schedule_updated_at, :utc_datetime
     field :pause_reason, Ecto.Enum, values: @pause_reasons
+    field :capacity_wait_reason, Ecto.Enum, values: @capacity_wait_reasons
+    field :capacity_retry_at, :utc_datetime
+    field :capacity_intended_at, :utc_datetime
+    field :coverage_interrupted_at, :utc_datetime
 
     belongs_to :workspace, Workspace
     belongs_to :created_by_user, User
@@ -111,7 +117,11 @@ defmodule SilentRegression.Monitors.Monitor do
           state: :paused,
           state_changed_at: at,
           next_run_at: nil,
-          pause_reason: :incompatible_configuration
+          pause_reason: :incompatible_configuration,
+          capacity_wait_reason: nil,
+          capacity_retry_at: nil,
+          capacity_intended_at: nil,
+          coverage_interrupted_at: nil
         }
       else
         %{provider_credential_id: credential.id}
@@ -145,7 +155,11 @@ defmodule SilentRegression.Monitors.Monitor do
         draft_version_id: nil,
         state: :validating,
         state_changed_at: at,
-        archived_at: nil
+        archived_at: nil,
+        capacity_wait_reason: nil,
+        capacity_retry_at: nil,
+        capacity_intended_at: nil,
+        coverage_interrupted_at: nil
       )
       |> add_constraints()
     end
@@ -155,8 +169,34 @@ defmodule SilentRegression.Monitors.Monitor do
     if transition_allowed?(monitor.state, target) do
       archived_at = if target == :archived, do: at, else: nil
 
-      monitor
-      |> change(state: target, state_changed_at: at, archived_at: archived_at)
+      capacity_attrs =
+        if target == :archived do
+          %{
+            next_run_at: nil,
+            pause_reason: nil,
+            capacity_wait_reason: nil,
+            capacity_retry_at: nil,
+            capacity_intended_at: nil,
+            coverage_interrupted_at: nil
+          }
+        else
+          %{}
+        end
+
+      changeset =
+        monitor
+        |> change(
+          Map.merge(capacity_attrs, %{
+            state: target,
+            state_changed_at: at,
+            archived_at: archived_at
+          })
+        )
+
+      changeset
+      |> then(fn changeset ->
+        if target == :archived, do: validate_schedule(changeset), else: changeset
+      end)
       |> add_constraints()
     else
       monitor
@@ -181,7 +221,11 @@ defmodule SilentRegression.Monitors.Monitor do
       state: :baseline_pending,
       state_changed_at: at,
       next_run_at: nil,
-      pause_reason: nil
+      pause_reason: nil,
+      capacity_wait_reason: nil,
+      capacity_retry_at: nil,
+      capacity_intended_at: nil,
+      coverage_interrupted_at: nil
     )
     |> validate_schedule()
     |> add_constraints()
@@ -205,7 +249,11 @@ defmodule SilentRegression.Monitors.Monitor do
       :cadence,
       :next_run_at,
       :last_scheduled_at,
-      :pause_reason
+      :pause_reason,
+      :capacity_wait_reason,
+      :capacity_retry_at,
+      :capacity_intended_at,
+      :coverage_interrupted_at
     ])
     |> put_change(:schedule_updated_by_user_id, user.id)
     |> put_change(:schedule_updated_at, Map.fetch!(attrs, :schedule_updated_at))
@@ -221,7 +269,11 @@ defmodule SilentRegression.Monitors.Monitor do
       :state_changed_at,
       :next_run_at,
       :last_scheduled_at,
-      :pause_reason
+      :pause_reason,
+      :capacity_wait_reason,
+      :capacity_retry_at,
+      :capacity_intended_at,
+      :coverage_interrupted_at
     ])
     |> validate_schedule()
     |> add_constraints()
@@ -230,6 +282,33 @@ defmodule SilentRegression.Monitors.Monitor do
   def states, do: @states
   def cadences, do: @cadences
   def pause_reasons, do: @pause_reasons
+  def capacity_wait_reasons, do: @capacity_wait_reasons
+
+  def capacity_wait_changeset(
+        %__MODULE__{state: :active, cadence: cadence} = monitor,
+        reason,
+        intended_at,
+        retry_at,
+        interrupted_at
+      )
+      when cadence in [:daily, :weekly] and reason in @capacity_wait_reasons do
+    monitor
+    |> change(
+      next_run_at: retry_at,
+      capacity_wait_reason: reason,
+      capacity_retry_at: retry_at,
+      capacity_intended_at: intended_at,
+      coverage_interrupted_at: monitor.coverage_interrupted_at || interrupted_at
+    )
+    |> validate_schedule()
+    |> add_constraints()
+  end
+
+  def capacity_wait_changeset(%__MODULE__{} = monitor, _reason, _intended_at, _retry_at, _at) do
+    monitor
+    |> change()
+    |> add_error(:capacity_wait_reason, "requires an active automatic schedule")
+  end
 
   def transition_allowed?(:validating, target) when target in [:draft, :ready], do: true
 
@@ -256,6 +335,10 @@ defmodule SilentRegression.Monitors.Monitor do
     state = get_field(changeset, :state)
     next_run_at = get_field(changeset, :next_run_at)
     pause_reason = get_field(changeset, :pause_reason)
+    capacity_wait_reason = get_field(changeset, :capacity_wait_reason)
+    capacity_retry_at = get_field(changeset, :capacity_retry_at)
+    capacity_intended_at = get_field(changeset, :capacity_intended_at)
+    coverage_interrupted_at = get_field(changeset, :coverage_interrupted_at)
 
     changeset
     |> then(fn changeset ->
@@ -291,6 +374,25 @@ defmodule SilentRegression.Monitors.Monitor do
           changeset
       end
     end)
+    |> then(fn changeset ->
+      wait_fields = [capacity_retry_at, capacity_intended_at, coverage_interrupted_at]
+
+      cond do
+        is_nil(capacity_wait_reason) and Enum.any?(wait_fields, &(not is_nil(&1))) ->
+          add_error(changeset, :capacity_wait_reason, "is required for capacity wait metadata")
+
+        not is_nil(capacity_wait_reason) and Enum.any?(wait_fields, &is_nil/1) ->
+          add_error(changeset, :capacity_wait_reason, "requires complete capacity wait metadata")
+
+        not is_nil(capacity_wait_reason) and
+            (state != :active or cadence not in [:daily, :weekly] or
+               next_run_at != capacity_retry_at or not is_nil(pause_reason)) ->
+          add_error(changeset, :capacity_wait_reason, "does not match the active retry schedule")
+
+        true ->
+          changeset
+      end
+    end)
   end
 
   defp add_constraints(changeset) do
@@ -305,5 +407,6 @@ defmodule SilentRegression.Monitors.Monitor do
     |> check_constraint(:pause_reason, name: :monitors_pause_reason_check)
     |> check_constraint(:next_run_at, name: :monitors_manual_schedule_check)
     |> check_constraint(:next_run_at, name: :monitors_paused_schedule_check)
+    |> check_constraint(:capacity_wait_reason, name: :monitors_capacity_wait_check)
   end
 end

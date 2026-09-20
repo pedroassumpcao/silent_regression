@@ -167,6 +167,10 @@ defmodule SilentRegression.WorkspaceLifecycle do
         state_changed_at: now,
         next_run_at: nil,
         pause_reason: :workspace_closed,
+        capacity_wait_reason: nil,
+        capacity_retry_at: nil,
+        capacity_intended_at: nil,
+        coverage_interrupted_at: nil,
         updated_at: now
       ]
     )

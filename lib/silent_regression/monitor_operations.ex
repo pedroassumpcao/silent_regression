@@ -9,7 +9,16 @@ defmodule SilentRegression.MonitorOperations do
   import Ecto.Query
 
   alias SilentRegression.Accounts.{Scope, User}
-  alias SilentRegression.{Audit, Baselines, Captures, PilotPolicies, ProductAnalytics}
+
+  alias SilentRegression.{
+    Audit,
+    Baselines,
+    Captures,
+    Notifications,
+    PilotPolicies,
+    ProductAnalytics
+  }
+
   alias SilentRegression.Captures.{CaptureObservation, CaptureRun}
   alias SilentRegression.MonitorOperations.AuthenticationRecovery
   alias SilentRegression.MonitorOperations.Schedule
@@ -31,6 +40,7 @@ defmodule SilentRegression.MonitorOperations do
          %Monitor{} = monitor <- load_monitor(workspace_id, monitor_id) do
       monitor = Repo.preload(monitor, [:active_version, :schedule_updated_by_user])
       last_run = last_run(workspace_id, monitor.id)
+      now = DateTime.utc_now()
       usage = PilotPolicies.usage(scope)
 
       {:ok,
@@ -40,6 +50,7 @@ defmodule SilentRegression.MonitorOperations do
          unresolved_alerts: unresolved_alert_count(scope, monitor.id),
          approved_baseline?: Baselines.compatible_approved?(scope, monitor.id),
          authentication_recovery: authentication_recovery_state(monitor),
+         coverage: coverage_state(monitor, last_successful_run(workspace_id, monitor.id), now),
          maximum_call_count: maximum_call_count(monitor),
          pilot_usage: usage,
          can_manage?: scope.membership.role == :owner
@@ -80,6 +91,10 @@ defmodule SilentRegression.MonitorOperations do
                  cadence: cadence,
                  next_run_at: Schedule.first_run_at(cadence, at),
                  pause_reason: nil,
+                 capacity_wait_reason: nil,
+                 capacity_retry_at: nil,
+                 capacity_intended_at: nil,
+                 coverage_interrupted_at: nil,
                  schedule_updated_at: at
                })
                |> Repo.update() do
@@ -125,7 +140,7 @@ defmodule SilentRegression.MonitorOperations do
                Captures.plan_run(
                  scope,
                  monitor.id,
-                 run_plan(:manual, Ecto.UUID.generate(), maximum_calls)
+                 run_plan(:manual, Ecto.UUID.generate(), maximum_calls, at)
                ),
              {:ok, run} <- Captures.enqueue_run(scope, run.id) do
           record_event!(monitor, user.id, "monitor.run_now_requested", at, %{
@@ -172,6 +187,10 @@ defmodule SilentRegression.MonitorOperations do
                      state_changed_at: state_time(at),
                      next_run_at: nil,
                      pause_reason: :owner_paused,
+                     capacity_wait_reason: nil,
+                     capacity_retry_at: nil,
+                     capacity_intended_at: nil,
+                     coverage_interrupted_at: nil,
                      schedule_updated_at: at
                    })
                    |> Repo.update() do
@@ -231,6 +250,10 @@ defmodule SilentRegression.MonitorOperations do
                  state_changed_at: state_time(at),
                  next_run_at: Schedule.first_run_at(monitor.cadence, at),
                  pause_reason: nil,
+                 capacity_wait_reason: nil,
+                 capacity_retry_at: nil,
+                 capacity_intended_at: nil,
+                 coverage_interrupted_at: nil,
                  schedule_updated_at: at
                })
                |> Repo.update() do
@@ -344,7 +367,7 @@ defmodule SilentRegression.MonitorOperations do
             case schedule_scope(monitor) do
               {:ok, scope} ->
                 with {:ok, maximum_calls} <- run_maximum_call_count(monitor),
-                     :ok <- ensure_eligible(scope, monitor, maximum_calls, at) do
+                     :ok <- ensure_persistently_eligible(scope, monitor, maximum_calls) do
                   :eligible
                 else
                   {:error, reason} -> auto_pause_locked!(monitor, pause_reason(reason), at)
@@ -369,8 +392,9 @@ defmodule SilentRegression.MonitorOperations do
           with :ok <- ensure_due(monitor, at),
                {:ok, scope} <- schedule_scope(monitor),
                {:ok, maximum_calls} <- run_maximum_call_count(monitor),
-               :ok <- ensure_eligible(scope, monitor, maximum_calls, at) do
-            intended_at = monitor.next_run_at
+               :ok <- ensure_persistently_eligible(scope, monitor, maximum_calls),
+               :ok <- PilotPolicies.check_capacity(monitor.workspace_id, maximum_calls, at) do
+            intended_at = monitor.capacity_intended_at || monitor.next_run_at
             identity = Schedule.identity(monitor.id, intended_at)
 
             if active_capture_run?(monitor.id) do
@@ -379,7 +403,7 @@ defmodule SilentRegression.MonitorOperations do
               case Captures.plan_run(
                      scope,
                      monitor.id,
-                     run_plan(:scheduled, identity, maximum_calls)
+                     run_plan(:scheduled, identity, maximum_calls, at)
                    ) do
                 {:ok, run} ->
                   with {:ok, run} <- Captures.enqueue_run(scope, run.id),
@@ -389,6 +413,8 @@ defmodule SilentRegression.MonitorOperations do
                       "intended_at" => DateTime.to_iso8601(intended_at),
                       "next_run_at" => iso8601(advanced.next_run_at)
                     })
+
+                    record_capacity_recovery!(monitor, advanced, run.id, scope.user.id, at)
 
                     {:scheduled, run.id}
                   else
@@ -405,6 +431,10 @@ defmodule SilentRegression.MonitorOperations do
 
             {:error, :owner_unavailable} ->
               auto_pause_locked!(monitor, :schedule_owner_unavailable, at)
+
+            {:error, reason}
+            when reason in [:workspace_run_limit, :workspace_call_limit] ->
+              wait_for_capacity_locked!(monitor, reason, at)
 
             {:error, reason} ->
               auto_pause_locked!(monitor, pause_reason(reason), at)
@@ -430,12 +460,19 @@ defmodule SilentRegression.MonitorOperations do
   end
 
   defp ensure_eligible(scope, monitor, maximum_calls, at) do
+    with :ok <- ensure_persistently_eligible(scope, monitor, maximum_calls),
+         :ok <- PilotPolicies.check_capacity(monitor.workspace_id, maximum_calls, at) do
+      :ok
+    end
+  end
+
+  defp ensure_persistently_eligible(scope, monitor, maximum_calls) do
     with :ok <- ensure_workspace_available(scope.workspace),
          {:ok, _snapshot} <- Baselines.current_compatible(scope, monitor.id),
          %MonitorVersion{} = version <- Repo.get(MonitorVersion, monitor.active_version_id),
          :ok <- ensure_credential(monitor, version),
          false <- authentication_breaker(monitor.id).tripped?,
-         :ok <- PilotPolicies.check_capacity(monitor.workspace_id, maximum_calls, at) do
+         :ok <- PilotPolicies.check_run_limit(monitor.workspace_id, maximum_calls) do
       :ok
     else
       nil -> {:error, :incompatible_baseline}
@@ -698,9 +735,57 @@ defmodule SilentRegression.MonitorOperations do
     monitor
     |> Monitor.system_schedule_changeset(%{
       last_scheduled_at: intended_at,
-      next_run_at: Schedule.advance(monitor.cadence, intended_at, at)
+      next_run_at: Schedule.advance(monitor.cadence, intended_at, at),
+      capacity_wait_reason: nil,
+      capacity_retry_at: nil,
+      capacity_intended_at: nil,
+      coverage_interrupted_at: nil
     })
     |> Repo.update()
+  end
+
+  defp wait_for_capacity_locked!(monitor, reason, at) do
+    intended_at = monitor.capacity_intended_at || monitor.next_run_at
+    retry_at = PilotPolicies.next_reset_at(at)
+
+    event =
+      if monitor.capacity_wait_reason,
+        do: "monitor.capacity_wait_extended",
+        else: "monitor.capacity_wait_started"
+
+    case monitor
+         |> Monitor.capacity_wait_changeset(reason, intended_at, retry_at, at)
+         |> Repo.update() do
+      {:ok, waiting} ->
+        record_event!(waiting, monitor.schedule_updated_by_user_id, event, at, %{
+          "reason" => Atom.to_string(reason),
+          "intended_at" => iso8601(intended_at),
+          "retry_at" => iso8601(retry_at)
+        })
+
+        Notifications.prepare_capacity_wait!(waiting, reason, intended_at, retry_at)
+        {:waiting_capacity, reason}
+
+      {:error, changeset} ->
+        Repo.rollback(changeset)
+    end
+  end
+
+  defp record_capacity_recovery!(
+         %Monitor{capacity_wait_reason: nil},
+         _advanced,
+         _capture_run_id,
+         _actor_user_id,
+         _at
+       ),
+       do: :ok
+
+  defp record_capacity_recovery!(monitor, advanced, capture_run_id, actor_user_id, at) do
+    record_event!(advanced, actor_user_id, "monitor.capacity_wait_recovered", at, %{
+      "reason" => Atom.to_string(monitor.capacity_wait_reason),
+      "intended_at" => iso8601(monitor.capacity_intended_at),
+      "capture_run_id" => capture_run_id
+    })
   end
 
   defp skip_overlap(monitor, user, intended_at, at) do
@@ -731,7 +816,11 @@ defmodule SilentRegression.MonitorOperations do
            state: :paused,
            state_changed_at: state_time(at),
            next_run_at: nil,
-           pause_reason: reason
+           pause_reason: reason,
+           capacity_wait_reason: nil,
+           capacity_retry_at: nil,
+           capacity_intended_at: nil,
+           coverage_interrupted_at: nil
          })
          |> Repo.update() do
       {:ok, paused} ->
@@ -753,7 +842,7 @@ defmodule SilentRegression.MonitorOperations do
 
   defp maybe_cancel_auto_paused(_monitor_id, result), do: result
 
-  defp run_plan(kind, identity, maximum_calls) do
+  defp run_plan(kind, identity, maximum_calls, capacity_at) do
     identity_key =
       if String.starts_with?(identity, "#{kind}:"), do: identity, else: "#{kind}:#{identity}"
 
@@ -762,7 +851,8 @@ defmodule SilentRegression.MonitorOperations do
       kind: kind,
       samples_per_case: 1,
       retry_limit: 1,
-      maximum_call_count: maximum_calls
+      maximum_call_count: maximum_calls,
+      capacity_at: capacity_at
     }
   end
 
@@ -809,7 +899,7 @@ defmodule SilentRegression.MonitorOperations do
        when reason in [
               :credential_unavailable,
               :repeated_authentication_failures,
-              :workspace_call_limit
+              :per_run_call_limit
             ],
        do: reason
 
@@ -849,6 +939,51 @@ defmodule SilentRegression.MonitorOperations do
     |> Repo.one()
   end
 
+  defp last_successful_run(workspace_id, monitor_id) do
+    CaptureRun
+    |> where(
+      [run],
+      run.workspace_id == ^workspace_id and run.monitor_id == ^monitor_id and
+        run.kind in [:manual, :scheduled] and run.status == :succeeded
+    )
+    |> order_by([run], desc: run.completed_at, desc: run.inserted_at, desc: run.id)
+    |> limit(1)
+    |> Repo.one()
+  end
+
+  defp coverage_state(monitor, last_successful_run, now) do
+    waiting? = not is_nil(monitor.capacity_wait_reason)
+
+    overdue_since =
+      cond do
+        waiting? ->
+          monitor.capacity_intended_at
+
+        monitor.state == :active and monitor.cadence in [:daily, :weekly] and
+          match?(%DateTime{}, monitor.next_run_at) and DateTime.before?(monitor.next_run_at, now) ->
+          monitor.next_run_at
+
+        true ->
+          nil
+      end
+
+    %{
+      status: coverage_status(monitor, waiting?),
+      capacity_reason: monitor.capacity_wait_reason,
+      retry_at: monitor.capacity_retry_at,
+      intended_at: monitor.capacity_intended_at,
+      interrupted_at: monitor.coverage_interrupted_at,
+      last_successful_at: last_successful_run && last_successful_run.completed_at,
+      overdue?: not is_nil(overdue_since),
+      overdue_since: overdue_since
+    }
+  end
+
+  defp coverage_status(_monitor, true), do: :waiting_capacity
+  defp coverage_status(%Monitor{state: :paused}, false), do: :paused
+  defp coverage_status(%Monitor{cadence: :manual}, false), do: :manual
+  defp coverage_status(%Monitor{}, false), do: :on_schedule
+
   defp unresolved_alert_count(scope, monitor_id) do
     case RunResults.unresolved_alert_count(scope, monitor_id) do
       {:ok, count} -> count
@@ -869,13 +1004,18 @@ defmodule SilentRegression.MonitorOperations do
   end
 
   defp summarize_results(results) do
-    Enum.reduce(results, %{eligible: 0, scheduled: 0, skipped: 0, paused: 0, unchanged: 0}, fn
-      {:ok, :eligible}, counts -> Map.update!(counts, :eligible, &(&1 + 1))
-      {:ok, {:scheduled, _run_id}}, counts -> Map.update!(counts, :scheduled, &(&1 + 1))
-      {:ok, :skipped_overlap}, counts -> Map.update!(counts, :skipped, &(&1 + 1))
-      {:ok, {:auto_paused, _reason}}, counts -> Map.update!(counts, :paused, &(&1 + 1))
-      _result, counts -> Map.update!(counts, :unchanged, &(&1 + 1))
-    end)
+    Enum.reduce(
+      results,
+      %{eligible: 0, scheduled: 0, skipped: 0, waiting: 0, paused: 0, unchanged: 0},
+      fn
+        {:ok, :eligible}, counts -> Map.update!(counts, :eligible, &(&1 + 1))
+        {:ok, {:scheduled, _run_id}}, counts -> Map.update!(counts, :scheduled, &(&1 + 1))
+        {:ok, :skipped_overlap}, counts -> Map.update!(counts, :skipped, &(&1 + 1))
+        {:ok, {:waiting_capacity, _reason}}, counts -> Map.update!(counts, :waiting, &(&1 + 1))
+        {:ok, {:auto_paused, _reason}}, counts -> Map.update!(counts, :paused, &(&1 + 1))
+        _result, counts -> Map.update!(counts, :unchanged, &(&1 + 1))
+      end
+    )
   end
 
   defp operation_time(options) do

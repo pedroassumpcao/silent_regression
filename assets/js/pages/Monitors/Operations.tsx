@@ -39,6 +39,7 @@ import type { SharedPageProps } from "@/types/page"
 type Cadence = "manual" | "daily" | "weekly"
 type MonitorState = "baseline_pending" | "active" | "paused"
 type AuthenticationRecoveryStatus = "ready" | "in_progress" | "succeeded" | "failed"
+type CoverageStatus = "manual" | "on_schedule" | "waiting_capacity" | "paused"
 
 type AuthenticationRecovery = {
   required: boolean
@@ -71,6 +72,16 @@ export type OperationsProps = {
   approvedBaseline: boolean
   authenticationRecovery: AuthenticationRecovery
   canManage: boolean
+  coverage: {
+    status: CoverageStatus
+    capacityReason: "workspace_run_limit" | "workspace_call_limit" | null
+    retryAt: string | null
+    intendedAt: string | null
+    interruptedAt: string | null
+    lastSuccessfulAt: string | null
+    overdue: boolean
+    overdueSince: string | null
+  }
   lastRun: LastRun | null
   monitor: {
     id: string
@@ -108,6 +119,7 @@ export function OperationsView({
   authenticationRecovery,
   auth,
   canManage,
+  coverage,
   flash = {},
   lastRun,
   monitor,
@@ -133,6 +145,7 @@ export function OperationsView({
   const pendingActivation = monitor.state === "baseline_pending"
   const authenticationPause = paused && monitor.pauseReason === "repeated_authentication_failures"
   const recoveryBlocksResume = authenticationPause && authenticationRecovery.status !== "succeeded"
+  const waitingForCapacity = coverage.status === "waiting_capacity"
 
   const mutate = (name: string, url: string) => {
     setProcessing(name)
@@ -244,6 +257,32 @@ export function OperationsView({
           </Alert>
         )}
 
+        {waitingForCapacity && (
+          <Card id="capacity-wait-card" className="border-amber-500/30 bg-amber-500/5">
+            <CardHeader>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex gap-3">
+                  <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-700">
+                    <Clock3 className="size-5" />
+                  </span>
+                  <div>
+                    <CardTitle role="heading" aria-level={2} className="text-xl">Monitoring is waiting for temporary capacity</CardTitle>
+                    <CardDescription className="mt-2 max-w-3xl leading-6">
+                      {capacityReason(coverage.capacityReason)} The original scheduled check remains preserved and will retry automatically after the UTC workspace limit resets.
+                    </CardDescription>
+                  </div>
+                </div>
+                <Badge variant="outline" className="w-fit bg-background/70">Coverage overdue</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-3">
+              <RecoveryLimit label="Original scheduled check" value={formatUtc(coverage.intendedAt)} />
+              <RecoveryLimit label="Automatic retry" value={formatUtc(coverage.retryAt)} />
+              <RecoveryLimit label="Last successful check" value={coverage.lastSuccessfulAt ? formatUtc(coverage.lastSuccessfulAt) : "No successful managed run"} />
+            </CardContent>
+          </Card>
+        )}
+
         {authenticationRecovery.status && (
           <Card
             id="authentication-recovery-card"
@@ -342,9 +381,9 @@ export function OperationsView({
         )}
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Monitor status">
-          <MetricCard icon={Activity} label="Monitor state" value={stateLabel(monitor.state)} detail={paused ? pauseReason(monitor.pauseReason) : cadenceLabel(monitor.cadence)} />
-          <MetricCard icon={Clock3} label="Last run" value={lastRun ? statusLabel(lastRun.status) : "No managed run"} detail={lastRun ? formatUtc(lastRun.completedAt || lastRun.insertedAt) : "Activate or run on demand"} />
-          <MetricCard icon={CalendarClock} label="Next UTC run" value={monitor.nextRunAt ? formatUtc(monitor.nextRunAt) : "Not scheduled"} detail={monitor.cadence === "manual" ? "Run now only" : cadenceLabel(monitor.cadence)} />
+          <MetricCard icon={Activity} label="Monitor state" value={waitingForCapacity ? "Waiting for capacity" : stateLabel(monitor.state)} detail={waitingForCapacity ? capacityReason(coverage.capacityReason) : paused ? pauseReason(monitor.pauseReason) : cadenceLabel(monitor.cadence)} tone={waitingForCapacity ? "warning" : undefined} />
+          <MetricCard icon={Clock3} label="Last successful check" value={coverage.lastSuccessfulAt ? "Succeeded" : "No successful run"} detail={coverage.lastSuccessfulAt ? formatUtc(coverage.lastSuccessfulAt) : "Reference capture is tracked separately"} />
+          <MetricCard icon={CalendarClock} label={waitingForCapacity ? "Next automatic retry" : "Next UTC run"} value={monitor.nextRunAt ? formatUtc(monitor.nextRunAt) : "Not scheduled"} detail={waitingForCapacity && coverage.intendedAt ? `Original check ${formatUtc(coverage.intendedAt)}` : monitor.cadence === "manual" ? "Run now only" : cadenceLabel(monitor.cadence)} tone={coverage.overdue ? "warning" : undefined} />
           <MetricCard icon={unresolvedAlerts > 0 ? AlertTriangle : ShieldCheck} label="Unresolved alerts" value={unresolvedAlerts} detail={unresolvedAlerts > 0 ? <Link className="underline underline-offset-4" href={resultsPath}>Inspect the evidence and alert lifecycle</Link> : "No open or acknowledged alerts"} tone={unresolvedAlerts > 0 ? "warning" : "success"} />
         </section>
 
@@ -371,12 +410,20 @@ export function OperationsView({
                 </Alert>
               )}
 
+              {waitingForCapacity && (
+                <Alert className="border-amber-500/25 bg-amber-500/5">
+                  <Clock3 className="text-amber-600" />
+                  <AlertTitle>Automatic retry is already scheduled</AlertTitle>
+                  <AlertDescription>Schedule edits and on-demand runs stay disabled until {formatUtc(coverage.retryAt)} so no action can bypass the workspace cap. You may still pause the monitor.</AlertDescription>
+                </Alert>
+              )}
+
               <div className="grid gap-3 sm:grid-cols-3">
                 {(["manual", "daily", "weekly"] as Cadence[]).map(option => (
                   <button
                     key={option}
                     type="button"
-                    disabled={!canManage || paused}
+                    disabled={!canManage || paused || waitingForCapacity}
                     onClick={() => setCadence(option)}
                     className={`rounded-2xl border p-4 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60 ${cadence === option ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20" : "bg-background hover:border-primary/35 hover:bg-muted/30"}`}
                     aria-pressed={cadence === option}
@@ -407,7 +454,7 @@ export function OperationsView({
                           {processing === "pause" ? <LoaderCircle className="animate-spin" /> : <CirclePause />} Pause
                         </Button>
                       )}
-                      <Button id="save-schedule" disabled={!canManage || processing !== null || !approvedBaseline} onClick={saveSchedule}>
+                      <Button id="save-schedule" disabled={!canManage || processing !== null || !approvedBaseline || waitingForCapacity} onClick={saveSchedule}>
                         {processing === "schedule" ? <LoaderCircle className="animate-spin" /> : pendingActivation ? <Sparkles /> : <CalendarClock />}
                         {pendingActivation ? "Activate monitor" : "Save cadence"}
                       </Button>
@@ -433,7 +480,7 @@ export function OperationsView({
                 </div>
                 <Dialog open={runDialogOpen} onOpenChange={setRunDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button id="run-now" className="w-full" disabled={!canManage || !active || processing !== null || !approvedBaseline}>
+                    <Button id="run-now" className="w-full" disabled={!canManage || !active || processing !== null || !approvedBaseline || waitingForCapacity}>
                       <Play /> Run now
                     </Button>
                   </DialogTrigger>
@@ -461,7 +508,9 @@ export function OperationsView({
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-                {!active && <p className="text-center text-xs text-muted-foreground">Activate or resume the monitor before running it.</p>}
+                {waitingForCapacity ? (
+                  <p className="text-center text-xs text-amber-700">The preserved scheduled check retries automatically after the UTC reset.</p>
+                ) : !active && <p className="text-center text-xs text-muted-foreground">Activate or resume the monitor before running it.</p>}
               </CardContent>
             </Card>
 
@@ -475,7 +524,7 @@ export function OperationsView({
                 <Progress value={Math.min((spend.workspaceCommittedCallsToday / spend.workspaceCallLimit) * 100, 100)} aria-label="Workspace provider-call envelope" />
                 <div className="mt-4 flex items-center justify-between border-t pt-4 text-sm"><span>{spend.workspaceRunsToday} runs authorized</span><span className="text-muted-foreground">{spend.workspaceRunLimit} limit</span></div>
                 <Progress value={Math.min((spend.workspaceRunsToday / spend.workspaceRunLimit) * 100, 100)} aria-label="Workspace authorized-run envelope" className="mt-2" />
-                <p className="mt-3 text-xs leading-5 text-muted-foreground">Each run is capped at {spend.perRunCallLimit} calls. Limits reset {formatUtc(spend.resetsAt)}. A monitor auto-pauses before a new run could exceed this envelope. Credential problems can be resolved from <Link className="font-medium text-foreground underline underline-offset-4" href={credentialsPath}>Provider credentials</Link>.</p>
+                <p className="mt-3 text-xs leading-5 text-muted-foreground">Each run is capped at {spend.perRunCallLimit} calls. Daily workspace limits reset {formatUtc(spend.resetsAt)}; a due schedule waits and retries without bypassing them. A run that cannot fit the per-run ceiling pauses for configuration review. Credential problems can be resolved from <Link className="font-medium text-foreground underline underline-offset-4" href={credentialsPath}>Provider credentials</Link>.</p>
               </CardContent>
             </Card>
           </div>
@@ -550,8 +599,16 @@ function pauseReason(reason: string | null) {
     incompatible_configuration: "The active behavior no longer matches its baseline.",
     repeated_authentication_failures: "The provider rejected two consecutive runs.",
     workspace_call_limit: "Today’s workspace call envelope is exhausted.",
+    workspace_run_limit: "Today’s workspace run envelope is exhausted.",
+    per_run_call_limit: "The active case set exceeds the per-run call ceiling.",
     schedule_owner_unavailable: "The owner who authorized this schedule is no longer available.",
   } as Record<string, string>)[reason || ""] || "Monitoring is paused."
+}
+
+function capacityReason(reason: "workspace_run_limit" | "workspace_call_limit" | null) {
+  if (reason === "workspace_run_limit") return "The daily workspace run limit was reached."
+  if (reason === "workspace_call_limit") return "The daily workspace call limit was reached."
+  return "Temporary workspace capacity is unavailable."
 }
 
 function recoveryTitle(status: AuthenticationRecoveryStatus) {

@@ -37,6 +37,16 @@ const baseProps: OperationsProps = {
     retryLimit: 0,
   },
   canManage: true,
+  coverage: {
+    status: "manual",
+    capacityReason: null,
+    retryAt: null,
+    intendedAt: null,
+    interruptedAt: null,
+    lastSuccessfulAt: null,
+    overdue: false,
+    overdueSince: null,
+  },
   lastRun: null,
   monitor: {
     id: "monitor-id",
@@ -117,6 +127,38 @@ describe("OperationsView", () => {
     expect(screen.getByRole("button", { name: "Pause" })).toBeDisabled()
     expect(screen.getByRole("button", { name: "Run now" })).toBeDisabled()
     expect(screen.getByText(/you can inspect operations; a workspace owner controls spend/i)).toBeInTheDocument()
+  })
+
+  it("shows overdue capacity recovery without offering a cap bypass", () => {
+    render(
+      <OperationsView
+        {...baseProps}
+        coverage={{
+          status: "waiting_capacity",
+          capacityReason: "workspace_call_limit",
+          retryAt: "2026-09-18T00:00:00Z",
+          intendedAt: "2026-09-17T15:00:00Z",
+          interruptedAt: "2026-09-17T15:00:10Z",
+          lastSuccessfulAt: "2026-09-16T15:01:00Z",
+          overdue: true,
+          overdueSince: "2026-09-17T15:00:00Z",
+        }}
+        flash={{}}
+        monitor={{
+          ...baseProps.monitor,
+          state: "active",
+          cadence: "daily",
+          nextRunAt: "2026-09-18T00:00:00Z",
+        }}
+      />,
+    )
+
+    expect(screen.getByRole("heading", { name: "Monitoring is waiting for temporary capacity" })).toBeInTheDocument()
+    expect(screen.getAllByText(/daily workspace call limit was reached/i)).toHaveLength(2)
+    expect(screen.getByText("Waiting for capacity")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Run now" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Save cadence" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Pause" })).toBeEnabled()
   })
 
   it("explains automatic pause causes before offering resume", () => {

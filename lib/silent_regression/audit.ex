@@ -70,6 +70,9 @@ defmodule SilentRegression.Audit do
     "monitor.run_now_requested" => ~w(capture_run_id maximum_call_count),
     "monitor.scheduled" => ~w(capture_run_id intended_at next_run_at),
     "monitor.schedule_skipped_overlap" => ~w(intended_at next_run_at),
+    "monitor.capacity_wait_started" => ~w(reason intended_at retry_at),
+    "monitor.capacity_wait_extended" => ~w(reason intended_at retry_at),
+    "monitor.capacity_wait_recovered" => ~w(reason intended_at capture_run_id),
     "monitor.auto_paused" => ~w(reason),
     "monitor.authentication_recovery_authorized" =>
       ~w(recovery_id epoch capture_run_id provider_credential_id requested_model maximum_call_count retry_limit),
