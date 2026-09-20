@@ -263,6 +263,12 @@ defmodule SilentRegressionWeb.MonitorSetupController do
   defp case_prop(case_attributes) do
     expectation = Map.get(case_attributes, "expectation", %{})
 
+    expectation_schema_version =
+      Map.get(case_attributes, "expectation_schema_version", CaseExpectations.none_schema())
+
+    {:ok, normalized_expectation} =
+      CaseExpectations.normalize(expectation_schema_version, expectation)
+
     case_attributes
     |> Map.put(
       "input_variables_json",
@@ -272,7 +278,8 @@ defmodule SilentRegressionWeb.MonitorSetupController do
       "expectation_json",
       if(expectation == %{}, do: "", else: Jason.encode!(expectation, pretty: true))
     )
-    |> Map.put_new("expectation_schema_version", CaseExpectations.none_schema())
+    |> Map.put("expectation_schema_version", normalized_expectation.schema_version)
+    |> Map.put("expectation_fingerprint", normalized_expectation.fingerprint)
   end
 
   defp credential_prop(credential) do

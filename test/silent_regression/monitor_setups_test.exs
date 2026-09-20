@@ -284,6 +284,12 @@ defmodule SilentRegression.MonitorSetupsTest do
           name: " Supported answer ",
           input_variables_json: ~s({"question":"Which plan includes SSO?"}),
           frozen_context: "Enterprise includes SSO.",
+          expectation_json:
+            Jason.encode!(%{
+              checks: [
+                %{id: "route", type: "label", allowed_values: ["approved"]}
+              ]
+            }),
           status: "active"
         }
       ]
@@ -293,13 +299,18 @@ defmodule SilentRegression.MonitorSetupsTest do
 
       encoded =
         Jason.encode!(%{
-          schema_version: 1,
+          schema_version: 2,
           cases: [
             %{
               case_key: "supported-answer",
               name: " Supported answer ",
               input_variables: %{question: "Which plan includes SSO?"},
               frozen_context: "Enterprise includes SSO.",
+              expectation: %{
+                checks: [
+                  %{id: "route", type: "label", allowed_values: ["approved"]}
+                ]
+              },
               status: "active"
             }
           ]
@@ -310,6 +321,9 @@ defmodule SilentRegression.MonitorSetupsTest do
 
       assert MonitorSetups.stored_cases(manual_setup) ==
                MonitorSetups.stored_cases(import_setup)
+
+      assert [stored_case] = MonitorSetups.stored_cases(manual_setup)
+      assert stored_case["expectation_schema_version"] == "case_expectation_v1"
 
       assert MonitorSetups.progress(scope, manual_setup).completed.cases
     end

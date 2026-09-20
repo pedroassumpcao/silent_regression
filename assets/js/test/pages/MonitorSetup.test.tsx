@@ -62,6 +62,8 @@ const baseProps: MonitorSetupProps = {
     maxRequestTemplateBytes: 160_000,
     maxContextBytes: 100_000,
     maxVariablesBytes: 50_000,
+    maxExpectationBytes: 40_000,
+    maxExpectationChecks: 20,
     maxImportBytes: 2_000_000,
     maxOutputTokens: 8_192,
   },
@@ -130,6 +132,14 @@ const baseProps: MonitorSetupProps = {
         inputVariables: { question: "Which plan includes SSO?" },
         inputVariablesJson: '{"question":"Which plan includes SSO?"}',
         frozenContext: "Enterprise includes SSO.",
+        expectationSchemaVersion: "case_expectation_v1",
+        expectation: {
+          checks: [{ id: "sources", type: "source_ids", required: ["policy-7"], allowed: ["policy-7"], require_at_least_one: true }],
+        },
+        expectationJson: JSON.stringify({
+          checks: [{ id: "sources", type: "source_ids", required: ["policy-7"], allowed: ["policy-7"], require_at_least_one: true }],
+        }, null, 2),
+        expectationFingerprint: "b".repeat(64),
       },
     ],
     completedMonitorVersionId: null,
@@ -149,6 +159,9 @@ describe("MonitorSetupView", () => {
     expect(screen.getByRole("button", { name: /finish and lock setup/i })).toBeInTheDocument()
     expect(screen.getAllByText(/0 calls during setup/i).length).toBeGreaterThan(0)
     expect(screen.getByRole("heading", { name: "Exact provider-visible requests" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Case-specific expected outcomes" })).toBeInTheDocument()
+    expect(screen.getByText("Exact expectation")).toBeInTheDocument()
+    expect(screen.getByText(`Fingerprint: ${"b".repeat(64)}`)).toBeInTheDocument()
     expect(screen.getByText("a".repeat(64))).toBeInTheDocument()
   })
 
@@ -273,8 +286,11 @@ describe("MonitorSetupView", () => {
     render(<MonitorSetupView {...baseProps} errors={{}} flash={{}} step="cases" />)
 
     expect(screen.getByText("1 of 50 stored cases")).toBeInTheDocument()
+    expect(screen.getByLabelText("Case-specific expectation (JSON)")).toBeInTheDocument()
+    expect(screen.getByText("Expectation configured")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Add another case" }))
     expect(screen.getByText("2 of 50 stored cases")).toBeInTheDocument()
+    expect(screen.getByText("No expectation")).toBeInTheDocument()
     expect(screen.getByLabelText("Remove case 2")).toBeEnabled()
 
     await user.click(screen.getByLabelText("Remove case 2"))

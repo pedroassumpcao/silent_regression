@@ -246,13 +246,18 @@ defmodule SilentRegressionWeb.MonitorSetupControllerTest do
 
       encoded =
         Jason.encode!(%{
-          schema_version: 1,
+          schema_version: 2,
           cases: [
             %{
               case_key: "supported-answer",
               name: "Supported answer",
               input_variables: %{question: "What is supported?"},
               frozen_context: "This statement is supported.",
+              expectation: %{
+                checks: [
+                  %{id: "route", type: "label", allowed_values: ["approved"]}
+                ]
+              },
               status: "active"
             }
           ]
@@ -322,7 +327,8 @@ defmodule SilentRegressionWeb.MonitorSetupControllerTest do
         "cases" => [
           %{
             "frozen_context" => "sensitive-context",
-            "input_variables_json" => "sensitive-variables"
+            "input_variables_json" => "sensitive-variables",
+            "expectation_json" => "sensitive-expectation"
           }
         ],
         "case_import" => "sensitive-import",
@@ -334,6 +340,7 @@ defmodule SilentRegressionWeb.MonitorSetupControllerTest do
     refute inspected =~ "sensitive-user"
     refute inspected =~ "sensitive-context"
     refute inspected =~ "sensitive-variables"
+    refute inspected =~ "sensitive-expectation"
     refute inspected =~ "sensitive-import"
     refute inspected =~ "sensitive-output"
   end

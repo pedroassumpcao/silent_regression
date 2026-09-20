@@ -52,6 +52,10 @@ type SetupCase = {
   inputVariables: Record<string, unknown>
   inputVariablesJson: string
   frozenContext: string
+  expectationSchemaVersion: "no_case_expectation" | "case_expectation_v1"
+  expectation: Record<string, unknown>
+  expectationJson: string
+  expectationFingerprint: string
 }
 
 type Setup = {
@@ -102,6 +106,8 @@ type Limits = {
   maxRequestTemplateBytes: number
   maxContextBytes: number
   maxVariablesBytes: number
+  maxExpectationBytes: number
+  maxExpectationChecks: number
   maxImportBytes: number
   maxOutputTokens: number
 }
@@ -858,6 +864,14 @@ function CasesStep({ basePath, errors, limits, setup }: StepProps & { limits: Li
         </Button>
       </div>
 
+      <Alert id="case-expectation-guidance" className="mb-6 border-primary/20 bg-primary/5">
+        <ShieldCheck />
+        <AlertTitle>Prove the right answer for each case</AlertTitle>
+        <AlertDescription>
+          A shared contract can prove that an output is well formed or uses an allowed label. An optional case expectation proves which label, JSON value, number, source IDs, or abstention behavior is correct for this specific input. Leave it blank only when the case intentionally has no exact expected outcome.
+        </AlertDescription>
+      </Alert>
+
       {mode === "manual" ? (
         <form id="monitor-cases-form" className="space-y-6" onSubmit={submitManual}>
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/30 px-4 py-3 text-sm">
@@ -933,6 +947,31 @@ function CasesStep({ basePath, errors, limits, setup }: StepProps & { limits: Li
                     onChange={event => updateCase(index, "frozen_context", event.target.value)}
                   />
                 </div>
+                <div className="space-y-3 rounded-xl border border-primary/15 bg-background p-4 sm:col-span-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <Label htmlFor={`case-${index}-expectation`}>Case-specific expectation (JSON)</Label>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        Up to {limits.maxExpectationChecks} deterministic checks. Blank means an explicit no-expectation state.
+                      </p>
+                    </div>
+                    <Badge variant={item.expectation_json.trim() ? "default" : "outline"}>
+                      {item.expectation_json.trim() ? "Expectation configured" : "No expectation"}
+                    </Badge>
+                  </div>
+                  <Textarea
+                    id={`case-${index}-expectation`}
+                    name={`cases[${index}][expectation_json]`}
+                    className="min-h-48 font-mono text-xs leading-5"
+                    maxLength={limits.maxExpectationBytes}
+                    placeholder={'{"checks":[{"id":"route","type":"label","allowed_values":["billing"]}]}' }
+                    value={item.expectation_json}
+                    onChange={event => updateCase(index, "expectation_json", event.target.value)}
+                  />
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    Supported types: <code>label</code>, <code>json_value</code>, <code>json_number</code>, <code>source_ids</code>, and <code>abstention</code>. Check IDs must be stable and unique within this case.
+                  </p>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor={`case-${index}-status`}>Status</Label>
                   <Select value={item.status} onValueChange={value => updateCase(index, "status", value)}>
@@ -966,7 +1005,7 @@ function CasesStep({ basePath, errors, limits, setup }: StepProps & { limits: Li
             <FileJson2 />
             <AlertTitle>Versioned import schema</AlertTitle>
             <AlertDescription>
-              Import one JSON object with <code className="rounded bg-muted px-1">schema_version: 1</code> and a <code className="rounded bg-muted px-1">cases</code> array. A valid import replaces the current draft case list.
+              Import one JSON object with <code className="rounded bg-muted px-1">schema_version: 2</code> and a <code className="rounded bg-muted px-1">cases</code> array. Each case may include an <code className="rounded bg-muted px-1">expectation</code>. Schema v1 remains accepted and creates explicit no-expectation cases. A valid import replaces the current draft case list.
             </AlertDescription>
           </Alert>
           <div className="space-y-2">
@@ -977,7 +1016,7 @@ function CasesStep({ basePath, errors, limits, setup }: StepProps & { limits: Li
               required
               className="min-h-80 font-mono text-xs leading-5"
               maxLength={limits.maxImportBytes}
-              placeholder={'{"schema_version":1,"cases":[{"case_key":"example","name":"Example","status":"active","input_variables":{},"frozen_context":"..."}]}' }
+              placeholder={'{"schema_version":2,"cases":[{"case_key":"example","name":"Example","status":"active","input_variables":{},"frozen_context":"...","expectation":{"checks":[{"id":"route","type":"label","allowed_values":["billing"]}]}}]}' }
               value={importForm.data.case_import}
               aria-invalid={Boolean(errors.cases)}
               onChange={event => importForm.setData("case_import", event.target.value)}
@@ -1008,6 +1047,7 @@ function ReviewStep({
 }) {
   const form = useForm({})
   const complete = setup.status === "completed"
+  const configuredExpectationCount = setup.cases.filter(item => item.expectationSchemaVersion === "case_expectation_v1").length
 
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -1040,8 +1080,36 @@ function ReviewStep({
           <ReviewRow
             label="Representative cases"
             value={`${activeCaseCount} active case${activeCaseCount === 1 ? "" : "s"}`}
-            detail={`${setup.cases.length - activeCaseCount} disabled; ${setup.cases.length} stored total`}
+            detail={`${configuredExpectationCount} with exact expectations; ${setup.cases.length - configuredExpectationCount} explicitly without; ${setup.cases.length} stored total`}
           />
+
+          <section id="case-expectation-review" className="space-y-3" aria-labelledby="case-expectation-review-title">
+            <div>
+              <h2 id="case-expectation-review-title" className="text-base font-semibold">Case-specific expected outcomes</h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                These immutable checks are evaluated separately from the shared contract and are fingerprinted with each case.
+              </p>
+            </div>
+            {setup.cases.map((item, index) => (
+              <div key={item.caseKey} id={`expectation-review-${index + 1}`} className="rounded-xl border bg-muted/15 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">{item.caseKey} · {item.status}</p>
+                  </div>
+                  <Badge variant={item.expectationSchemaVersion === "case_expectation_v1" ? "default" : "outline"}>
+                    {item.expectationSchemaVersion === "case_expectation_v1" ? "Exact expectation" : "No case expectation"}
+                  </Badge>
+                </div>
+                {item.expectationSchemaVersion === "case_expectation_v1" && (
+                  <div className="mt-3 space-y-2">
+                    <pre className="max-h-72 overflow-auto rounded-lg border bg-background p-3 text-xs leading-5"><code>{item.expectationJson}</code></pre>
+                    <code className="block break-all text-[11px] text-muted-foreground">Fingerprint: {item.expectationFingerprint}</code>
+                  </div>
+                )}
+              </div>
+            ))}
+          </section>
 
           <Alert id="provider-call-preview" className="border-primary/20 bg-primary/5">
             <Send />
@@ -1297,6 +1365,7 @@ function emptyCase() {
     status: "active",
     input_variables_json: "{}",
     frozen_context: "",
+    expectation_json: "",
   }
 }
 
@@ -1307,6 +1376,7 @@ function caseForForm(item: SetupCase) {
     status: item.status,
     input_variables_json: item.inputVariablesJson,
     frozen_context: item.frozenContext,
+    expectation_json: item.expectationJson,
   }
 }
 
