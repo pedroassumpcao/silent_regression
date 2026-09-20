@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "fixtures": [
+    {
+      "id": "label_accepts_case_alternative",
+      "expectation": {"checks": [{"id": "route", "type": "label", "allowed_values": ["billing", "accounts"]}]},
+      "output": "Accounts",
+      "expected_status": "pass",
+      "expected_codes": ["expected_label_matched"]
+    },
+    {
+      "id": "label_rejects_globally_valid_wrong_case_label",
+      "expectation": {"checks": [{"id": "route", "type": "label", "allowed_values": ["billing"]}]},
+      "output": "accounts",
+      "expected_status": "fail",
+      "expected_codes": ["expected_label_mismatch"]
+    },
+    {
+      "id": "json_value_matches_typed_alternative",
+      "expectation": {"checks": [{"id": "currency", "type": "json_value", "path": "/invoice/currency", "allowed_values": ["USD", "US Dollars"], "numeric_comparison": "strict"}]},
+      "output": "{\"invoice\":{\"currency\":\"USD\"}}",
+      "expected_status": "pass",
+      "expected_codes": ["expected_json_value_matched"]
+    },
+    {
+      "id": "json_value_preserves_strict_numeric_type",
+      "expectation": {"checks": [{"id": "count", "type": "json_value", "path": "/count", "allowed_values": [1], "numeric_comparison": "strict"}]},
+      "output": "{\"count\":1.0}",
+      "expected_status": "fail",
+      "expected_codes": ["expected_json_value_mismatch"]
+    },
+    {
+      "id": "numeric_target_accepts_tolerance",
+      "expectation": {"checks": [{"id": "total", "type": "json_number", "path": "/total", "target": 100.0, "tolerance": 0.05}]},
+      "output": "{\"total\":100.04}",
+      "expected_status": "pass",
+      "expected_codes": ["expected_number_within_tolerance"]
+    },
+    {
+      "id": "numeric_target_rejects_outside_tolerance",
+      "expectation": {"checks": [{"id": "total", "type": "json_number", "path": "/total", "target": 100.0, "tolerance": 0.05}]},
+      "output": "{\"total\":100.06}",
+      "expected_status": "fail",
+      "expected_codes": ["expected_number_outside_tolerance"]
+    },
+    {
+      "id": "source_ids_require_and_allow_exact_set",
+      "expectation": {"checks": [{"id": "sources", "type": "source_ids", "required": ["policy-7"], "allowed": ["policy-7", "policy-9"], "require_at_least_one": true}]},
+      "output": "Refunds take five days [policy-7]",
+      "expected_status": "pass",
+      "expected_codes": ["expected_sources_matched"]
+    },
+    {
+      "id": "source_ids_reject_undeclared_source",
+      "expectation": {"checks": [{"id": "sources", "type": "source_ids", "required": [], "allowed": ["policy-7"], "require_at_least_one": true}]},
+      "output": "Refunds take five days [policy-8]",
+      "expected_status": "fail",
+      "expected_codes": ["unexpected_source_present"]
+    },
+    {
+      "id": "abstention_can_be_required",
+      "expectation": {"checks": [{"id": "support", "type": "abstention", "expected": true, "alternatives": ["insufficient evidence", "I cannot answer"]}]},
+      "output": "There is insufficient evidence in the supplied documents.",
+      "expected_status": "pass",
+      "expected_codes": ["expected_abstention_matched"]
+    },
+    {
+      "id": "abstention_can_be_forbidden",
+      "expectation": {"checks": [{"id": "support", "type": "abstention", "expected": false, "alternatives": ["insufficient evidence", "I cannot answer"]}]},
+      "output": "The policy permits a refund.",
+      "expected_status": "pass",
+      "expected_codes": ["expected_abstention_matched"]
+    }
+  ]
+}

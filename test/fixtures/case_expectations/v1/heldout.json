@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "fixtures": [
+    {
+      "id": "escaped_pointer_and_multiple_checks",
+      "expectation": {"checks": [
+        {"id": "label", "type": "json_value", "path": "/result~1type", "allowed_values": ["approved"], "numeric_comparison": "strict"},
+        {"id": "score", "type": "json_number", "path": "/score", "target": 0.8, "tolerance": 0.01}
+      ]},
+      "output": "{\"result/type\":\"approved\",\"score\":0.79}",
+      "expected_status": "pass",
+      "expected_codes": ["expected_json_value_matched", "expected_number_within_tolerance"]
+    },
+    {
+      "id": "missing_pointer_fails_without_error",
+      "expectation": {"checks": [{"id": "owner", "type": "json_value", "path": "/owner/id", "allowed_values": ["u-17"], "numeric_comparison": "strict"}]},
+      "output": "{\"owner\":{}}",
+      "expected_status": "fail",
+      "expected_codes": ["expectation_json_path_missing"]
+    },
+    {
+      "id": "invalid_json_fails_expected_value",
+      "expectation": {"checks": [{"id": "owner", "type": "json_value", "path": "/owner/id", "allowed_values": ["u-17"], "numeric_comparison": "strict"}]},
+      "output": "not json",
+      "expected_status": "fail",
+      "expected_codes": ["expectation_invalid_json"]
+    },
+    {
+      "id": "mathematical_comparison_recurses",
+      "expectation": {"checks": [{"id": "payload", "type": "json_value", "path": "", "allowed_values": [{"amount": 1, "items": [2]}], "numeric_comparison": "mathematical"}]},
+      "output": "{\"amount\":1.0,\"items\":[2.0]}",
+      "expected_status": "pass",
+      "expected_codes": ["expected_json_value_matched"]
+    }
+  ]
+}

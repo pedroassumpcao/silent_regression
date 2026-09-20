@@ -958,7 +958,7 @@ shapes and values.
 
 **Checklist:**
 
-- [ ] Define a bounded expectation schema for labels, typed JSON Pointer values, alternatives,
+- [x] Define a bounded expectation schema for labels, typed JSON Pointer values, alternatives,
   numeric tolerances, source IDs, and abstention.
 - [ ] Add immutable expectation data and schema identity to case versions.
 - [ ] Extend manual setup and versioned import with usable expectation authoring.

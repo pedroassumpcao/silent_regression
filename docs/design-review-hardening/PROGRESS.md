@@ -75,7 +75,7 @@ latency. Task 16 is complete.
 - [x] Reconfirm the accepted case-specific correctness boundary and inspect case, capture,
   evaluator, rescore, setup/import, result, and alert paths.
 - [x] Finalize the bounded expectation schema and legacy/import compatibility policy.
-- [ ] Implement expectation parsing, evaluation, fingerprints, and fixtures.
+- [x] Implement expectation parsing, evaluation, fingerprints, and fixtures.
 - [ ] Add additive immutable persistence and legacy backfills.
 - [ ] Bind capture and historical-rescore evaluation to exact case expectations.
 - [ ] Extend setup/import and review authoring.
