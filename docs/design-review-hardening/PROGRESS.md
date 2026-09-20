@@ -3,8 +3,8 @@
 ## Current status
 
 - Program: in progress
-- Current gate: Gate B — Recoverable monitoring
-- Current task: Task 23 — incident-centered alerting (in progress)
+- Current gate: Gate C — Pilot usability
+- Current task: Task 24 — reviewed reference capture language (not started)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -20,7 +20,7 @@
 | 20 | Authentication breaker recovery | Complete (`e639ce6`, `5d42d0a`, `6403357`) |
 | 21 | Temporary capacity and coverage state | Complete (`0b06ca8`) |
 | 22 | Successor workflow configuration | Complete (`20367c0`) |
-| 23 | Incident-centered alerting | In progress |
+| 23 | Incident-centered alerting | Complete (`85a99f4`) |
 | 24 | Reviewed reference capture language | Not started |
 | 25 | Credential-free demo and focused imports | Not started |
 | 26 | Reproducible verification and toolchain | Not started |
@@ -326,11 +326,11 @@ also removes the full successor-origin graph. Task 22 and Gate B are complete; T
 - [x] Define stable content-free incident signatures, immutable occurrences, and episode behavior.
 - [x] Define conservative recovery, exceptional-reference disclosure, bounded recurrence delivery,
   and pagination contracts.
-- [ ] Add additive incident/occurrence persistence and legacy alert backfill.
-- [ ] Synchronize new and recurring findings without suppressing materially different signatures.
-- [ ] Move the action queue and lifecycle to incidents while retaining exact per-run evidence.
-- [ ] Prove grouping, splitting, recovery, recurrence volume, migration, and purge behavior.
-- [ ] Run all verification gates and record focused commits.
+- [x] Add additive incident/occurrence persistence and legacy alert backfill.
+- [x] Synchronize new and recurring findings without suppressing materially different signatures.
+- [x] Move the action queue and lifecycle to incidents while retaining exact per-run evidence.
+- [x] Prove grouping, splitting, recovery, recurrence volume, migration, and purge behavior.
+- [x] Run all verification gates and record focused commits.
 
 Decisions:
 
@@ -351,3 +351,20 @@ Decisions:
   later failure is acceptable.
 - Existing alerts are retained and backfilled one-to-one into legacy incidents. The migration does
   not infer historical grouping that the old rows cannot prove.
+
+Local implementation commits:
+
+- `e9edd50` — Task 23 research decisions and execution plan
+- `85a99f4` — stable signatures, immutable occurrences, incident lifecycle, bounded delivery, and UI
+
+The additive migration audit found all 3 existing alerts represented by exactly 3 legacy incidents
+and 3 immutable occurrences, with zero duplicate active signatures. The partial unique index and
+forward-only incident guard are installed. No local data wipe was needed.
+
+Verification passed on 2026-09-20 (America/Chicago): `mix precommit` with 650 Elixir tests, 60
+frontend tests with TypeScript checking, and `mix assets.build`. Focused coverage proves stable
+same-signature grouping, material case splits, retry idempotency, member acknowledgement and
+review-bound owner resolution, linked episodes after resolution or conservative recovery,
+exceptional-reference disclosure, tenant isolation, and recovered-incident purge. A 50-occurrence
+load test retained every exact alert and occurrence while enqueueing only counts 1, 5, 20, and 50.
+Task 23 is complete; Task 24 is next.

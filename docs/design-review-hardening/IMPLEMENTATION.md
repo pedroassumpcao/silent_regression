@@ -184,6 +184,11 @@ atomically changes future execution and enters the existing replacement-referenc
 7. Verify same-signature grouping, material-signature splits, idempotency, episode recurrence,
    conservative recovery, bounded high-volume delivery, tenancy/roles, legacy migration, and purge.
 
+Completion: implemented in `85a99f4`; all verification gates passed. Incidents are now the routed
+workspace lifecycle object, while every per-run alert remains exact occurrence evidence. A
+50-occurrence proof retained all 50 alerts and occurrences while creating only the four configured
+delivery milestones.
+
 ### Task 24: reviewed reference capture language
 
 - Rename customer-facing baseline concepts where clarity improves without gratuitously renaming

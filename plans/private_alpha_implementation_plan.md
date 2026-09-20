@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–22 complete; Task 23 is in progress; Gates A–B are complete and Gates C–D block the first design-partner pilot
+> **Status:** Tasks 1–23 complete; Task 24 is next; Gates A–B are complete and Gates C–D block the first design-partner pilot
 >
-> **Progress:** 22 of 27 tasks complete; Task 23 is in progress
+> **Progress:** 23 of 27 tasks complete; Task 24 is next
 >
 > **Last revised:** 2026-09-20
 >
@@ -1122,7 +1122,7 @@ asset build.
 
 ### Task 23 — Incident-centered alerting
 
-**Status:** In progress
+**Status:** Complete (`85a99f4`)
 
 **Gate:** C — Pilot usability
 
@@ -1131,12 +1131,12 @@ every piece of exact evidence.
 
 **Checklist:**
 
-- [ ] Define and migrate stable incident and occurrence identities.
-- [ ] Attach recurring failures without suppressing materially different signatures.
-- [ ] Notify once for a new incident and only on bounded, meaningful recurrence changes.
-- [ ] Model first seen, last seen, affected cases/runs, acknowledgement, resolution, and recovery.
-- [ ] Add pagination/counts and document exceptional-reference behavior.
-- [ ] Load-test a broad recurring failure and verify delivery volume.
+- [x] Define and migrate stable incident and occurrence identities.
+- [x] Attach recurring failures without suppressing materially different signatures.
+- [x] Notify once for a new incident and only on bounded, meaningful recurrence changes.
+- [x] Model first seen, last seen, affected cases/runs, acknowledgement, resolution, and recovery.
+- [x] Add pagination/counts and document exceptional-reference behavior.
+- [x] Load-test a broad recurring failure and verify delivery volume.
 
 ### Task 24 — Reviewed reference capture language
 
@@ -2161,6 +2161,27 @@ The product is ready for the first external design partner only when:
 - Verification passed with `mix precommit` (644 Elixir tests), frontend TypeScript and 59 tests, and
   `mix assets.build`.
 - Focused commits: `3383065` and `20367c0`. Task 23 is next.
+
+### 2026-09-20 — Task 23 complete
+
+- Added stable, content-free `incident_signature_v1` identities and immutable occurrences while
+  retaining every exact per-run alert as evidence.
+- Made incidents the routed workspace queue and forward-only lifecycle object, with member
+  acknowledgement, review-bound owner resolution, conservative clean-run recovery, and linked
+  recurrence episodes after resolution or recovery.
+- Bounded email delivery to episode opening and occurrence counts 5, 20, and 50 through durable
+  recipient-specific deduplication while preserving personal notification preferences.
+- Added incident and occurrence pagination, database-wide status counts, first/last seen and
+  affected-case/run summaries, and explicit exceptional reviewed-reference disclosure.
+- Removed alert lifecycle routes so exact alert evidence cannot diverge from the incident action
+  item. Authenticated incident routes remain inside the authenticated workspace scope because every
+  query and mutation requires the router-provided workspace membership.
+- Additive migration audit preserved all 3 local alerts as 3 explicit legacy incidents and 3
+  occurrences, found zero duplicate active signatures, and confirmed the incident guard. No local
+  data wipe was needed.
+- Verification passed with `mix precommit` (650 Elixir tests), frontend TypeScript and 60 tests, and
+  `mix assets.build`; the 50-occurrence load test created only four delivery milestones.
+- Focused commits: `e9edd50` and `85a99f4`. Task 24 is next.
 
 ## 17. References
 
