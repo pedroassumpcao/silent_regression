@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate C — Pilot usability
-- Current task: Task 24 — reviewed reference capture language (in progress)
+- Current task: Task 25 — credential-free demo and focused imports (in progress)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -21,8 +21,8 @@
 | 21 | Temporary capacity and coverage state | Complete (`0b06ca8`) |
 | 22 | Successor workflow configuration | Complete (`20367c0`) |
 | 23 | Incident-centered alerting | Complete (`85a99f4`) |
-| 24 | Reviewed reference capture language | In progress |
-| 25 | Credential-free demo and focused imports | Not started |
+| 24 | Reviewed reference capture language | Complete (`bf16677`) |
+| 25 | Credential-free demo and focused imports | In progress |
 | 26 | Reproducible verification and toolchain | Not started |
 | 27 | Hosted security and operations | Not started |
 
@@ -374,9 +374,9 @@ Task 23 is complete; Task 24 is next.
 - [x] Inventory customer-facing baseline, sampling, operational comparison, and spend language.
 - [x] Confirm that stable internal baseline schemas/routes remain unchanged.
 - [x] Define reviewed-reference, sampling-limit, exceptional-approval, and call-accounting copy.
-- [ ] Update capture, operations, results, run evidence, recovery, and public privacy surfaces.
-- [ ] Add copy regressions for the four evidence roles and unavailable currency estimate.
-- [ ] Run frontend/backend/build gates and record the focused commit.
+- [x] Update capture, operations, results, run evidence, recovery, and public privacy surfaces.
+- [x] Add copy regressions for the four evidence roles and unavailable currency estimate.
+- [x] Run frontend/backend/build gates and record the focused commit.
 
 Decisions:
 
@@ -391,3 +391,17 @@ Decisions:
   is unavailable because the product has no versioned provider price/currency snapshot.
 - Exceptional approval is attributable acceptance of the exact reference membership only. It does
   not suppress later incidents or weaken deterministic rules.
+
+Completion:
+
+- The reviewed-reference method now explains shared contracts, case expectations, the exact
+  reviewed reference, and recurring samples as four distinct evidence layers.
+- Authorization surfaces distinguish planned calls, retry-inclusive maximum reserved calls, and
+  actual provider attempts. They explicitly report that a currency estimate is unavailable without
+  a versioned price-and-currency snapshot.
+- Capture, operations, results, run evidence, credential replacement, recovery, privacy, and
+  dashboard copy no longer overstates a single passing sample as universal health.
+- Exceptional approval copy records acceptance of only the exact reference membership and states
+  that matching later failures still create incidents.
+- Verification passed on 2026-09-20 with `mix precommit` (650 Elixir tests), frontend TypeScript and
+  60 tests, and `mix assets.build`. Focused implementation commit: `bf16677`. Task 25 is next.

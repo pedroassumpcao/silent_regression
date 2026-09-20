@@ -198,6 +198,11 @@ delivery milestones.
 - Keep spend language precise: distinguish maximum reserved calls from actual usage, and say when a
   currency estimate is unavailable.
 
+Completion: implemented in `bf16677`. The customer-facing method now names the four evidence
+layers, bounds one-sample claims, preserves stable internal baseline identifiers, and makes
+retry-inclusive reservation, actual usage, unavailable currency estimates, and exceptional
+approval consequences explicit across the workflow.
+
 ### Task 25: credential-free demo and focused imports
 
 - Add a safe deterministic demo before credential entry.

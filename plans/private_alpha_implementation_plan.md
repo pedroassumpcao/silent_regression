@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–23 complete; Task 24 is in progress; Gates A–B are complete and Gates C–D block the first design-partner pilot
+> **Status:** Tasks 1–24 complete; Task 25 is in progress; Gates A–B are complete and Gates C–D block the first design-partner pilot
 >
-> **Progress:** 23 of 27 tasks complete; Task 24 is in progress
+> **Progress:** 24 of 27 tasks complete; Task 25 is in progress
 >
 > **Last revised:** 2026-09-20
 >
@@ -1140,7 +1140,7 @@ every piece of exact evidence.
 
 ### Task 24 — Reviewed reference capture language
 
-**Status:** In progress
+**Status:** Complete (`bf16677`)
 
 **Gate:** C — Pilot usability
 
@@ -1149,18 +1149,18 @@ as statistical proof of universal content health.
 
 **Checklist:**
 
-- [ ] Use “reviewed reference capture” in customer-facing setup/results language where clear.
-- [ ] Explain the separate roles of case expectations, contract approval, reference capture, and
+- [x] Use “reviewed reference capture” in customer-facing setup/results language where clear.
+- [x] Explain the separate roles of case expectations, contract approval, reference capture, and
   recurring samples.
-- [ ] State one-sample/cadence limits and avoid universal-health language.
-- [ ] Explain how exceptionally accepted reference failures affect later incidents.
-- [ ] Distinguish maximum reserved calls from actual calls and state when a currency estimate is
+- [x] State one-sample/cadence limits and avoid universal-health language.
+- [x] Explain how exceptionally accepted reference failures affect later incidents.
+- [x] Distinguish maximum reserved calls from actual calls and state when a currency estimate is
   unavailable.
-- [ ] Preserve stable internal names where renaming would add migration risk without user value.
+- [x] Preserve stable internal names where renaming would add migration risk without user value.
 
 ### Task 25 — Credential-free demo and focused imports
 
-**Status:** Not started
+**Status:** In progress
 
 **Gate:** C — Pilot usability
 
@@ -2182,6 +2182,24 @@ The product is ready for the first external design partner only when:
 - Verification passed with `mix precommit` (650 Elixir tests), frontend TypeScript and 60 tests, and
   `mix assets.build`; the 50-occurrence load test created only four delivery milestones.
 - Focused commits: `e9edd50` and `85a99f4`. Task 24 is next.
+
+### 2026-09-20 — Task 24 complete
+
+- Reframed customer-facing baseline language as an exact reviewed operating reference while
+  retaining stable internal schemas, field names, and routes.
+- Explained shared contracts, case expectations, reviewed-reference provenance, and recurring
+  samples as separate evidence layers with different claims.
+- Stated that one passing sample supports only its exact execution and does not estimate failure
+  probability or prove universal model health.
+- Distinguished planned calls, retry-inclusive maximum reserved calls, and actual provider attempts;
+  currency cost is explicitly unavailable without a versioned provider price/currency snapshot.
+- Clarified that exceptional approval accepts only the exact reviewed membership and never weakens
+  rules or suppresses later incidents.
+- Updated capture, dashboard, contract, credential replacement, operations, results, run evidence,
+  setup, controller feedback, and privacy surfaces with regression coverage.
+- Verification passed with `mix precommit` (650 Elixir tests), frontend TypeScript and 60 tests, and
+  `mix assets.build`.
+- Focused commits: `f9ad312` and `bf16677`. Task 25 is next.
 
 ## 17. References
 
