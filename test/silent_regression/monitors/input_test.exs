@@ -147,6 +147,40 @@ defmodule SilentRegression.Monitors.InputTest do
       assert {:error, %{field: :configuration}} =
                VersionInput.normalize(Map.put(attributes, :unknown, true))
     end
+
+    test "normalizes provider-native request templates and validates every active case" do
+      attributes =
+        MonitorsFixtures.valid_version_attributes()
+        |> Map.merge(%{
+          request_mode: "provider_native_v1",
+          request_schema_version: 1,
+          request_template: %{
+            input: [%{role: "user", content: "{{question}} / {{frozen_context}}"}]
+          },
+          system_prompt: "",
+          user_prompt_template: ""
+        })
+
+      assert {:ok, normalized} = VersionInput.normalize(attributes)
+      assert normalized.request_mode == :provider_native_v1
+
+      assert normalized.request_template == %{
+               "input" => [
+                 %{"role" => "user", "content" => "{{question}} / {{frozen_context}}"}
+               ]
+             }
+
+      assert {:error, %{field: :request_template, reason: {:missing_prompt_variable, "missing"}}} =
+               VersionInput.normalize(%{
+                 attributes
+                 | request_template: %{
+                     input: [%{role: "user", content: "{{missing}}"}]
+                   }
+               })
+
+      assert {:error, %{field: :request_template, reason: :legacy_prompt_not_allowed}} =
+               VersionInput.normalize(%{attributes | system_prompt: "Hidden instruction"})
+    end
   end
 
   describe "fingerprints" do
@@ -197,6 +231,32 @@ defmodule SilentRegression.Monitors.InputTest do
 
       assert Enum.all?(fingerprints, &(&1 != normalized_base.fingerprint))
     end
+
+    test "provider-native fingerprints change with effective templates but ignore legacy fields" do
+      base =
+        MonitorsFixtures.valid_version_attributes()
+        |> Map.merge(%{
+          request_mode: "provider_native_v1",
+          request_schema_version: 1,
+          request_template: %{
+            input: [%{role: "user", content: "{{question}}"}]
+          },
+          system_prompt: "",
+          user_prompt_template: ""
+        })
+
+      assert {:ok, normalized} = VersionInput.normalize(base)
+
+      assert {:ok, changed} =
+               VersionInput.normalize(%{
+                 base
+                 | request_template: %{
+                     input: [%{role: "user", content: "Question: {{question}}"}]
+                   }
+               })
+
+      refute normalized.fingerprint == changed.fingerprint
+    end
   end
 
   defp active_case(case_key) do
@@ -205,7 +265,7 @@ defmodule SilentRegression.Monitors.InputTest do
       name: "Fallback",
       position: 1,
       status: "active",
-      input_variables: %{},
+      input_variables: %{question: "Fallback question"},
       frozen_context: ""
     }
   end

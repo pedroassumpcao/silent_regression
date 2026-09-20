@@ -17,11 +17,20 @@ deterministic product wedge. The authoritative task status remains in
 
 ### Task 16: provider-native request artifacts
 
-- Finalize provider-specific request schemas and migration.
-- Preserve legacy wrapper behavior under an explicit version.
-- Add exact setup preview, canonical fingerprinting, adapter decoupling, and payload-level tests.
-- Prove OpenAI and Anthropic parity with separate, explicitly authorized live smoke calls only after
-  fake-provider and transport tests pass.
+1. Add request mode/schema/template fields to setup and immutable monitor versions; backfill existing
+   rows as `legacy_wrapped_v1` and default only newly created setups to `provider_native_v1`.
+2. Add a strict renderer for OpenAI Responses and Anthropic Messages text templates, including
+   bounded case-variable substitution, provider-owned fields, exact artifacts, and fingerprints.
+3. Add request artifact/fingerprint fields to the pre-call provider-attempt ledger and verify the
+   planned observation fingerprint before reserving the attempt.
+4. Replace product completion delegation to `SilentRegression.Spike` with direct single-attempt Req
+   transports while leaving the feasibility spike untouched.
+5. Replace new-setup prompt fields with provider-native JSON authoring and render exact per-case
+   secret-free previews on review; retain a clearly labeled legacy view for old setup rows.
+6. Add migration, normalization, payload, capture-receipt, controller, and frontend tests.
+7. Prove OpenAI and Anthropic parity with separate, explicitly authorized live smoke calls only
+   after fake-provider and transport tests pass. Live calls remain a user-authorized follow-up, not
+   implicit verification.
 
 ### Task 17: case-specific expectations
 

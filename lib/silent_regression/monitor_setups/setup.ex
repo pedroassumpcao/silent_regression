@@ -22,6 +22,13 @@ defmodule SilentRegression.MonitorSetups.Setup do
     field :status, Ecto.Enum, values: [:in_progress, :completed], default: :in_progress
     field :provider, Ecto.Enum, values: [:openai, :anthropic]
     field :requested_model, :string
+
+    field :request_mode, Ecto.Enum,
+      values: [:legacy_wrapped_v1, :provider_native_v1],
+      default: :provider_native_v1
+
+    field :request_schema_version, :integer, default: 1
+    field :request_template, :map, default: %{}
     field :system_prompt, :string, default: ""
     field :user_prompt_template, :string, default: ""
     field :response_format, :map, default: %{"type" => "text"}
@@ -73,7 +80,9 @@ defmodule SilentRegression.MonitorSetups.Setup do
     setup
     |> change(attrs)
     |> validate_required([
-      :user_prompt_template,
+      :request_mode,
+      :request_schema_version,
+      :request_template,
       :response_format,
       :generation_config
     ])
@@ -113,6 +122,8 @@ defmodule SilentRegression.MonitorSetups.Setup do
     |> unique_constraint(:monitor_id)
     |> check_constraint(:status, name: :monitor_setups_status_check)
     |> check_constraint(:provider, name: :monitor_setups_provider_check)
+    |> check_constraint(:request_mode, name: :monitor_setups_request_mode_check)
+    |> check_constraint(:request_schema_version, name: :monitor_setups_request_schema_check)
     |> check_constraint(:status, name: :monitor_setups_completion_check)
   end
 end

@@ -482,6 +482,9 @@ defmodule SilentRegression.Monitors do
     version.schema_version == normalized.schema_version and
       version.provider == normalized.provider and
       version.requested_model == normalized.requested_model and
+      version.request_mode == normalized.request_mode and
+      version.request_schema_version == normalized.request_schema_version and
+      version.request_template == normalized.request_template and
       version.system_prompt == normalized.system_prompt and
       version.user_prompt_template == normalized.user_prompt_template and
       version.response_format == normalized.response_format and

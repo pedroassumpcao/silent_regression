@@ -26,6 +26,13 @@ defmodule SilentRegression.Monitors.MonitorVersion do
     field :status, Ecto.Enum, values: @statuses, default: :draft
     field :provider, Ecto.Enum, values: @providers
     field :requested_model, :string
+
+    field :request_mode, Ecto.Enum,
+      values: [:legacy_wrapped_v1, :provider_native_v1],
+      default: :legacy_wrapped_v1
+
+    field :request_schema_version, :integer, default: 1
+    field :request_template, :map, default: %{}
     field :system_prompt, :string, default: ""
     field :user_prompt_template, :string
     field :response_format, :map
@@ -51,6 +58,9 @@ defmodule SilentRegression.Monitors.MonitorVersion do
     :schema_version,
     :provider,
     :requested_model,
+    :request_mode,
+    :request_schema_version,
+    :request_template,
     :system_prompt,
     :user_prompt_template,
     :response_format,
@@ -59,6 +69,8 @@ defmodule SilentRegression.Monitors.MonitorVersion do
     :fingerprint
   ]
 
+  @required_content_fields @content_fields -- [:system_prompt, :user_prompt_template]
+
   def create_changeset(version, %Monitor{} = monitor, %User{} = user, attrs) do
     version
     |> cast(attrs, @content_fields)
@@ -66,11 +78,12 @@ defmodule SilentRegression.Monitors.MonitorVersion do
     |> put_change(:created_by_user_id, user.id)
     |> put_change(:predecessor_id, attrs[:predecessor_id])
     |> put_change(:status, :draft)
-    |> validate_required(@content_fields ++ [:monitor_id, :created_by_user_id, :status])
+    |> validate_required(@required_content_fields ++ [:monitor_id, :created_by_user_id, :status])
     |> validate_number(:version, greater_than: 0)
     |> validate_length(:requested_model, min: 1, max: 200)
     |> validate_length(:system_prompt, max: 40_000)
-    |> validate_length(:user_prompt_template, min: 1, max: 40_000)
+    |> validate_length(:user_prompt_template, max: 40_000)
+    |> validate_legacy_user_prompt()
     |> validate_format(:case_set_fingerprint, ~r/^[0-9a-f]{64}$/)
     |> validate_format(:fingerprint, ~r/^[0-9a-f]{64}$/)
     |> add_constraints()
@@ -115,7 +128,17 @@ defmodule SilentRegression.Monitors.MonitorVersion do
     |> check_constraint(:schema_version, name: :monitor_versions_schema_version_check)
     |> check_constraint(:status, name: :monitor_versions_status_check)
     |> check_constraint(:provider, name: :monitor_versions_provider_check)
+    |> check_constraint(:request_mode, name: :monitor_versions_request_mode_check)
+    |> check_constraint(:request_schema_version, name: :monitor_versions_request_schema_check)
     |> check_constraint(:fingerprint, name: :monitor_versions_fingerprint_check)
     |> check_constraint(:status, name: :monitor_versions_lifecycle_timestamps_check)
+  end
+
+  defp validate_legacy_user_prompt(changeset) do
+    if get_field(changeset, :request_mode) == :legacy_wrapped_v1 do
+      validate_length(changeset, :user_prompt_template, min: 1)
+    else
+      changeset
+    end
   end
 end

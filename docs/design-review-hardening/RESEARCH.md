@@ -78,6 +78,31 @@ pretending the wire payloads are identical:
 Legacy monitor versions must stay reproducible under a named `legacy_wrapped_v1` request mode.
 They must never be silently reinterpreted as provider-native requests.
 
+#### Task 16 schema decision
+
+`provider_native_v1` deliberately supports text-only, stateless provider requests:
+
+- OpenAI template keys are `instructions` and `input`; every input item has an allowlisted
+  `user`, `assistant`, `system`, or `developer` role and string content.
+- Anthropic template keys are `system` and `messages`; messages use alternating `user` and
+  `assistant` roles, start and end with `user`, and use string content. Ending with `assistant`
+  would be a provider prefill and is excluded because current models do not support it uniformly.
+- Template strings may reference case input variables and the reserved `{{frozen_context}}`
+  placeholder. Context is sent only when the customer puts that placeholder in a message.
+- Provider/model, stateless storage settings, generation controls, and supported structured-output
+  configuration remain server-owned allowlisted fields and appear in the exact preview.
+- OpenAI supports the existing text, JSON object, and JSON schema modes. Anthropic supports text
+  and JSON schema through `output_config.format`; its native mode rejects unconstrained
+  `json_object` because the Messages API requires an actual schema for structured output.
+- Multimodal blocks, tools, prompt caching, previous-response state, arbitrary headers, and
+  arbitrary provider fields remain deferred. They must be added through a new request schema
+  version rather than relaxed validation.
+
+The provider-attempt ledger stores the exact secret-free endpoint/method/version/body artifact and
+its SHA-256 fingerprint before each network call. The request body is behavior evidence and follows
+the same customer-data retention boundary as prompts and case context; credentials and auth headers
+are never included.
+
 ### Case-aware deterministic expectations
 
 Each immutable case version should be able to declare bounded expectations such as:
