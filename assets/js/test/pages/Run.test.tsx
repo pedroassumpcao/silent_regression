@@ -218,8 +218,8 @@ describe("RunView", () => {
   it("lets members acknowledge open alerts but never offers owner resolution", () => {
     render(<RunView {...props} auth={{ ...auth, membership: { id: "member-id", role: "member" } }} canResolve={false} flash={{}} />)
 
-    expect(screen.getByRole("button", { name: "Acknowledge" })).toBeEnabled()
-    expect(screen.queryByRole("button", { name: "Resolve" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Acknowledge incident" })).toBeEnabled()
+    expect(screen.queryByRole("button", { name: "Resolve incident" })).not.toBeInTheDocument()
   })
 
   it("opens structured review for alerts and exposes missed-regression review on observations", async () => {
@@ -241,8 +241,8 @@ describe("RunView", () => {
       alerts: [{ ...alert, status: "acknowledged", acknowledgedAt: "2026-09-16T18:05:00Z" }],
     }} />)
 
-    expect(screen.getByRole("button", { name: "Resolve" })).toBeDisabled()
-    expect(screen.getByText("Review required to resolve")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Resolve incident" })).toBeDisabled()
+    expect(screen.getByText("Latest review required to resolve")).toBeInTheDocument()
   })
 
   it("shows the current append-only judgment and enables governed owner resolution", () => {
@@ -272,7 +272,7 @@ describe("RunView", () => {
     }} />)
 
     expect(screen.getByText("The contract is too narrow.")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Resolve" })).toBeEnabled()
+    expect(screen.getByRole("button", { name: "Resolve incident" })).toBeEnabled()
     expect(screen.getByRole("button", { name: /start contract revision/i })).toBeEnabled()
   })
 

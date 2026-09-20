@@ -2,26 +2,73 @@ defmodule SilentRegression.RunResults.Presenter do
   @moduledoc false
 
   alias SilentRegression.Captures.{CaptureObservation, CaptureRun}
-  alias SilentRegression.RunResults.{Alert, Policy, Provenance, SafeValue}
+
+  alias SilentRegression.RunResults.{
+    Alert,
+    Incident,
+    IncidentOccurrence,
+    Policy,
+    Provenance,
+    SafeValue
+  }
 
   def alert(%Alert{} = alert) do
+    incident = alert_incident(alert)
+
     %{
       id: alert.id,
       category: alert.category,
       severity: alert.severity,
-      status: alert.status,
+      status: (incident && incident.status) || alert.status,
       code: alert.code,
       title: alert.title,
       explanation: alert.explanation,
       evidence: SafeValue.structured(alert.evidence),
       opened_at: alert.opened_at,
-      acknowledged_at: alert.acknowledged_at,
-      resolved_at: alert.resolved_at,
-      resolution_review_decision_id: alert.resolution_review_decision_id,
-      acknowledged_by: association_email(alert.acknowledged_by_user),
-      resolved_by: association_email(alert.resolved_by_user),
+      acknowledged_at: (incident && incident.acknowledged_at) || alert.acknowledged_at,
+      resolved_at: (incident && incident.resolved_at) || alert.resolved_at,
+      resolution_review_decision_id:
+        (incident && incident.resolution_review_decision_id) ||
+          alert.resolution_review_decision_id,
+      acknowledged_by:
+        association_email(
+          (incident && incident.acknowledged_by_user) || alert.acknowledged_by_user
+        ),
+      resolved_by:
+        association_email((incident && incident.resolved_by_user) || alert.resolved_by_user),
       monitor: association_monitor(alert.monitor),
-      run: association_run(alert.capture_run)
+      run: association_run(alert.capture_run),
+      incident: incident_summary_map(incident, loaded_occurrence(alert.incident_occurrence))
+    }
+  end
+
+  def incident_summary(%Incident{} = incident, %IncidentOccurrence{} = latest_occurrence) do
+    incident_summary_map(incident, latest_occurrence)
+  end
+
+  def incident_detail(
+        %Incident{} = incident,
+        %IncidentOccurrence{} = latest_occurrence,
+        occurrences,
+        pagination
+      ) do
+    %{
+      incident: incident_summary_map(incident, latest_occurrence),
+      signature_schema_version: incident.signature_schema_version,
+      occurrences: Enum.map(occurrences, &occurrence/1),
+      pagination: pagination
+    }
+  end
+
+  def occurrence(%IncidentOccurrence{} = occurrence) do
+    %{
+      id: occurrence.id,
+      ordinal: occurrence.ordinal,
+      occurred_at: occurrence.occurred_at,
+      case_count: length(occurrence.case_fingerprints),
+      exceptional_reference: occurrence.exceptional_reference,
+      alert: alert(occurrence.alert),
+      run: association_run(occurrence.capture_run)
     }
   end
 
@@ -287,6 +334,44 @@ defmodule SilentRegression.RunResults.Presenter do
   defp association_run(run) do
     %{id: run.id, kind: run.kind, status: run.status, completed_at: run.completed_at}
   end
+
+  defp incident_summary_map(nil, _occurrence), do: nil
+
+  defp incident_summary_map(incident, latest_occurrence) do
+    %{
+      id: incident.id,
+      category: incident.category,
+      severity: incident.severity,
+      status: incident.status,
+      code: incident.code,
+      title: incident.title,
+      explanation: incident.explanation,
+      episode: incident.episode,
+      first_seen_at: incident.first_seen_at,
+      last_seen_at: incident.last_seen_at,
+      occurrence_count: incident.occurrence_count,
+      run_count: incident.run_count,
+      affected_case_count: incident.affected_case_count,
+      acknowledged_at: incident.acknowledged_at,
+      resolved_at: incident.resolved_at,
+      recovered_at: incident.recovered_at,
+      acknowledged_by: association_email(incident.acknowledged_by_user),
+      resolved_by: association_email(incident.resolved_by_user),
+      monitor: association_monitor(incident.monitor),
+      latest_alert_id: latest_occurrence && latest_occurrence.result_alert_id,
+      latest_run: latest_occurrence && association_run(latest_occurrence.capture_run),
+      exceptional_reference: latest_occurrence && latest_occurrence.exceptional_reference
+    }
+  end
+
+  defp alert_incident(%Alert{incident_occurrence: %IncidentOccurrence{} = occurrence}) do
+    loaded_association(occurrence.incident)
+  end
+
+  defp alert_incident(%Alert{}), do: nil
+
+  defp loaded_occurrence(%Ecto.Association.NotLoaded{}), do: nil
+  defp loaded_occurrence(value), do: value
 
   defp loaded_association(%Ecto.Association.NotLoaded{}), do: nil
   defp loaded_association(value), do: value

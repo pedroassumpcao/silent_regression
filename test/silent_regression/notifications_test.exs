@@ -16,7 +16,7 @@ defmodule SilentRegression.NotificationsTest do
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
   alias SilentRegression.RunResults
-  alias SilentRegression.RunResults.Alert
+  alias SilentRegression.RunResults.{Alert, Incident, IncidentOccurrence}
 
   test "preferences are personal to a member inside one workspace" do
     owner_scope = workspace_scope_fixture()
@@ -50,6 +50,11 @@ defmodule SilentRegression.NotificationsTest do
     assert [delivery] = Notifications.list_deliveries(scope)
     assert delivery.status == :pending
     assert delivery.recipient_user_id == scope.user.id
+    occurrence = Repo.get_by!(IncidentOccurrence, result_alert_id: alert.id)
+    incident = Repo.get!(Incident, occurrence.result_incident_id)
+    assert delivery.result_incident_id == incident.id
+    assert delivery.incident_occurrence_count == 1
+    assert delivery.deduplication_key == "incident:#{incident.id}:occurrence:1"
 
     assert [email_job] = all_enqueued(worker: AlertEmailWorker)
     assert email_job.args == %{"delivery_id" => delivery.id}
@@ -68,11 +73,12 @@ defmodule SilentRegression.NotificationsTest do
 
     assert_email_sent(fn email ->
       assert email.to == [{"", scope.user.email}]
-      assert email.subject == "Critical alert for #{fixture.monitor.name}"
+      assert email.subject == "Critical incident for #{fixture.monitor.name}"
       assert email.text_body =~ "Operational anomaly"
+      assert email.text_body =~ "Occurrences: 1"
 
       assert email.text_body =~
-               "/app/#{scope.workspace.slug}/monitors/#{fixture.monitor.id}/runs/#{run.id}"
+               "/app/#{scope.workspace.slug}/incidents/#{incident.id}"
 
       refute email.text_body =~ plaintext
       refute email.text_body =~ alert.explanation

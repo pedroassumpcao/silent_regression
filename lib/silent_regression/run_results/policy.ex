@@ -14,6 +14,7 @@ defmodule SilentRegression.RunResults.Policy do
   }
 
   alias SilentRegression.RunResults.Provenance
+  alias SilentRegression.Monitors.Fingerprint
 
   @critical_failure_categories [
     :authentication,
@@ -54,6 +55,18 @@ defmodule SilentRegression.RunResults.Policy do
       usage_multiplier: @usage_multiplier,
       usage_minimum_delta_tokens: @usage_minimum_delta_tokens
     }
+  end
+
+  def recovery_eligible?(%CaptureRun{} = run, findings) when is_list(findings) do
+    provenance = Provenance.compare(run, run.baseline_snapshot)
+
+    findings == [] and run.status == :succeeded and provenance.compatible? and
+      Enum.all?(run.observations, fn observation ->
+        observation.status == :succeeded and observation.completion_state == :complete and
+          observation.requested_model == observation.returned_model and
+          observation.evaluations != [] and
+          Enum.all?(observation.evaluations, &(&1.status == :pass))
+      end)
   end
 
   defp content_findings(run) do
@@ -178,6 +191,7 @@ defmodule SilentRegression.RunResults.Policy do
             affected_observation_evidence(observations, fn observation ->
               %{
                 "observation_id" => observation.id,
+                "case_fingerprint" => observation.case_fingerprint,
                 "requested_model" => observation.requested_model,
                 "returned_model" => observation.returned_model
               }
@@ -425,6 +439,7 @@ defmodule SilentRegression.RunResults.Policy do
     %{
       "observation_id" => observation.id,
       "case_key" => observation.case_version.case_key,
+      "case_fingerprint" => observation.case_fingerprint,
       "failure_category" => atom_string(observation.failure_category)
     }
   end
@@ -441,6 +456,7 @@ defmodule SilentRegression.RunResults.Policy do
         %{
           "observation_id" => observation.id,
           "case_key" => observation.case_version.case_key,
+          "case_fingerprint" => observation.case_fingerprint,
           "observed" => observed,
           "baseline_maximum" => reference,
           "multiplier" => multiplier,
@@ -470,10 +486,112 @@ defmodule SilentRegression.RunResults.Policy do
     do: (observation.input_tokens || 0) + (observation.output_tokens || 0)
 
   defp finding(run, suffix, attrs) do
+    case_fingerprints = incident_case_fingerprints(run, attrs)
+    components = incident_signature_components(run, suffix, attrs, case_fingerprints)
+
     attrs
     |> Map.put(:identity_key, "run:#{run.id}:#{suffix}")
     |> Map.put_new(:capture_evaluation_id, nil)
+    |> Map.put(:incident_signature, Fingerprint.digest(components))
+    |> Map.put(:incident_signature_schema_version, "incident_signature_v1")
+    |> Map.put(:incident_signature_components, components)
+    |> Map.put(:incident_case_fingerprints, case_fingerprints)
   end
+
+  defp incident_signature_components(run, suffix, attrs, case_fingerprints) do
+    common = %{
+      "signature_schema" => "incident_signature_v1",
+      "monitor_id" => run.monitor_id,
+      "monitor_version_id" => run.monitor_version_id,
+      "category" => Atom.to_string(attrs.category),
+      "severity" => Atom.to_string(attrs.severity),
+      "code" => attrs.code
+    }
+
+    detail =
+      cond do
+        String.starts_with?(suffix, "contract:") ->
+          %{
+            "scope" => "case_contract",
+            "case_fingerprints" => case_fingerprints,
+            "contract_semantics_fingerprint" => run.contract_semantics_fingerprint,
+            "decisive_rule_ids" => Enum.sort(attrs.evidence["decisive_rule_ids"] || [])
+          }
+
+        String.starts_with?(suffix, "expectation:") ->
+          %{
+            "scope" => "case_expectation",
+            "case_fingerprints" => case_fingerprints,
+            "expectation_fingerprint" => attrs.evidence["expectation_fingerprint"],
+            "failed_checks" =>
+              attrs.evidence
+              |> Map.get("failed_checks", [])
+              |> Enum.map(&Map.take(&1, ["check_id", "check_type", "code"]))
+              |> Enum.sort_by(&{&1["check_id"], &1["code"]})
+          }
+
+        suffix == "operational:incompatible_provenance" ->
+          %{"scope" => suffix, "mismatches" => Enum.sort(attrs.evidence["mismatches"] || [])}
+
+        suffix == "operational:model_mismatch" ->
+          %{
+            "scope" => suffix,
+            "model_pairs" =>
+              attrs.evidence
+              |> Map.get("items", [])
+              |> Enum.map(&Map.take(&1, ["requested_model", "returned_model"]))
+              |> Enum.uniq()
+              |> Enum.sort_by(&{&1["requested_model"], &1["returned_model"]})
+          }
+
+        suffix == "operational:evaluator_error" ->
+          %{
+            "scope" => suffix,
+            "error_codes" =>
+              attrs.evidence
+              |> Map.get("items", [])
+              |> Enum.map(
+                &Map.take(&1, [
+                  "error_code",
+                  "contract_error_code",
+                  "case_expectation_error_code"
+                ])
+              )
+              |> Enum.uniq()
+              |> Enum.sort_by(&inspect/1)
+          }
+
+        true ->
+          %{"scope" => suffix}
+      end
+
+    Map.merge(common, detail)
+  end
+
+  defp incident_case_fingerprints(run, attrs) do
+    observation_ids = evidence_observation_ids(attrs.evidence)
+
+    run.observations
+    |> Enum.filter(&(&1.id in observation_ids))
+    |> Enum.map(& &1.case_fingerprint)
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp evidence_observation_ids(value) when is_map(value) do
+    direct =
+      case Map.get(value, "observation_id") do
+        id when is_binary(id) -> [id]
+        _value -> []
+      end
+
+    direct ++ (value |> Map.values() |> Enum.flat_map(&evidence_observation_ids/1))
+  end
+
+  defp evidence_observation_ids(value) when is_list(value),
+    do: Enum.flat_map(value, &evidence_observation_ids/1)
+
+  defp evidence_observation_ids(_value), do: []
 
   defp atom_string(nil), do: nil
   defp atom_string(value), do: Atom.to_string(value)

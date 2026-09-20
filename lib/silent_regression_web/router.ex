@@ -117,9 +117,10 @@ defmodule SilentRegressionWeb.Router do
          ReviewController,
          :start_contract_revision
 
-    get "/alerts", ResultAlertController, :index
-    post "/alerts/:alert_id/acknowledge", ResultAlertController, :acknowledge
-    post "/alerts/:alert_id/resolve", ResultAlertController, :resolve
+    get "/alerts", IncidentController, :index
+    get "/incidents/:incident_id", IncidentController, :show
+    post "/incidents/:incident_id/acknowledge", IncidentController, :acknowledge
+    post "/incidents/:incident_id/resolve", IncidentController, :resolve
     get "/settings/notifications", NotificationPreferenceController, :edit
     patch "/settings/notifications", NotificationPreferenceController, :update
     get "/settings/data", WorkspaceDataController, :edit

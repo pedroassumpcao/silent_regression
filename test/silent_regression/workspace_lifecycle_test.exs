@@ -17,6 +17,8 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
   alias SilentRegression.Notifications.Delivery
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
+  alias SilentRegression.RunResults
+  alias SilentRegression.RunResults.Incident
   alias SilentRegression.WorkspaceLifecycle
   alias SilentRegression.WorkspaceLifecycle.DeletionReceipt
   alias SilentRegression.Workspaces.Workspace
@@ -121,6 +123,14 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
       assert {:ok, successor_setup} =
                MonitorSetups.start_successor(scope, fixture.monitor.id)
 
+      replace_secret(fixture.credential.id, "sk-test-output-maybe")
+      _failed_run = complete_manual_run!(scope, fixture.monitor.id)
+      [incident] = Repo.all(Incident)
+
+      replace_secret(fixture.credential.id, "sk-test-output-approved")
+      clean_run = complete_manual_run!(scope, fixture.monitor.id)
+      assert Repo.get!(Incident, incident.id).recovery_capture_run_id == clean_run.id
+
       recovery = authentication_recovery_fixture(scope, fixture)
       at = ~U[2026-09-16 12:00:00Z]
 
@@ -132,7 +142,10 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
                  DateTime.add(at, 12, :hour)
                )
 
-      [delivery] = Notifications.list_deliveries(scope)
+      delivery =
+        scope
+        |> Notifications.list_deliveries()
+        |> Enum.find(&(&1.kind == :coverage_interrupted))
 
       assert Repo.get!(AuthenticationRecovery, recovery.id)
       assert Repo.get!(Delivery, delivery.id)
@@ -161,6 +174,7 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
       assert Repo.get(Monitor, fixture.monitor.id) == nil
       assert Repo.get(ProviderCredential, fixture.credential.id) == nil
       assert Repo.get(AuthenticationRecovery, recovery.id) == nil
+      assert Repo.get(Incident, incident.id) == nil
       assert Repo.get(Delivery, delivery.id) == nil
       assert Repo.get(Setup, successor_setup.id) == nil
 
@@ -222,5 +236,18 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
     |> Repo.get!(credential_id)
     |> Ecto.Changeset.change(secret: secret)
     |> Repo.update!()
+  end
+
+  defp complete_manual_run!(scope, monitor_id) do
+    assert {:ok, run} = MonitorOperations.run_now(scope, monitor_id)
+    assert {:ok, loaded} = Captures.get_run(scope, run.id)
+
+    Enum.each(loaded.observations, fn observation ->
+      assert :ok = Captures.execute_observation(run.id, observation.id)
+    end)
+
+    assert {:ok, %{status: :synchronized}} = RunResults.sync_run(run.id)
+
+    Repo.get!(SilentRegression.Captures.CaptureRun, run.id)
   end
 end

@@ -357,6 +357,7 @@ defmodule SilentRegression.WorkspaceLifecycle do
       "DELETE FROM review_decisions WHERE workspace_id = $1",
       "DELETE FROM notification_deliveries WHERE workspace_id = $1",
       "DELETE FROM result_alerts WHERE workspace_id = $1",
+      "DELETE FROM result_incidents WHERE workspace_id = $1",
       """
       DELETE FROM baseline_members WHERE baseline_snapshot_id IN
         (SELECT id FROM baseline_snapshots WHERE workspace_id = $1)

@@ -120,7 +120,10 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
 
   const mutateAlert = (alert: ResultAlert, action: "acknowledge" | "resolve") => {
     setProcessingAlert(alert.id)
-    router.post(`/app/${workspace.slug}/alerts/${alert.id}/${action}`, {}, {
+    const path = alert.incident
+      ? `/app/${workspace.slug}/incidents/${alert.incident.id}/${action}`
+      : `/app/${workspace.slug}/alerts/${alert.id}/${action}`
+    router.post(path, {}, {
       preserveScroll: true,
       onSuccess: () => setResolveAlert(null),
       onFinish: () => setProcessingAlert(null),
@@ -275,15 +278,16 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
                     </details>
                     <ReviewStatus decision={review} history={history} />
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-xs text-muted-foreground">{alert.status === "resolved" ? `Resolved ${formatUtc(alert.resolvedAt)}` : alert.status === "acknowledged" ? `Acknowledged ${formatUtc(alert.acknowledgedAt)}` : `Opened ${formatUtc(alert.openedAt)}`}</p>
+                      <p className="text-xs text-muted-foreground">{alert.status === "resolved" ? `Resolved ${formatUtc(alert.resolvedAt)}` : alert.status === "recovered" ? `Recovered ${formatUtc(alert.incident?.recoveredAt || null)}` : alert.status === "acknowledged" ? `Acknowledged ${formatUtc(alert.acknowledgedAt)}` : `Opened ${formatUtc(alert.openedAt)}`}</p>
                       <div className="flex flex-wrap gap-2">
                         <Button id={`review-alert-${alert.id}`} size="sm" variant="outline" disabled={processingReview} onClick={() => openReview("alert", alert.id, alert.title, alert.category === "operational_anomaly" ? "operational_anomaly" : "confirmed_regression")}><MessageSquare /> {review ? "Revise judgment" : "Record judgment"}</Button>
                         {review?.action === "contract_revision" && <Button id={`start-contract-revision-${review.id}`} size="sm" variant="outline" disabled={processingReview} onClick={() => startContractRevision(review)}><GitBranch /> Start contract revision</Button>}
                         {review && successorAction(review.action) && <Button id={`start-configuration-successor-${review.id}`} size="sm" variant="outline" disabled={processingReview} onClick={() => startConfigurationSuccessor(review)}><GitBranch /> Revise configuration</Button>}
-                        {alert.status === "open" && <Button id={`acknowledge-alert-${alert.id}`} size="sm" disabled={processingAlert !== null} onClick={() => mutateAlert(alert, "acknowledge")}>{processingAlert === alert.id ? <LoaderCircle className="animate-spin" /> : <FileCheck2 />} Acknowledge</Button>}
-                        {alert.status === "acknowledged" && canResolve && <Button id={`resolve-alert-${alert.id}`} size="sm" disabled={processingAlert !== null || !review} onClick={() => setResolveAlert(alert)}><LockKeyhole /> Resolve</Button>}
+                        {alert.incident && <Button asChild id={`view-incident-${alert.incident.id}`} size="sm" variant="outline"><Link href={`/app/${workspace.slug}/incidents/${alert.incident.id}`}>Incident · {alert.incident.occurrenceCount} occurrence{alert.incident.occurrenceCount === 1 ? "" : "s"}</Link></Button>}
+                        {alert.status === "open" && <Button id={`acknowledge-alert-${alert.id}`} size="sm" disabled={processingAlert !== null} onClick={() => mutateAlert(alert, "acknowledge")}>{processingAlert === alert.id ? <LoaderCircle className="animate-spin" /> : <FileCheck2 />} Acknowledge incident</Button>}
+                        {alert.status === "acknowledged" && canResolve && <Button id={`resolve-alert-${alert.id}`} size="sm" disabled={processingAlert !== null || !review || (alert.incident?.latestAlertId !== alert.id)} onClick={() => setResolveAlert(alert)}><LockKeyhole /> Resolve incident</Button>}
                         {alert.status === "acknowledged" && !canResolve && <Badge variant="outline">Owner resolution required</Badge>}
-                        {alert.status === "acknowledged" && canResolve && !review && <Badge variant="outline">Review required to resolve</Badge>}
+                        {alert.status === "acknowledged" && canResolve && !review && <Badge variant="outline">Latest review required to resolve</Badge>}
                       </div>
                     </div>
                   </CardContent>

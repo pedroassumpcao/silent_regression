@@ -1,6 +1,6 @@
 export type AlertCategory = "contract_failure" | "case_expectation_failure" | "operational_anomaly"
 export type AlertSeverity = "critical" | "warning"
-export type AlertStatus = "open" | "acknowledged" | "resolved"
+export type AlertStatus = "open" | "acknowledged" | "resolved" | "recovered"
 export type ReviewClassification =
   | "correct_pass"
   | "confirmed_regression"
@@ -46,6 +46,63 @@ export type ResultAlert = {
     status: string
     completedAt: string | null
   } | null
+  incident?: IncidentSummary | null
+}
+
+export type IncidentSummary = {
+  id: string
+  category: AlertCategory
+  severity: AlertSeverity
+  status: AlertStatus
+  code: string
+  title: string
+  explanation: string
+  episode: number
+  firstSeenAt: string
+  lastSeenAt: string
+  occurrenceCount: number
+  runCount: number
+  affectedCaseCount: number
+  acknowledgedAt: string | null
+  resolvedAt: string | null
+  recoveredAt: string | null
+  acknowledgedBy: string | null
+  resolvedBy: string | null
+  monitor: { id: string; name: string } | null
+  latestAlertId: string | null
+  latestRun: {
+    id: string
+    kind: "baseline" | "manual" | "scheduled"
+    status: string
+    completedAt: string | null
+  } | null
+  exceptionalReference: boolean | null
+}
+
+export type IncidentOccurrence = {
+  id: string
+  ordinal: number
+  occurredAt: string
+  caseCount: number
+  exceptionalReference: boolean
+  alert: ResultAlert
+  run: IncidentSummary["latestRun"]
+}
+
+export type Pagination = {
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  hasPrevious: boolean
+  hasNext: boolean
+}
+
+export type IncidentDetail = {
+  incident: IncidentSummary
+  signatureSchemaVersion: string
+  occurrences: IncidentOccurrence[]
+  pagination: Pagination
 }
 
 export type RunSummary = {

@@ -11,7 +11,7 @@ defmodule SilentRegression.Notifications.Delivery do
 
   alias SilentRegression.Accounts.User
   alias SilentRegression.Monitors.Monitor
-  alias SilentRegression.RunResults.Alert
+  alias SilentRegression.RunResults.{Alert, Incident}
   alias SilentRegression.Workspaces.Workspace
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -35,6 +35,7 @@ defmodule SilentRegression.Notifications.Delivery do
     field :last_attempted_at, :utc_datetime_usec
     field :sent_at, :utc_datetime_usec
     field :deduplication_key, :string
+    field :incident_occurrence_count, :integer
 
     field :coverage_reason,
           Ecto.Enum,
@@ -48,6 +49,7 @@ defmodule SilentRegression.Notifications.Delivery do
 
     belongs_to :workspace, Workspace
     belongs_to :result_alert, Alert
+    belongs_to :result_incident, Incident
     belongs_to :monitor, Monitor
     belongs_to :recipient_user, User
 
@@ -90,6 +92,7 @@ defmodule SilentRegression.Notifications.Delivery do
     changeset
     |> foreign_key_constraint(:workspace_id)
     |> foreign_key_constraint(:result_alert_id)
+    |> foreign_key_constraint(:result_incident_id)
     |> foreign_key_constraint(:monitor_id)
     |> foreign_key_constraint(:recipient_user_id)
     |> unique_constraint([:result_alert_id, :recipient_user_id, :channel])

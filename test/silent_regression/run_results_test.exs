@@ -6,13 +6,10 @@ defmodule SilentRegression.RunResultsTest do
   import SilentRegression.ContractAuthoringFixtures
   import SilentRegression.WorkspacesFixtures
 
-  alias SilentRegression.Accounts.Scope
-  alias SilentRegression.Audit
   alias SilentRegression.Captures.Workers.ObservationWorker
   alias SilentRegression.MonitorOperations
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
-  alias SilentRegression.Reviews
   alias SilentRegression.RunResults
   alias SilentRegression.RunResults.Alert
 
@@ -109,66 +106,6 @@ defmodule SilentRegression.RunResultsTest do
     assert evaluation.status == :fail
   end
 
-  test "members acknowledge while only owners resolve the forward-only lifecycle", %{
-    fixture: fixture,
-    scope: owner_scope
-  } do
-    replace_secret(fixture.credential.id, "sk-test-authentication-error")
-
-    assert {:ok, run} = MonitorOperations.run_now(owner_scope, fixture.monitor.id)
-    [job] = jobs_for_run(run.id)
-    assert :ok = perform_job(ObservationWorker, job.args)
-    alert = Repo.one!(from alert in Alert, where: alert.capture_run_id == ^run.id)
-
-    assert {:error, :acknowledgement_required} =
-             RunResults.resolve_alert(owner_scope, alert.id)
-
-    member = invite_and_accept_member(owner_scope)
-    member_scope = Scope.for_workspace(member.user, member.workspace, member.membership)
-    acknowledged_at = ~U[2026-09-16 19:00:00.000000Z]
-
-    assert {:ok, acknowledged} =
-             RunResults.acknowledge_alert(member_scope, alert.id, at: acknowledged_at)
-
-    assert acknowledged.status == :acknowledged
-    assert acknowledged.acknowledged_by_user_id == member.user.id
-    assert acknowledged.acknowledged_at == acknowledged_at
-    assert {:error, :owner_required} = RunResults.resolve_alert(member_scope, alert.id)
-    assert {:error, :review_required} = RunResults.resolve_alert(owner_scope, alert.id)
-
-    assert {:ok, review} =
-             Reviews.submit_review(member_scope, %{
-               subject_kind: :alert,
-               subject_id: alert.id,
-               classification: :operational_anomaly,
-               action: :operational_follow_up
-             })
-
-    resolved_at = ~U[2026-09-16 19:05:00.000000Z]
-    assert {:ok, resolved} = RunResults.resolve_alert(owner_scope, alert.id, at: resolved_at)
-    assert resolved.status == :resolved
-    assert resolved.resolved_by_user_id == owner_scope.user.id
-    assert resolved.resolved_at == resolved_at
-    assert resolved.resolution_review_decision_id == review.id
-
-    assert {:ok, repeated} = RunResults.resolve_alert(owner_scope, alert.id)
-    assert repeated.resolved_at == resolved_at
-
-    actions = owner_scope |> Audit.list_workspace_events() |> Enum.map(& &1.action)
-    assert "alert.acknowledged" in actions
-    assert "alert.resolved" in actions
-
-    assert_raise Postgrex.Error, ~r/invalid result alert lifecycle transition/, fn ->
-      resolved
-      |> Ecto.Changeset.change(
-        status: :acknowledged,
-        resolved_at: nil,
-        resolved_by_user_id: nil
-      )
-      |> Repo.update!()
-    end
-  end
-
   test "alert access remains inside workspace scope", %{fixture: fixture, scope: scope} do
     replace_secret(fixture.credential.id, "sk-test-authentication-error")
 
@@ -179,7 +116,6 @@ defmodule SilentRegression.RunResultsTest do
     other_scope = workspace_scope_fixture()
 
     assert {:error, :not_found} = RunResults.get_alert(other_scope, alert.id)
-    assert {:error, :not_found} = RunResults.acknowledge_alert(other_scope, alert.id)
   end
 
   test "alert evidence and backward lifecycle transitions are database protected", %{

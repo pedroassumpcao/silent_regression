@@ -6,12 +6,11 @@ defmodule SilentRegressionWeb.RunResultControllerTest do
   import Inertia.Testing
   import SilentRegression.ContractAuthoringFixtures
 
-  alias SilentRegression.Accounts.Scope
   alias SilentRegression.Captures.Workers.ObservationWorker
   alias SilentRegression.MonitorOperations
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
-  alias SilentRegression.RunResults.Alert
+  alias SilentRegression.RunResults.{Alert, Incident, IncidentOccurrence}
   alias SilentRegression.WorkspacesFixtures
 
   setup :register_and_log_in_workspace
@@ -73,34 +72,44 @@ defmodule SilentRegressionWeb.RunResultControllerTest do
     workspace: workspace
   } do
     %{alert: alert} = failed_run_fixture(owner_scope)
+    occurrence = Repo.get_by!(IncidentOccurrence, result_alert_id: alert.id)
+    incident = Repo.get!(Incident, occurrence.result_incident_id)
     alerts_path = ~p"/app/#{workspace.slug}/alerts"
+    incident_path = ~p"/app/#{workspace.slug}/incidents/#{incident.id}"
 
     alert_page = get(owner_conn, alerts_path)
     assert inertia_component(alert_page) == "Alerts/Index"
     assert inertia_props(alert_page).canResolve
-    assert [presented] = inertia_props(alert_page).alerts
-    assert presented.id == alert.id
+    assert [presented] = inertia_props(alert_page).incidents
+    assert presented.id == incident.id
+    assert presented.latestAlertId == alert.id
     assert presented.status == :open
 
+    incident_page = alert_page |> recycle() |> get(incident_path)
+    assert inertia_component(incident_page) == "Alerts/Show"
+    assert inertia_props(incident_page).detail.incident.id == incident.id
+    assert [presented_occurrence] = inertia_props(incident_page).detail.occurrences
+    assert presented_occurrence.alert.id == alert.id
+
     member = WorkspacesFixtures.invite_and_accept_member(owner_scope)
-    member_scope = Scope.for_workspace(member.user, member.workspace, member.membership)
     member_conn = log_in_user(build_conn(), member.user)
 
     member_page = get(member_conn, alerts_path)
     refute inertia_props(member_page).canResolve
 
     acknowledged =
-      post(recycle(member_page), ~p"/app/#{workspace.slug}/alerts/#{alert.id}/acknowledge")
+      post(recycle(member_page), ~p"/app/#{workspace.slug}/incidents/#{incident.id}/acknowledge")
 
-    assert redirected_to(acknowledged) =~ "/runs/"
+    assert redirected_to(acknowledged) == incident_path
     assert Phoenix.Flash.get(acknowledged.assigns.flash, :info) =~ "acknowledged"
 
-    denied = post(recycle(acknowledged), ~p"/app/#{workspace.slug}/alerts/#{alert.id}/resolve")
+    denied =
+      post(recycle(acknowledged), ~p"/app/#{workspace.slug}/incidents/#{incident.id}/resolve")
+
     assert redirected_to(denied) == alerts_path
     assert Phoenix.Flash.get(denied.assigns.flash, :error) =~ "Only a workspace owner"
 
-    assert {:ok, member_alert} = SilentRegression.RunResults.get_alert(member_scope, alert.id)
-    assert member_alert.status == :acknowledged
+    assert Repo.get!(Incident, incident.id).status == :acknowledged
 
     review_path =
       ~p"/app/#{workspace.slug}/monitors/#{alert.monitor_id}/runs/#{alert.capture_run_id}/reviews"
@@ -126,13 +135,14 @@ defmodule SilentRegressionWeb.RunResultControllerTest do
     assert review.resultAlertId == alert.id
 
     resolved =
-      alert_page
+      incident_page
       |> recycle()
-      |> post(~p"/app/#{workspace.slug}/alerts/#{alert.id}/resolve")
+      |> post(~p"/app/#{workspace.slug}/incidents/#{incident.id}/resolve")
 
-    assert redirected_to(resolved) =~ "/runs/"
+    assert redirected_to(resolved) == incident_path
     assert Phoenix.Flash.get(resolved.assigns.flash, :info) =~ "resolved"
-    assert Repo.get!(Alert, alert.id).status == :resolved
+    assert Repo.get!(Incident, incident.id).status == :resolved
+    assert Repo.get!(Alert, alert.id).status == :open
   end
 
   test "captures a missed regression and starts a linked contract revision from the run", %{
@@ -196,6 +206,9 @@ defmodule SilentRegressionWeb.RunResultControllerTest do
     other_scope = WorkspacesFixtures.workspace_scope_fixture()
     %{fixture: other, run: other_run, alert: other_alert} = failed_run_fixture(other_scope)
 
+    other_incident_id =
+      Repo.get_by!(IncidentOccurrence, result_alert_id: other_alert.id).result_incident_id
+
     foreign_results =
       malformed
       |> recycle()
@@ -210,12 +223,12 @@ defmodule SilentRegressionWeb.RunResultControllerTest do
 
     assert response(foreign_run, 404) == "Not found"
 
-    foreign_alert =
+    foreign_incident =
       foreign_run
       |> recycle()
-      |> post(~p"/app/#{workspace.slug}/alerts/#{other_alert.id}/acknowledge")
+      |> post(~p"/app/#{workspace.slug}/incidents/#{other_incident_id}/acknowledge")
 
-    assert response(foreign_alert, 404) == "Not found"
+    assert response(foreign_incident, 404) == "Not found"
   end
 
   defp failed_run_fixture(scope) do

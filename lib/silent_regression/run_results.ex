@@ -8,53 +8,19 @@ defmodule SilentRegression.RunResults do
 
   import Ecto.Query
 
-  alias SilentRegression.Accounts.{Scope, User}
-  alias SilentRegression.Audit
+  alias SilentRegression.Accounts.Scope
   alias SilentRegression.Baselines.BaselineSnapshot
   alias SilentRegression.Captures.{CaptureRuleResult, CaptureRun, ProviderAttempt}
   alias SilentRegression.Monitors.Monitor
   alias SilentRegression.Notifications
   alias SilentRegression.Repo
   alias SilentRegression.Reviews
-  alias SilentRegression.RunResults.{Alert, Policy}
+  alias SilentRegression.RunResults.{Alert, Incident, Incidents, Policy}
   alias SilentRegression.Workspaces.{Membership, Workspace}
 
   @terminal_run_statuses [:succeeded, :partial_failed, :failed, :cancelled, :needs_review]
   @history_limit 25
   @alert_limit 100
-
-  def list_workspace_alerts(%Scope{
-        workspace: %Workspace{id: workspace_id},
-        membership: %Membership{} = membership
-      }) do
-    alerts =
-      Alert
-      |> where([alert], alert.workspace_id == ^workspace_id)
-      |> order_by(
-        [alert],
-        asc:
-          fragment(
-            "CASE ? WHEN 'open' THEN 0 WHEN 'acknowledged' THEN 1 ELSE 2 END",
-            alert.status
-          ),
-        asc: fragment("CASE ? WHEN 'critical' THEN 0 ELSE 1 END", alert.severity),
-        desc: alert.opened_at,
-        desc: alert.id
-      )
-      |> limit(@alert_limit)
-      |> preload([
-        :monitor,
-        :capture_run,
-        :acknowledged_by_user,
-        :resolved_by_user,
-        :resolution_review_decision
-      ])
-      |> Repo.all()
-
-    {:ok, %{alerts: alerts, can_resolve?: membership.role == :owner}}
-  end
-
-  def list_workspace_alerts(%Scope{}), do: {:error, :workspace_required}
 
   def get_monitor_overview(
         %Scope{
@@ -120,11 +86,11 @@ defmodule SilentRegression.RunResults do
     with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id),
          true <- monitor_exists?(workspace_id, monitor_id) do
       count =
-        Alert
+        Incident
         |> where(
-          [alert],
-          alert.workspace_id == ^workspace_id and alert.monitor_id == ^monitor_id and
-            alert.status in [:open, :acknowledged]
+          [incident],
+          incident.workspace_id == ^workspace_id and incident.monitor_id == ^monitor_id and
+            incident.status in [:open, :acknowledged]
         )
         |> Repo.aggregate(:count)
 
@@ -154,7 +120,17 @@ defmodule SilentRegression.RunResults do
             run = preload_for_policy(run)
             findings = Policy.findings(run)
             Enum.each(findings, &insert_finding!(run, &1))
-            %{status: :synchronized, alert_count: length(findings)}
+
+            recovered_count =
+              if Policy.recovery_eligible?(run, findings),
+                do: Incidents.recover_for_clean_run!(run),
+                else: 0
+
+            %{
+              status: :synchronized,
+              alert_count: length(findings),
+              recovered_incident_count: recovered_count
+            }
         end
       end)
       |> unwrap_transaction()
@@ -177,91 +153,6 @@ defmodule SilentRegression.RunResults do
 
   def get_alert(%Scope{}, _alert_id), do: {:error, :workspace_required}
 
-  def acknowledge_alert(scope, alert_id, options \\ [])
-
-  def acknowledge_alert(
-        %Scope{
-          workspace: %Workspace{id: workspace_id},
-          membership: %Membership{},
-          user: %User{} = user
-        },
-        alert_id,
-        options
-      ) do
-    with {:ok, alert_id} <- Ecto.UUID.cast(alert_id) do
-      at = operation_time(options)
-
-      Repo.transaction(fn ->
-        case locked_alert(workspace_id, alert_id) do
-          %Alert{status: :open} = alert ->
-            alert = alert |> Alert.acknowledge_changeset(user, at) |> Repo.update!()
-            record_lifecycle!(alert, user, "alert.acknowledged", at)
-            alert
-
-          %Alert{} = alert ->
-            alert
-
-          nil ->
-            Repo.rollback(:not_found)
-        end
-      end)
-      |> unwrap_transaction()
-    else
-      :error -> {:error, :not_found}
-    end
-  end
-
-  def acknowledge_alert(%Scope{}, _alert_id, _options), do: {:error, :workspace_required}
-
-  def resolve_alert(scope, alert_id, options \\ [])
-
-  def resolve_alert(
-        %Scope{
-          workspace: %Workspace{id: workspace_id},
-          membership: %Membership{role: :owner},
-          user: %User{} = user
-        },
-        alert_id,
-        options
-      ) do
-    with {:ok, alert_id} <- Ecto.UUID.cast(alert_id) do
-      at = operation_time(options)
-
-      Repo.transaction(fn ->
-        case locked_alert(workspace_id, alert_id) do
-          %Alert{status: :acknowledged} = alert ->
-            case Reviews.locked_current_for_alert(workspace_id, alert.id) do
-              nil ->
-                Repo.rollback(:review_required)
-
-              review_decision ->
-                alert =
-                  alert
-                  |> Alert.resolve_changeset(user, review_decision, at)
-                  |> Repo.update!()
-
-                record_lifecycle!(alert, user, "alert.resolved", at)
-                alert
-            end
-
-          %Alert{status: :resolved} = alert ->
-            alert
-
-          %Alert{status: :open} ->
-            Repo.rollback(:acknowledgement_required)
-
-          nil ->
-            Repo.rollback(:not_found)
-        end
-      end)
-      |> unwrap_transaction()
-    else
-      :error -> {:error, :not_found}
-    end
-  end
-
-  def resolve_alert(%Scope{}, _alert_id, _options), do: {:error, :owner_required}
-
   defp insert_finding!(run, finding) do
     associations = %{
       workspace_id: run.workspace_id,
@@ -282,7 +173,17 @@ defmodule SilentRegression.RunResults do
     alert =
       Repo.get_by!(Alert, workspace_id: run.workspace_id, identity_key: finding.identity_key)
 
-    Notifications.prepare_alert!(alert)
+    attachment = Incidents.attach_finding!(run, alert, finding)
+
+    if Incidents.notification_event?(attachment.event) do
+      Notifications.prepare_incident!(
+        attachment.incident,
+        attachment.occurrence,
+        alert
+      )
+    end
+
+    attachment
   end
 
   defp preload_for_policy(run) do
@@ -299,30 +200,6 @@ defmodule SilentRegression.RunResults do
       ],
       force: true
     )
-  end
-
-  defp record_lifecycle!(alert, user, action, at) do
-    Audit.record_event!(%{
-      action: action,
-      target_type: "result_alert",
-      target_id: alert.id,
-      workspace_id: alert.workspace_id,
-      actor_user_id: user.id,
-      metadata: %{
-        "capture_run_id" => alert.capture_run_id,
-        "category" => Atom.to_string(alert.category),
-        "severity" => Atom.to_string(alert.severity),
-        "code" => alert.code,
-        "at" => DateTime.to_iso8601(at)
-      }
-    })
-  end
-
-  defp operation_time(options) do
-    case Keyword.get(options, :at) do
-      %DateTime{} = at -> DateTime.truncate(at, :microsecond)
-      nil -> DateTime.utc_now()
-    end
   end
 
   defp locked_run(run_id) do
@@ -412,7 +289,8 @@ defmodule SilentRegression.RunResults do
       :capture_run,
       :acknowledged_by_user,
       :resolved_by_user,
-      :resolution_review_decision
+      :resolution_review_decision,
+      incident_occurrence: [incident: [:acknowledged_by_user, :resolved_by_user]]
     ])
     |> Repo.all()
   end
@@ -429,7 +307,8 @@ defmodule SilentRegression.RunResults do
       :capture_run,
       :acknowledged_by_user,
       :resolved_by_user,
-      :resolution_review_decision
+      :resolution_review_decision,
+      incident_occurrence: [incident: [:acknowledged_by_user, :resolved_by_user]]
     ])
     |> Repo.all()
   end
@@ -438,13 +317,6 @@ defmodule SilentRegression.RunResults do
     Alert
     |> where([alert], alert.workspace_id == ^workspace_id and alert.id == ^alert_id)
     |> preload(:resolution_review_decision)
-    |> Repo.one()
-  end
-
-  defp locked_alert(workspace_id, alert_id) do
-    Alert
-    |> where([alert], alert.workspace_id == ^workspace_id and alert.id == ^alert_id)
-    |> lock("FOR UPDATE")
     |> Repo.one()
   end
 

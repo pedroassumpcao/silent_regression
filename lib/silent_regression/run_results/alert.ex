@@ -14,6 +14,7 @@ defmodule SilentRegression.RunResults.Alert do
   alias SilentRegression.Captures.{CaptureEvaluation, CaptureRun}
   alias SilentRegression.Monitors.Monitor
   alias SilentRegression.Reviews.ReviewDecision
+  alias SilentRegression.RunResults.IncidentOccurrence
   alias SilentRegression.Workspaces.Workspace
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -50,6 +51,7 @@ defmodule SilentRegression.RunResults.Alert do
     belongs_to :acknowledged_by_user, User
     belongs_to :resolved_by_user, User
     belongs_to :resolution_review_decision, ReviewDecision
+    has_one :incident_occurrence, IncidentOccurrence, foreign_key: :result_alert_id
 
     timestamps(type: :utc_datetime_usec)
   end

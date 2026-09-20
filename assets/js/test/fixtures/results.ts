@@ -1,4 +1,29 @@
-import type { ResultAlert, RunSummary } from "@/types/results"
+import type { IncidentSummary, ResultAlert, RunSummary } from "@/types/results"
+
+export const incident: IncidentSummary = {
+  id: "incident-id",
+  category: "contract_failure",
+  severity: "critical",
+  status: "open",
+  code: "deterministic_contract_failed",
+  title: "Deterministic contract failed",
+  explanation: "One captured response failed its frozen contract.",
+  episode: 1,
+  firstSeenAt: "2026-09-16T18:00:00Z",
+  lastSeenAt: "2026-09-16T18:00:00Z",
+  occurrenceCount: 3,
+  runCount: 3,
+  affectedCaseCount: 1,
+  acknowledgedAt: null,
+  resolvedAt: null,
+  recoveredAt: null,
+  acknowledgedBy: null,
+  resolvedBy: null,
+  monitor: { id: "monitor-id", name: "Billing answer guard" },
+  latestAlertId: "alert-id",
+  latestRun: { id: "run-id", kind: "manual", status: "needs_review", completedAt: "2026-09-16T18:00:00Z" },
+  exceptionalReference: false,
+}
 
 export const alert: ResultAlert = {
   id: "alert-id",
@@ -17,6 +42,7 @@ export const alert: ResultAlert = {
   resolutionReviewDecisionId: null,
   monitor: { id: "monitor-id", name: "Billing answer guard" },
   run: { id: "run-id", kind: "manual", status: "needs_review", completedAt: "2026-09-16T18:00:00Z" },
+  incident,
 }
 
 export const run: RunSummary = {

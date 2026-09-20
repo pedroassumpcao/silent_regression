@@ -12,6 +12,7 @@ defmodule SilentRegression.Notifications do
   alias SilentRegression.Notifications.Workers.{AlertEmailWorker, CoverageEmailWorker}
   alias SilentRegression.Repo
   alias SilentRegression.RunResults.Alert
+  alias SilentRegression.RunResults.{Incident, IncidentOccurrence}
   alias SilentRegression.Workspaces.{Membership, Workspace}
 
   def get_preference(%Scope{
@@ -87,6 +88,52 @@ defmodule SilentRegression.Notifications do
   end
 
   @doc false
+  def prepare_incident!(
+        %Incident{} = incident,
+        %IncidentOccurrence{} = occurrence,
+        %Alert{} = alert
+      ) do
+    now = DateTime.utc_now()
+    deduplication_key = "incident:#{incident.id}:occurrence:#{occurrence.ordinal}"
+
+    entries =
+      incident.workspace_id
+      |> eligible_recipient_ids()
+      |> Enum.map(fn user_id ->
+        %{
+          id: Ecto.UUID.generate(),
+          kind: :actionable_alert,
+          channel: :email,
+          status: :pending,
+          attempts: 0,
+          workspace_id: incident.workspace_id,
+          result_alert_id: alert.id,
+          result_incident_id: incident.id,
+          incident_occurrence_count: occurrence.ordinal,
+          recipient_user_id: user_id,
+          deduplication_key: deduplication_key,
+          inserted_at: now,
+          updated_at: now
+        }
+      end)
+
+    {_count, inserted} =
+      Repo.insert_all(Delivery, entries,
+        on_conflict: :nothing,
+        returning: [:id]
+      )
+
+    Enum.each(inserted || [], fn %{id: delivery_id} ->
+      %{"delivery_id" => delivery_id}
+      |> AlertEmailWorker.new()
+      |> Oban.insert!()
+    end)
+
+    refresh_alert_notification_state!(alert.id)
+    :ok
+  end
+
+  @doc false
   def deliver_alert_email(delivery_id) do
     with {:ok, delivery_id} <- Ecto.UUID.cast(delivery_id),
          {:ok, delivery} <- claim_delivery(delivery_id) do
@@ -99,12 +146,25 @@ defmodule SilentRegression.Notifications do
 
         %Delivery{} ->
           email =
-            AlertEmail.build(
-              delivery.result_alert,
-              delivery.result_alert.monitor,
-              delivery.recipient_user,
-              delivery.result_alert.workspace.slug
-            )
+            case delivery.result_incident do
+              %Incident{} = incident ->
+                AlertEmail.build_incident(
+                  incident,
+                  delivery.incident_occurrence_count,
+                  delivery.result_alert,
+                  delivery.result_alert.monitor,
+                  delivery.recipient_user,
+                  delivery.result_alert.workspace.slug
+                )
+
+              _incident ->
+                AlertEmail.build(
+                  delivery.result_alert,
+                  delivery.result_alert.monitor,
+                  delivery.recipient_user,
+                  delivery.result_alert.workspace.slug
+                )
+            end
 
           case Mailer.deliver(email) do
             {:ok, _metadata} -> complete_delivery(delivery.id, :sent)
@@ -338,7 +398,11 @@ defmodule SilentRegression.Notifications do
   end
 
   defp preload_delivery(%Delivery{kind: :actionable_alert} = delivery) do
-    Repo.preload(delivery, [:recipient_user, result_alert: [:monitor, :workspace]])
+    Repo.preload(delivery, [
+      :recipient_user,
+      :result_incident,
+      result_alert: [:monitor, :workspace]
+    ])
   end
 
   defp preload_delivery(%Delivery{kind: :coverage_interrupted} = delivery) do

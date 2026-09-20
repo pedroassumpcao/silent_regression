@@ -63,6 +63,9 @@ defmodule SilentRegression.Audit do
     "baseline.rejected" => ~w(capture_run_id),
     "alert.acknowledged" => ~w(capture_run_id category severity code at),
     "alert.resolved" => ~w(capture_run_id category severity code at),
+    "incident.acknowledged" => ~w(episode occurrence_count at),
+    "incident.resolved" => ~w(episode occurrence_count at),
+    "incident.recovered" => ~w(capture_run_id occurrence_count),
     "review_decision.recorded" =>
       ~w(action capture_run_id classification review_key supersedes_id),
     "review_decision.contract_revision_started" => ~w(contract_version_id origin_id),

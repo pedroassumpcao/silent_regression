@@ -16,7 +16,7 @@ export function SeverityBadge({ severity }: { severity: AlertSeverity }) {
 }
 
 export function AlertStatusBadge({ status }: { status: AlertStatus }) {
-  const className = status === "resolved"
+  const className = status === "resolved" || status === "recovered"
     ? "border-success/30 bg-success/10 text-success"
     : status === "acknowledged"
       ? "border-primary/25 bg-primary/10 text-primary"
