@@ -1,0 +1,118 @@
+# Design-review hardening implementation
+
+## Goal
+
+Close the accepted Sol and Astra review gaps before the first external pilot without widening the
+deterministic product wedge. The authoritative task status remains in
+[`plans/private_alpha_implementation_plan.md`](../../plans/private_alpha_implementation_plan.md).
+
+## Gate A — Product truth
+
+### Task 15: review program and truthful public evidence
+
+- Record the accepted reviews, decisions, roadmap, data-model impact, and no-wipe migration policy.
+- Replace the unsupported homepage wildcard/every-claim citation example with a capability the
+  current `fact_citation` evaluator actually implements.
+- Add a regression test that rejects the old overclaim.
+
+### Task 16: provider-native request artifacts
+
+- Finalize provider-specific request schemas and migration.
+- Preserve legacy wrapper behavior under an explicit version.
+- Add exact setup preview, canonical fingerprinting, adapter decoupling, and payload-level tests.
+- Prove OpenAI and Anthropic parity with separate, explicitly authorized live smoke calls only after
+  fake-provider and transport tests pass.
+
+### Task 17: case-specific expectations
+
+- Finalize the bounded expectation schema and migration.
+- Extend setup/import and evaluation to bind each case to exact expected outcomes.
+- Add conformance, held-out, historical-rescore, and UI evidence coverage.
+
+### Task 18: contract proof coverage, severity, and bounded rescore
+
+- Compute rule-level positive/negative proof coverage.
+- Block approval on uncovered critical rules unless an owner records an explicit waiver.
+- Expose supported rule severity in authoring, fixtures, readiness, and evidence.
+- Pin the historical observation cutoff and move large rescoring work into bounded durable batches;
+  keep the prior contract active until successful completion.
+
+## Gate B — Recoverable monitoring
+
+### Task 19: credential successor rebinding
+
+- Show affected monitors and validate the successor against their requested models.
+- Rebind future execution atomically while preserving historical credential provenance.
+- Apply a conservative reference-compatibility policy and resume through public product flows.
+
+### Task 20: authentication breaker recovery
+
+- Persist a recovery epoch/event.
+- Require successful validation plus owner authorization for a bounded recovery probe.
+- Preserve old failures while counting consecutive failures only in the active epoch.
+
+### Task 21: temporary capacity and coverage state
+
+- Distinguish capacity waiting from safety/incompatibility pauses.
+- Map every limit reason accurately, expose next retry and last successful check, and notify when
+  coverage stops.
+- Verify automatic recovery across a simulated quota boundary.
+
+### Task 22: successor workflow configuration
+
+- Copy the active request, cases, expectations, and provider configuration into a successor draft.
+- Let users edit and validate it without mutating history.
+- Disclose reference invalidation and activate only through explicit approval.
+
+## Gate C — Pilot usability
+
+### Task 23: incident-centered alerting
+
+- Introduce durable incidents and occurrence history.
+- Group by a reviewed stable signature, bound recurrence notifications, surface recovery, and add
+  pagination/counts.
+- Keep exact observation/evaluation evidence accessible.
+
+### Task 24: reviewed reference capture language
+
+- Rename customer-facing baseline concepts where clarity improves without gratuitously renaming
+  stable internal schemas.
+- Explain provenance, operational comparison, stochastic sampling limits, and exceptional baseline
+  behavior at authorization, approval, and results.
+- Keep spend language precise: distinguish maximum reserved calls from actual usage, and say when a
+  currency estimate is unavailable.
+
+### Task 25: credential-free demo and focused imports
+
+- Add a safe deterministic demo before credential entry.
+- Select the first external dataset adapter from actual design-partner formats; do not build a
+  speculative universal importer.
+- Measure authoring assistance and time to a proven case expectation.
+
+## Gate D — Hosted-pilot readiness
+
+### Task 26: reproducible verification and toolchain
+
+- Remove ignored runtime artifacts from committed test dependencies.
+- Pin supported Elixir/Erlang/Node toolchains.
+- Make the repository gate run backend, frontend, and production asset verification.
+- Add committed CI and a repeatable browser journey.
+
+### Task 27: hosted security and operations
+
+- Apply recent authentication to sensitive credential, run, and deletion actions; decide whether
+  MFA is required for the controlled pilot.
+- Automate and observe purge deadlines and post-restore deletion reconciliation.
+- Deploy production health, queue, scheduler-overdue, notification, and rollback monitoring.
+- Execute restore and rollback drills before invitation authorization.
+
+## Sequencing
+
+Tasks run in numeric order unless a later task is proven independent and explicitly approved. Gate
+A protects the truth of the product promise, Gate B keeps monitoring recoverable, Gate C makes the
+pilot usable, and Gate D makes external hosting defensible. No first-pilot invitation occurs until
+all four gates pass.
+
+Each task follows the repository workflow: research/update the plan, implement with focused tests,
+run frontend checks when applicable, run `mix precommit`, update progress, and create a focused
+commit.

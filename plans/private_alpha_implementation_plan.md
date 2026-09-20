@@ -1,10 +1,10 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–14 complete; the local private-alpha gate passes, while deployment and the first design-partner invitation remain separately authorized follow-ups
+> **Status:** Tasks 1–15 complete; design-review hardening is in progress and Gates A–D block the first design-partner pilot
 >
-> **Progress:** 14 of 14 tasks complete
+> **Progress:** 15 of 27 tasks complete; Task 16 is next
 >
-> **Last revised:** 2026-09-16
+> **Last revised:** 2026-09-19
 >
 > **Release target:** Invite-only design-partner alpha
 >
@@ -79,12 +79,13 @@ It is not positioned as general quality monitoring for unconstrained chat, creat
 | Providers | OpenAI and Anthropic |
 | Provider HTTP boundary | Existing `Req`-based adapters behind a normalized provider behaviour |
 | Evaluation | Deterministic contracts only |
-| Comparison | Same workflow version, provider, requested model, effective configuration, and approved baseline |
-| Input source | Customer-supplied prompt, frozen context, representative cases, and provider credentials |
+| Comparison | Same versioned provider-native request artifact, provider, requested model, effective configuration, and reviewed reference capture |
+| Input source | Customer-supplied provider-native message templates, allowlisted provider fields, representative cases with expectations, and provider credentials |
 | Execution | Managed replay; no customer SDK |
 | Cadence | Manual, daily, or weekly |
 | Feedback | Structured result review, including false alerts and missed regressions |
 | Deployment | Fly.io eventually, but no deployment work until the local pilot-readiness gate passes |
+| First-pilot gate | Accepted design-review Gates A–D must pass before the first external invitation |
 
 ## 4. Recommended architecture decisions
 
@@ -165,7 +166,7 @@ Do not carry over Stripe billing, subscription gates, public registration, broad
 - Invite-only authentication and workspace membership.
 - One workspace may have multiple invited users.
 - OpenAI and Anthropic credential storage, validation, rotation, and revocation.
-- Monitor creation with versioned prompt, context, cases, provider/model, and generation configuration.
+- Monitor creation with a versioned provider-native request, cases, expectations, provider/model, and generation configuration.
 - Manual case entry and versioned JSON import.
 - Deterministic contract templates and explicit rule configuration.
 - Positive and negative fixture validation before contract approval.
@@ -175,6 +176,10 @@ Do not carry over Stripe billing, subscription gates, public registration, broad
 - Run history, observations, deterministic evidence, and operational provenance.
 - In-app alerts plus one email notification path for actionable failures.
 - Structured review and contract revision.
+- Successor workflow configuration without rewriting history.
+- Recoverable credential, authentication-breaker, and temporary-capacity operations.
+- Incident-centered recurrence and recovery tracking backed by exact observation evidence.
+- A credential-free deterministic demo and one evidence-based import path for the first pilot format.
 - A derived onboarding checklist and first-party learning events.
 - A minimal public site and design-partner application form.
 - Customer data deletion and credential revocation suitable for a controlled pilot.
@@ -206,8 +211,8 @@ Exact migrations are finalized in their owning task. These boundaries are part o
 | `DesignPartnerApplication` | Public request-access submission and internal review status |
 | `ProviderCredential` | Workspace, provider, label, encrypted secret, fingerprint/suffix, state, validation metadata |
 | `Monitor` | Stable identity, name, lifecycle state, active version references, cadence, and `next_run_at` |
-| `MonitorVersion` | Immutable provider/model, prompts, response format, generation config, and compatibility fingerprint |
-| `CaseVersion` | Immutable name, frozen variables/context, position, status, and fingerprint |
+| `MonitorVersion` | Immutable provider/model, provider-native request schema/template, allowlisted configuration, legacy request mode where applicable, and compatibility fingerprint |
+| `CaseVersion` | Immutable name, template variables/input, case-specific deterministic expectations, position, status, and fingerprint |
 | `ContractVersion` | Immutable schema version, configured rules, fixture references, approval state, fingerprint, approver |
 | `ContractFixture` | Known-valid or known-invalid customer example and its expected rule outcomes |
 | `BaselineSnapshot` | Approved monitor, workflow, case, contract, provider provenance, and member observations |
@@ -215,19 +220,41 @@ Exact migrations are finalized in their owning task. These boundaries are part o
 | `Observation` | Immutable normalized response, completion state, requested/returned model, usage, latency, safe request ID, and errors |
 | `Evaluation` | Observation, contract version, evaluator engine version, overall result, and evaluation timestamp |
 | `RuleResult` | Stable rule ID, pass/fail/error, human explanation, and bounded evidence payload |
-| `Alert` | Actionable monitor/run failure with severity, open/resolved state, and notification state |
+| `Alert` | Legacy/run-level actionable finding retained during the incident migration |
+| `Incident` / `IncidentOccurrence` | Enduring action item and its run/observation-level recurrence, notification, acknowledgement, and recovery history |
 | `ReviewDecision` | Append-only human classification, rationale, reviewer, evidence identity, and supersession link |
 | `AuditEvent` | Security- and approval-relevant action without secret or raw-output leakage |
 | `ProductEvent` | Minimal first-party onboarding and product-learning event with allowlisted properties |
 
-### 7.1 Required state transitions
+### 7.1 Design-review migration policy
+
+The accepted review work does not require wiping local data. Migrations must be additive and tested
+against existing monitor, baseline, run, alert, and review history:
+
+- Existing request versions are explicitly backfilled as `legacy_wrapped_v1` and keep their exact
+  behavior and fingerprints; they are never silently converted into provider-native requests.
+- Existing case versions begin with no case-specific expectation. The system must not infer a
+  supposedly correct answer from a historical output.
+- Credential replacement changes only future execution references and preserves historical
+  credential provenance.
+- Breaker recovery and capacity coverage use new durable state/events without deleting the failure
+  history that motivated them.
+- Incident migration preserves observation-level alerts and attaches or backfills them
+  conservatively under stable signatures.
+- Public copy, reference-capture terminology, proof-coverage UI, and reproducibility do not require
+  domain-data changes.
+
+Exact columns and tables are finalized by their owning tasks after focused research. Any destructive
+local reset remains a separate explicit decision; it is neither authorized nor currently useful.
+
+### 7.2 Required state transitions
 
 ```text
 Monitor: draft -> validating -> ready -> baseline_pending -> active -> paused -> archived
 Contract: draft -> approved -> retired
 Baseline: pending -> approved -> superseded
 Run: planned -> queued -> running -> succeeded | partial_failed | failed | cancelled | needs_review
-Alert: open -> acknowledged -> resolved
+Incident: open -> acknowledged -> recovered | resolved
 ```
 
 Behavior-affecting changes never mutate an approved version. They create a new monitor, case, or contract version and require compatibility validation. A provider/model/prompt/configuration change invalidates the active baseline until a replacement is approved.
@@ -248,8 +275,8 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 1. Name the monitor and describe the failure it protects against.
 2. Add or select an encrypted provider credential.
 3. Choose an allowlisted provider/model and generation configuration.
-4. Enter system/user prompt templates and response-format expectations.
-5. Add 1–20 representative cases manually or through the versioned JSON import format.
+4. Enter a provider-native ordered message template and review the exact provider-visible request.
+5. Add 1–20 representative cases and case-specific expectations manually or through a versioned import format.
 6. Select deterministic templates and configure rules.
 7. Test the contract against known-valid and known-invalid fixtures without provider calls.
 8. Approve the contract.
@@ -262,8 +289,8 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 1. A due or manual run creates immutable observations.
 2. The approved deterministic contract evaluates each observation locally.
 3. Operational anomalies remain separate from content failures.
-4. A configured contract failure creates or updates an alert.
-5. The workspace owner receives an in-app alert and, when configured, one email notification.
+4. A configured contract failure creates or updates an incident and attaches exact occurrence evidence.
+5. The workspace owner receives bounded in-app and email notification for a new or materially changed incident.
 6. A reviewer sees exact failed rules and evidence, then classifies the result.
 7. If the rule or expectation is wrong, the user creates and validates a new contract version; history is not rewritten.
 
@@ -285,6 +312,19 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 12 | Run results, evidence, alerts, and operational signals | 9, 10 | Complete | `da75863`, `9ae5017`, `8ae1a9f`, `7214c24`, `b883257`, `1da2310`, `a883245` |
 | 13 | Structured review and versioned correction loop | 8, 12 | Complete | `56066af`, `124bf89`, `c82203e`, `631b68a`, `6133982`, `a79bcaa` |
 | 14 | Onboarding telemetry, notifications, security, and pilot readiness | 2–13 | Complete | `9e40ee9`, `f45a06e`, `1ab2387`, `57d031d`, `0aacfcd`, `fe3e7e5`, `babfbf6`, `227e778`, `985481b`, `0824532` |
+| 15 | Design-review program and truthful public evidence | 1–14 | Complete | `d49b997` |
+| 16 | Provider-native request artifacts | 15 | Not started | — |
+| 17 | Case-specific deterministic expectations | 16 | Not started | — |
+| 18 | Contract proof coverage, severity, and bounded rescore | 17 | Not started | — |
+| 19 | Credential successor rebinding | 16 | Not started | — |
+| 20 | Authentication-breaker recovery | 19 | Not started | — |
+| 21 | Temporary capacity and coverage state | 20 | Not started | — |
+| 22 | Successor workflow configuration | 17, 19–21 | Not started | — |
+| 23 | Incident-centered alerting | 18, 22 | Not started | — |
+| 24 | Reviewed reference capture language | 16–18, 23 | Not started | — |
+| 25 | Credential-free demo and focused imports | 17, 18, 24 | Not started | — |
+| 26 | Reproducible verification and toolchain | 15–25 | Not started | — |
+| 27 | Hosted security and operations | 19–26 | Not started | — |
 
 ## 10. Implementation tasks
 
@@ -842,6 +882,267 @@ ordering into a documented, tested product operation.
 - Manually authorized provider smoke tests
 - `mix precommit`
 
+### Task 15 — Design-review program and truthful public evidence
+
+**Status:** Complete
+
+**Gate:** A — Product truth
+
+**Objective:** Turn the accepted independent reviews into a tracked pre-pilot program and remove the
+first concrete product overclaim.
+
+**Checklist:**
+
+- [x] Record the accepted Sol and Astra findings, decisions, roadmap, and migration impact.
+- [x] Establish Gates A–D as blockers for the first external pilot.
+- [x] Choose additive migration with frozen legacy behavior; do not wipe local data.
+- [x] Replace the unsupported homepage wildcard/every-factual-claim citation example with an exact
+  `fact_citation` capability.
+- [x] Add a regression assertion that the supported claim is present and the old overclaim is absent.
+- [x] Run focused public-page verification and `mix precommit`.
+
+**Acceptance criteria:**
+
+- The implementation plan accounts for every accepted review recommendation.
+- Each future schema change has an owning task and a legacy-data strategy.
+- The public evidence card describes only behavior implemented by the current evaluator.
+
+### Task 16 — Provider-native request artifacts
+
+**Status:** Not started
+
+**Gate:** A — Product truth
+
+**Objective:** Make the exact provider-visible request a versioned, previewable, fingerprinted product
+artifact without silently changing legacy monitors.
+
+**Checklist:**
+
+- [ ] Finalize provider-specific, versioned request schemas for ordered messages/input items and an
+  allowlisted set of request fields.
+- [ ] Add an additive migration that marks current monitor versions as `legacy_wrapped_v1`.
+- [ ] Build provider-native authoring and exact per-case request previews for OpenAI and Anthropic.
+- [ ] Derive compatibility fingerprints from canonical effective requests.
+- [ ] Remove product execution's dependency on spike prompt construction while preserving the spike.
+- [ ] Add setup-to-wire payload tests proving no undisclosed wrapper or empty-context sentence is added.
+- [ ] Run separately authorized OpenAI and Anthropic smoke tests only after local gates pass.
+
+**Acceptance criteria:**
+
+- A customer can compare the preview with the provider request they intend to monitor.
+- The persisted request artifact and execution receipt prove what behavior was authorized and sent.
+- Legacy monitors remain reproducible and visibly identified as legacy-wrapped configurations.
+
+### Task 17 — Case-specific deterministic expectations
+
+**Status:** Not started
+
+**Gate:** A — Product truth
+
+**Objective:** Prove correctness for a particular case instead of only validating globally allowed
+shapes and values.
+
+**Checklist:**
+
+- [ ] Define a bounded expectation schema for labels, typed JSON Pointer values, alternatives,
+  numeric tolerances, source IDs, and abstention.
+- [ ] Add immutable expectation data and schema identity to case versions.
+- [ ] Extend manual setup and versioned import with usable expectation authoring.
+- [ ] Evaluate observations against both the shared contract and exact case expectation fingerprint.
+- [ ] Present expectation evidence separately from generic contract evidence.
+- [ ] Add conformance, held-out, historical-rescore, and end-to-end coverage.
+
+**Acceptance criteria:**
+
+- A classifier returning the same allowed label for every case fails cases expecting another label.
+- An extraction can prove expected case values, not merely JSON shape.
+- Existing cases remain valid with an explicit “no case expectation” state until revised.
+
+### Task 18 — Contract proof coverage, severity, and bounded rescore
+
+**Status:** Not started
+
+**Gate:** A — Product truth
+
+**Objective:** Make approval evidence proportionate to every rule and expose the severity semantics
+already supported by the engine.
+
+**Checklist:**
+
+- [ ] Compute positive and negative fixture coverage per rule and relevant branch.
+- [ ] Block approval on uncovered critical rules unless an owner records an explicit waiver.
+- [ ] Expose supported severity controls in authoring, fixture results, readiness, and evidence.
+- [ ] Keep composite-expression authoring bounded; do not expose unsafe arbitrary DSL editing.
+- [ ] Pin a historical-observation cutoff, rescore in bounded durable batches, show progress, and keep
+  the prior approved contract active until the new rescore succeeds.
+- [ ] Add coverage, waiver authorization, severity, and regression tests.
+
+**Acceptance criteria:**
+
+- Readiness identifies exactly which rules have and lack rejection proof.
+- Severity affects the documented evaluation/alert policy consistently.
+- Owners cannot mistake one global negative example for complete contract proof.
+
+### Task 19 — Credential successor rebinding
+
+**Status:** Not started
+
+**Gate:** B — Recoverable monitoring
+
+**Objective:** Let routine credential replacement restore existing monitors without rewriting history.
+
+**Checklist:**
+
+- [ ] Show monitors affected by a superseded credential.
+- [ ] Validate the successor against each affected monitor's requested provider/model requirements.
+- [ ] Add an owner-authorized, transactional future-reference replacement operation.
+- [ ] Preserve historical credential IDs and audit the replacement relationship.
+- [ ] Apply the conservative reviewed-reference compatibility policy and show any replacement need.
+- [ ] Test rotation through validation, rebinding, resume, and bounded fake-provider execution.
+
+### Task 20 — Authentication-breaker recovery
+
+**Status:** Not started
+
+**Gate:** B — Recoverable monitoring
+
+**Objective:** Preserve the safety breaker while giving a repaired provider account a deliberate path
+back to healthy execution.
+
+**Checklist:**
+
+- [ ] Persist a breaker recovery epoch/event without deleting old failures.
+- [ ] Require current credential/model validation and owner authorization for a bounded probe.
+- [ ] Count consecutive authentication failures only within the active epoch.
+- [ ] Represent probe success/failure and the next action in the product UI.
+- [ ] Test trip, repair, probe, resume, and retrip through public context/controller operations.
+
+### Task 21 — Temporary capacity and coverage state
+
+**Status:** Not started
+
+**Gate:** B — Recoverable monitoring
+
+**Objective:** Prevent temporary quota or run-cap exhaustion from silently becoming permanent loss of
+monitoring coverage.
+
+**Checklist:**
+
+- [ ] Distinguish waiting for capacity from safety and incompatibility pauses.
+- [ ] Map every capacity reason accurately and show the next retry boundary.
+- [ ] Expose last successful check, overdue coverage, and owner notification.
+- [ ] Resume/retry automatically when the temporary boundary clears without bypassing hard caps.
+- [ ] Test exhaustion and recovery across a simulated UTC limit boundary.
+
+### Task 22 — Successor workflow configuration
+
+**Status:** Not started
+
+**Gate:** B — Recoverable monitoring
+
+**Objective:** Let users revise prompt messages, cases, expectations, model, and configuration through
+an immutable successor rather than recreating the monitor.
+
+**Checklist:**
+
+- [ ] Copy active configuration into a persisted successor draft with origin linkage.
+- [ ] Support safe edit/resume/validation without mutating approved history.
+- [ ] Link the successor to a motivating review when one exists.
+- [ ] Preview compatibility and reviewed-reference invalidation before activation.
+- [ ] Activate atomically and reuse the corrected replacement-reference lifecycle.
+- [ ] Test a missed-regression review that adds a case and returns the monitor to service.
+
+### Task 23 — Incident-centered alerting
+
+**Status:** Not started
+
+**Gate:** C — Pilot usability
+
+**Objective:** Turn recurring observation failures into bounded, enduring action items while retaining
+every piece of exact evidence.
+
+**Checklist:**
+
+- [ ] Define and migrate stable incident and occurrence identities.
+- [ ] Attach recurring failures without suppressing materially different signatures.
+- [ ] Notify once for a new incident and only on bounded, meaningful recurrence changes.
+- [ ] Model first seen, last seen, affected cases/runs, acknowledgement, resolution, and recovery.
+- [ ] Add pagination/counts and document exceptional-reference behavior.
+- [ ] Load-test a broad recurring failure and verify delivery volume.
+
+### Task 24 — Reviewed reference capture language
+
+**Status:** Not started
+
+**Gate:** C — Pilot usability
+
+**Objective:** Explain baseline capture as reviewed provenance and operational reference evidence, not
+as statistical proof of universal content health.
+
+**Checklist:**
+
+- [ ] Use “reviewed reference capture” in customer-facing setup/results language where clear.
+- [ ] Explain the separate roles of case expectations, contract approval, reference capture, and
+  recurring samples.
+- [ ] State one-sample/cadence limits and avoid universal-health language.
+- [ ] Explain how exceptionally accepted reference failures affect later incidents.
+- [ ] Distinguish maximum reserved calls from actual calls and state when a currency estimate is
+  unavailable.
+- [ ] Preserve stable internal names where renaming would add migration risk without user value.
+
+### Task 25 — Credential-free demo and focused imports
+
+**Status:** Not started
+
+**Gate:** C — Pilot usability
+
+**Objective:** Let a prospect experience the deterministic workflow before sharing a credential and
+reduce setup friction using evidence from real design-partner formats.
+
+**Checklist:**
+
+- [ ] Add a sealed credential-free demo with representative requests, expectations, failures, and
+  exact evidence.
+- [ ] Measure the steps and founder assistance needed to understand the wedge.
+- [ ] Select one import adapter only after inspecting the first partners' existing eval data.
+- [ ] Keep the generic versioned JSON import and document unsupported external formats honestly.
+
+### Task 26 — Reproducible verification and toolchain
+
+**Status:** Not started
+
+**Gate:** D — Hosted-pilot readiness
+
+**Objective:** Make a clean checkout prove the same backend, frontend, asset, and browser gates cited
+by the project.
+
+**Checklist:**
+
+- [ ] Remove ignored benchmark artifacts from committed test dependencies or commit safe fixtures.
+- [ ] Pin supported Elixir, Erlang/OTP, and Node versions.
+- [ ] Include TypeScript, frontend tests, and production assets in the repository gate.
+- [ ] Add committed CI and a repeatable browser journey with deterministic data.
+- [ ] Verify from a clean checkout without local ignored evidence.
+
+### Task 27 — Hosted security and operations
+
+**Status:** Not started
+
+**Gate:** D — Hosted-pilot readiness
+
+**Objective:** Turn the existing deployment documents into exercised controls before customer
+credentials or data are hosted.
+
+**Checklist:**
+
+- [ ] Require recent authentication for credential lifecycle, spend authorization, and destructive
+  workspace actions; explicitly decide the controlled-pilot MFA boundary.
+- [ ] Automate and monitor purge deadlines and post-restore deletion reconciliation.
+- [ ] Deploy health, queue, overdue-scheduler, unknown-outcome, notification, and purge monitoring.
+- [ ] Name operational owners and escalation paths.
+- [ ] Exercise backup restore, key rotation, rollback, and incident response in the target environment.
+- [ ] Require separate user authorization for deployment and the first invitation after all gates pass.
+
 ## 11. Cross-cutting testing strategy
 
 ### 11.1 Backend
@@ -896,18 +1197,23 @@ Proposed product-validation gate before broader productization:
 
 The product is ready for the first external design partner only when:
 
-- [x] Tasks 1–14 are complete.
+- [x] Foundational Tasks 1–14 are complete.
+- [ ] Design-review hardening Tasks 15–27 and Gates A–D are complete.
 - [x] Public registration and all billing routes are absent.
 - [x] Tenant isolation has explicit adversarial tests.
 - [x] Provider credentials are encrypted, redacted, revocable, and never returned to the browser.
 - [x] The full onboarding and monitoring loop passes with the fake provider.
 - [x] OpenAI and Anthropic smoke tests pass under explicit call caps.
 - [x] Every behavior-affecting edit produces a compatible new version or invalidates the baseline.
-- [x] Scheduled work is durable, bounded, unique, and recoverable.
+- [x] Scheduled work is durable, bounded, and unique.
+- [ ] Exact provider-native request artifacts and case-specific expectations are proven end to end.
+- [ ] Credential, authentication-breaker, and temporary-capacity recovery pass full lifecycle tests.
+- [ ] Recurring failures produce bounded incident notifications while preserving exact evidence.
 - [x] Alerts show deterministic evidence and do not claim semantic understanding.
 - [x] Result feedback records false alerts and missed regressions.
 - [x] Customer-visible data use, retention, limitations, and deletion behavior are documented.
 - [x] The operator runbook and deployment-readiness checklist are complete.
+- [ ] Clean-checkout CI, restore, rollback, deletion, and hosted observability drills pass.
 - [ ] The user explicitly authorizes deployment and the first design-partner invitation.
 
 ## 14. Risks and stop conditions
@@ -946,6 +1252,8 @@ The product is ready for the first external design partner only when:
 | 2026-09-15 | Make baseline authorization and approval owner-only with sealed pending snapshots | The first provider spend and the reference used by later schedules need exact preview provenance, idempotent authorization, immutable observation membership, and stricter operational blockers than exceptional deterministic acceptance | 10 onward |
 | 2026-09-16 | Keep content findings, operational anomalies, and human judgment as separate layers | Deterministic failures can be decisive now; provider/model/usage/latency facts need explicit provenance-aware policy, while append-only customer judgment belongs to Task 13 | 12–14 |
 | 2026-09-16 | Approve the closed-alpha retention, notification, key rotation, and usage boundaries | Local email until deployment, Resend in production, 30-day closed retention and backup expiry, seven-day deletion SLA, versioned Cloak keys, and 20-run/200-call daily workspace caps define a controlled pilot without adding general SaaS machinery | 14 |
+| 2026-09-19 | Accept the Sol/Astra review recommendations and require Gates A–D before the first pilot | Request fidelity, case correctness, ordinary recovery, alert recurrence, product truth, reproducibility, and hosted controls are core to the narrow promise; semantic judges, billing, and broader scope remain deferred | 15–27 |
+| 2026-09-19 | Preserve local history through additive migrations | Existing runs, references, alerts, and reviews are useful compatibility evidence; legacy request behavior must be frozen and labeled rather than silently transformed | 16–23 |
 
 ## 16. Session log
 
@@ -1592,11 +1900,33 @@ The product is ready for the first external design partner only when:
   component coverage and operator instructions. All 45 frontend tests and `mix precommit` with 598
   backend tests pass.
 
+### 2026-09-19 — Design-review hardening started
+
+- Accepted both independent design reviews and translated every approved recommendation into Tasks
+  15–27 under four pre-pilot gates: product truth, recoverable monitoring, pilot usability, and
+  hosted-pilot readiness.
+- Chose provider-native message templates and exact provider-visible previews, case-specific
+  deterministic expectations, operational recovery, successor configuration, incident aggregation,
+  accurate reference-capture language, contract proof coverage/severity, and reproducible CI.
+- Kept the product focused on deterministic conformance and continued to defer semantic judges,
+  billing, extra providers, and enterprise breadth.
+- Reviewed the expected data-model impact and selected additive migrations with frozen legacy
+  behavior. No local data wipe is required or authorized.
+- Started Task 15 by replacing the homepage's unsupported wildcard/every-claim citation example
+  with a declared-fact/trailing-source example implemented by the current evaluator.
+- Verified the focused public controller suite with 3 passing tests and `mix precommit` with 598
+  passing tests. Public-copy implementation commit: `d49b997`.
+
 ## 17. References
 
 - [Feasibility spike implementation plan](implementation_plan.md)
 - [Productization gaps and future needs](productization_plan.md)
 - [Deferred semantic-layer plan](semantic_layer_plan.md)
+- [Sol design review](../docs/design-reviews/2026-09-16-sol.md)
+- [Astra design review](../docs/design-reviews/2026-09-16-astra.md)
+- [Design-review hardening research](../docs/design-review-hardening/RESEARCH.md)
+- [Design-review hardening implementation roadmap](../docs/design-review-hardening/IMPLEMENTATION.md)
+- [Design-review hardening progress](../docs/design-review-hardening/PROGRESS.md)
 - [Phoenix 1.8 authentication generator](https://phoenix.hexdocs.pm/Mix.Tasks.Phx.Gen.Auth.html)
 - [Phoenix 1.8 scopes](https://phoenix.hexdocs.pm/authn_authz.html)
 - [Inertia Phoenix adapter](https://inertia.hexdocs.pm/readme.html)
@@ -1605,3 +1935,6 @@ The product is ready for the first external design partner only when:
 - [Oban periodic jobs](https://oban.hexdocs.pm/periodic_jobs.html)
 - [shadcn/ui installation](https://ui.shadcn.com/docs/installation)
 - [Cloak.Ecto encrypted fields](https://hexdocs.pm/cloak_ecto/readme.html)
+- [OpenAI Responses quickstart](https://platform.openai.com/docs/quickstart/make-your-first-api-request)
+- [OpenAI Responses API reference](https://platform.openai.com/docs/api-reference/responses)
+- [Anthropic prompt templates and variables](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/prompt-templates-and-variables)
