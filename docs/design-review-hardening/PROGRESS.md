@@ -454,3 +454,17 @@ Verification passed on 2026-09-20 in both the working tree and a detached clean 
 tests with TypeScript checking, and the production asset build. The invitation-to-demo browser
 journey completed with zero provider calls and retained its snapshot, screenshot, and trace only as
 ignored local diagnostics. Focused implementation commit: `53dcfe8`. Task 27 is next.
+
+## Task 27 log
+
+- [x] Inspect Phoenix session recency, sensitive routes, workspace lifecycle, deletion receipts,
+  Oban scheduling/queues, notification state, provider-attempt outcomes, invitation operations, and
+  deployment runbooks.
+- [x] Decide the controlled-pilot MFA, recent-authentication, readiness, restore-reconciliation,
+  operational-health, drill, invitation, and external-authorization boundaries.
+- [ ] Enforce recent authentication for credential, provider-call/spend, schedule activation, and
+  destructive workspace mutations.
+- [ ] Automate bounded due purge and add signed post-restore reconciliation.
+- [ ] Add traffic health plus protected operational monitoring and operator checks.
+- [ ] Persist and enforce current operational drills before production invitations.
+- [ ] Exercise local control drills, run the complete verification gate, and record focused commits.

@@ -241,6 +241,26 @@ complete gate and browser journey passed from a detached clean worktree with no 
 - Deploy production health, queue, scheduler-overdue, notification, and rollback monitoring.
 - Execute restore and rollback drills before invitation authorization.
 
+Implementation sequence:
+
+1. Add a router-level recent-authentication pipeline after authenticated workspace resolution and
+   move every credential, provider-call, future-spend, and destructive workspace mutation into it.
+2. Add bounded periodic purge automation and a signed content-free deletion ledger with preview and
+   execute reconciliation modes for isolated restores.
+3. Add liveness, database readiness, protected operational-health JSON, and a strict operator health
+   command covering Oban queues, scheduler heartbeat/overdue monitors, unknown outcomes,
+   notifications, and purge deadlines.
+4. Persist allowlisted drill attestations with expiry and release identity, add operator recording
+   and readiness commands, and make production invitation creation fail closed until the explicit
+   enablement switch and all current drill gates pass.
+5. Patch the transitive Mint security advisory discovered by the Task 26 clean install, run focused
+   security/operations tests, exercise the local restore/reconciliation and rollback procedures, and
+   run the complete repository gate.
+
+External boundary: no Fly resources, production secrets, deployment, or first partner invitation
+will be created by this task. Those remain separately authorized actions after the implemented gate
+reports ready in the target environment.
+
 ## Sequencing
 
 Tasks run in numeric order unless a later task is proven independent and explicitly approved. Gate

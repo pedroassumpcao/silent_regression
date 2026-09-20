@@ -1212,6 +1212,24 @@ credentials or data are hosted.
 - [ ] Exercise backup restore, key rotation, rollback, and incident response in the target environment.
 - [ ] Require separate user authorization for deployment and the first invitation after all gates pass.
 
+**Decisions:**
+
+- Sensitive mutations require primary authentication within the previous ten minutes. The gate is
+  enforced after authenticated workspace resolution, so both actor identity and tenant membership
+  are established before credential, spend, schedule, or deletion work can run.
+- Application MFA is deferred for the controlled invite-only pilot and must not be claimed. Operator
+  infrastructure accounts require provider MFA; application MFA is mandatory before broader access,
+  regulated data, self-serve administration, or materially expanded roles.
+- Due purge becomes a bounded periodic maintenance job. A signed content-free ledger reconciles an
+  isolated database restore with deletion requests/completions that occurred after the backup.
+- Traffic readiness covers process and database availability. Operational degradation is exposed
+  separately so queue/scheduler/provider-outcome/notification/purge alerts do not remove otherwise
+  healthy Machines from service.
+- Production invitation creation fails closed on an explicit enablement switch plus current recorded
+  restore, rollback, key-rotation, deletion-reconciliation, and incident-response drills. Deployment,
+  setting that switch, and sending the first invitation each remain separately authorized external
+  actions.
+
 ## 11. Cross-cutting testing strategy
 
 ### 11.1 Backend

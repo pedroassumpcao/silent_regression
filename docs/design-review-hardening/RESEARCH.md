@@ -459,3 +459,42 @@ The reproducible boundary is therefore:
 - a deterministic browser journey creates a disposable tenant and database and makes no provider
   calls; and
 - exact runtime versions are repository state, not workstation folklore.
+
+## Task 27 hosted-control decisions
+
+### Authentication boundary
+
+Phoenix already places the last primary authentication time on each session token and exposes a
+sudo-mode check. The controlled pilot will require that timestamp to be no more than ten minutes old
+for credential creation, validation, rotation, replacement activation, and revocation; model-access
+checks; reviewed-reference and manual-run authorization; authentication recovery; schedule
+activation/resume; successor activation; and workspace closure/deletion. Read-only evidence remains
+available to an ordinary authenticated session.
+
+Application MFA is not a controlled-pilot requirement. Access is invite-only, login links expire in
+15 minutes, sensitive mutations require fresh primary authentication, and the pilot excludes
+regulated data. This is not an MFA claim: operator infrastructure accounts must use their providers'
+MFA, and application MFA becomes a gate before broader access, regulated workloads, self-serve
+administration, or materially expanded roles.
+
+### Deletion and restore boundary
+
+Manual purge is insufficient for a hosted SLA. A singleton bounded maintenance worker will process
+due closed workspaces on a fixed cadence using the same transaction and immutable receipt path as
+the operator command. A signed, content-free deletion ledger will let an isolated restore compare
+authoritative request/completion receipts with restored workspace IDs and reapply any due or already
+completed deletion before traffic is enabled. Preview remains mandatory before execution.
+
+### Health and invitation boundary
+
+Traffic readiness must depend on process/database availability, not business backlogs that would
+make an outage worse if Machines were removed from routing. A separate authenticated operational
+health surface will report queue backlog/discards, scheduler heartbeat and overdue monitors,
+unknown provider outcomes, failed/stale notifications, and overdue purge work. The same snapshot is
+available as a strict operator command for external alerting.
+
+Production invitations will fail closed unless an explicit environment switch is enabled and
+recent successful backup/restore, rollback, key-rotation, deletion-reconciliation, and incident-
+response drills are recorded. Restore, rollback, and deletion reconciliation must match the current
+release SHA. Setting the switch and recording a drill are operator actions; neither deploys the app
+nor constitutes the separate user authorization required for deployment or the first invitation.
