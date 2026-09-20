@@ -33,6 +33,7 @@ import type { SharedPageProps } from "@/types/page"
 
 type Step = "purpose" | "connection" | "prompt" | "cases" | "review"
 type Provider = "openai" | "anthropic"
+type RequestMode = "legacy_wrapped_v1" | "provider_native_v1"
 
 type Credential = {
   id: string
@@ -60,9 +61,18 @@ type Setup = {
   providerCredentialId: string | null
   provider: Provider | null
   requestedModel: string | null
+  requestMode: RequestMode
+  requestSchemaVersion: number
+  requestTemplate: Record<string, unknown>
+  requestTemplateJson: string
   systemPrompt: string
   userPromptTemplate: string
-  responseFormat: { type: "text" | "json_object" | "json_schema" }
+  responseFormat: {
+    type: "text" | "json_object" | "json_schema"
+    name?: string
+    schema?: Record<string, unknown>
+    strict?: boolean
+  }
   generationConfig: {
     maxOutputTokens?: number
     temperature?: number
@@ -88,6 +98,8 @@ type Limits = {
   maxActiveCases: number
   maxTotalCases: number
   maxPromptBytes: number
+  maxRequestMessages: number
+  maxRequestTemplateBytes: number
   maxContextBytes: number
   maxVariablesBytes: number
   maxImportBytes: number
@@ -101,6 +113,13 @@ type GenerationCapability = {
 
 type GenerationCapabilities = Record<Provider, Record<string, GenerationCapability>>
 
+type RequestPreview = {
+  caseKey: string
+  caseName: string
+  requestFingerprint: string
+  artifactJson: string
+}
+
 export type MonitorSetupProps = {
   activeCaseCount: number
   auth: SharedPageProps["auth"]
@@ -110,6 +129,7 @@ export type MonitorSetupProps = {
   modelOptions: Record<Provider, string[]>
   progress: SetupProgress
   releaseStage: string
+  requestPreviews: RequestPreview[]
   setup: Setup
   step: Step
 }
@@ -117,7 +137,7 @@ export type MonitorSetupProps = {
 const steps: Array<{ id: Step; label: string; shortLabel: string }> = [
   { id: "purpose", label: "Purpose", shortLabel: "Purpose" },
   { id: "connection", label: "Provider and model", shortLabel: "Connection" },
-  { id: "prompt", label: "Prompt and configuration", shortLabel: "Prompt" },
+  { id: "prompt", label: "Provider request", shortLabel: "Request" },
   { id: "cases", label: "Representative cases", shortLabel: "Cases" },
   { id: "review", label: "Review and finish", shortLabel: "Review" },
 ]
@@ -233,6 +253,7 @@ export function MonitorSetupView({
               activeCaseCount={props.activeCaseCount}
               basePath={basePath}
               credential={props.credentials.find(item => item.id === props.setup.providerCredentialId)}
+              requestPreviews={props.requestPreviews}
               setup={props.setup}
               workspaceSlug={workspace.slug}
             />
@@ -515,10 +536,19 @@ function PromptStep({
 
   const form = useForm({
     prompt: {
+      request_template_json: setup.requestTemplateJson,
       system_prompt: setup.systemPrompt || "",
       user_prompt_template: setup.userPromptTemplate || "",
       response_format: {
-        type: setup.responseFormat?.type === "json_object" ? "json_object" : "text",
+        type: setup.responseFormat?.type || "text",
+        name: setup.responseFormat?.name || "response",
+        schema_json: JSON.stringify(setup.responseFormat?.schema || {
+          type: "object",
+          properties: {},
+          required: [],
+          additionalProperties: false,
+        }, null, 2),
+        strict: setup.responseFormat?.strict ?? true,
       },
       generation_config: {
         max_output_tokens: String(setup.generationConfig?.maxOutputTokens || 512),
@@ -533,6 +563,17 @@ function PromptStep({
 
   function submit(event: FormEvent) {
     event.preventDefault()
+
+    form.transform(data => {
+      const responseFormat = data.prompt.response_format.type === "json_schema"
+        ? data.prompt.response_format
+        : { type: data.prompt.response_format.type }
+
+      return {
+        ...data,
+        prompt: { ...data.prompt, response_format: responseFormat },
+      }
+    })
     form.patch(`${basePath}/prompt`)
   }
 
@@ -540,59 +581,105 @@ function PromptStep({
     <StepLayout
       aside={
         <CallBoundary
-          stored="The full prompt template, response format, and generation settings in this workspace."
-          sent="During later captures, the rendered prompt, frozen context, and variables are sent to the selected provider."
+          stored="The provider-native message template, response format, and generation settings in this workspace."
+          sent="During later captures, exactly the reviewed per-case request body is sent to the selected provider."
         />
       }
-      description="Copy the production prompt and behavior-affecting generation settings. This content becomes immutable when setup is finished."
-      title="Freeze the request configuration"
+      description="Copy the production message structure and behavior-affecting settings. The review step shows the exact provider-visible request for every active case."
+      title="Freeze the provider request"
     >
       <form id="monitor-prompt-form" className="space-y-6" onSubmit={submit}>
-        <div className="space-y-2">
-          <Label htmlFor="system-prompt">System prompt</Label>
-          <Textarea
-            id="system-prompt"
-            name="prompt[system_prompt]"
-            className="min-h-32 font-mono text-xs leading-5"
-            maxLength={limits.maxPromptBytes}
-            placeholder="Use only the supplied context."
-            value={form.data.prompt.system_prompt}
-            aria-invalid={Boolean(errors.systemPrompt)}
-            onChange={event => form.setData("prompt.system_prompt", event.target.value)}
-          />
-          {errors.systemPrompt && <FieldError message={errors.systemPrompt} />}
-        </div>
+        {setup.requestMode === "provider_native_v1" ? (
+          <>
+            <Alert id="provider-native-request-notice" className="border-primary/20 bg-primary/5">
+              <ShieldCheck />
+              <AlertTitle>Provider-native request · schema v{setup.requestSchemaVersion}</AlertTitle>
+              <AlertDescription>
+                {setup.provider === "anthropic"
+                  ? "Use an optional system string and an alternating messages array that starts and ends with user."
+                  : "Use optional instructions and an input array with user, assistant, system, or developer roles."}
+                {" "}Silent Regression adds no prompt wrapper. Frozen context is sent only where you place <code>{"{{frozen_context}}"}</code>.
+              </AlertDescription>
+            </Alert>
 
-        <div className="space-y-2">
-          <Label htmlFor="user-prompt-template">User prompt template</Label>
-          <Textarea
-            id="user-prompt-template"
-            name="prompt[user_prompt_template]"
-            required
-            className="min-h-44 font-mono text-xs leading-5"
-            maxLength={limits.maxPromptBytes}
-            placeholder={"Context:\n{{frozen_context}}\n\nQuestion: {{question}}"}
-            value={form.data.prompt.user_prompt_template}
-            aria-invalid={Boolean(errors.userPromptTemplate)}
-            onChange={event => form.setData("prompt.user_prompt_template", event.target.value)}
-          />
-          {errors.userPromptTemplate && <FieldError message={errors.userPromptTemplate} />}
-          <p className="text-xs text-muted-foreground">
-            Use variable names that correspond to each case&apos;s input variables. Frozen context is stored separately per case.
-          </p>
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="provider-request-template">
+                {setup.provider === "anthropic" ? "Anthropic Messages template" : "OpenAI Responses template"}
+              </Label>
+              <Textarea
+                id="provider-request-template"
+                name="prompt[request_template_json]"
+                required
+                className="min-h-80 font-mono text-xs leading-5"
+                maxLength={limits.maxRequestTemplateBytes}
+                value={form.data.prompt.request_template_json}
+                aria-invalid={Boolean(errors.requestTemplate)}
+                onChange={event => form.setData("prompt.request_template_json", event.target.value)}
+              />
+              {errors.requestTemplate && <FieldError message={errors.requestTemplate} />}
+              <p className="text-xs leading-5 text-muted-foreground">
+                Up to {limits.maxRequestMessages} ordered text messages. Template variables must exist in every active case; <code>{"{{frozen_context}}"}</code> is reserved.
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <Alert id="legacy-request-notice" className="border-warning/35 bg-warning/5">
+              <AlertTriangle />
+              <AlertTitle>Legacy wrapped request</AlertTitle>
+              <AlertDescription>
+                This migrated setup preserves the original wrapper exactly. Finish it without converting its behavior; create a new monitor to use provider-native messages.
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-2">
+              <Label htmlFor="system-prompt">Legacy system prompt</Label>
+              <Textarea
+                id="system-prompt"
+                name="prompt[system_prompt]"
+                className="min-h-32 font-mono text-xs leading-5"
+                maxLength={limits.maxPromptBytes}
+                value={form.data.prompt.system_prompt}
+                aria-invalid={Boolean(errors.systemPrompt)}
+                onChange={event => form.setData("prompt.system_prompt", event.target.value)}
+              />
+              {errors.systemPrompt && <FieldError message={errors.systemPrompt} />}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="user-prompt-template">Legacy user prompt template</Label>
+              <Textarea
+                id="user-prompt-template"
+                name="prompt[user_prompt_template]"
+                required
+                className="min-h-44 font-mono text-xs leading-5"
+                maxLength={limits.maxPromptBytes}
+                value={form.data.prompt.user_prompt_template}
+                aria-invalid={Boolean(errors.userPromptTemplate)}
+                onChange={event => form.setData("prompt.user_prompt_template", event.target.value)}
+              />
+              {errors.userPromptTemplate && <FieldError message={errors.userPromptTemplate} />}
+            </div>
+          </>
+        )}
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="response-format">Response format</Label>
             <Select
               value={form.data.prompt.response_format.type}
-              onValueChange={value => form.setData("prompt.response_format.type", value)}
+              onValueChange={value => form.setData(
+                "prompt.response_format.type",
+                value as Setup["responseFormat"]["type"],
+              )}
             >
               <SelectTrigger id="response-format" className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="text">Text</SelectItem>
-                <SelectItem value="json_object">JSON object</SelectItem>
+                {(setup.provider === "openai" || setup.requestMode === "legacy_wrapped_v1") && (
+                  <SelectItem value="json_object">JSON object</SelectItem>
+                )}
+                <SelectItem value="json_schema">JSON schema</SelectItem>
               </SelectContent>
             </Select>
             {errors.responseFormat && <FieldError message={errors.responseFormat} />}
@@ -612,6 +699,50 @@ function PromptStep({
             />
           </div>
         </div>
+
+        {form.data.prompt.response_format.type === "json_schema" && (
+          <div className="space-y-5 rounded-xl border bg-muted/20 p-4">
+            {setup.provider === "openai" && (
+              <div className="space-y-2">
+                <Label htmlFor="response-schema-name">Schema name</Label>
+                <Input
+                  id="response-schema-name"
+                  name="prompt[response_format][name]"
+                  required
+                  maxLength={80}
+                  value={form.data.prompt.response_format.name}
+                  onChange={event => form.setData("prompt.response_format.name", event.target.value)}
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="response-schema-json">JSON schema</Label>
+              <Textarea
+                id="response-schema-json"
+                name="prompt[response_format][schema_json]"
+                required
+                className="min-h-56 font-mono text-xs leading-5"
+                value={form.data.prompt.response_format.schema_json}
+                onChange={event => form.setData("prompt.response_format.schema_json", event.target.value)}
+              />
+            </div>
+            {setup.provider === "openai" && (
+              <div className="space-y-2">
+                <Label htmlFor="response-schema-strict">Strict schema enforcement</Label>
+                <Select
+                  value={form.data.prompt.response_format.strict ? "true" : "false"}
+                  onValueChange={value => form.setData("prompt.response_format.strict", value === "true")}
+                >
+                  <SelectTrigger id="response-schema-strict" className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Enabled</SelectItem>
+                    <SelectItem value="false">Disabled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        )}
 
         {(supportsTemperature || supportsTopP) && (
           <div className="grid gap-5 sm:grid-cols-2">
@@ -712,7 +843,7 @@ function CasesStep({ basePath, errors, limits, setup }: StepProps & { limits: Li
       aside={
         <CallBoundary
           stored="Frozen context and input variables for every active or disabled case."
-          sent="During a later capture, each active case is rendered and sent separately to the selected provider."
+          sent="During a later capture, only values referenced by the request template are rendered into each active case's provider body."
         />
       }
       description="Use real-shaped but safe examples. Remove personal data and secrets before storing representative inputs."
@@ -791,13 +922,13 @@ function CasesStep({ basePath, errors, limits, setup }: StepProps & { limits: Li
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor={`case-${index}-context`}>Frozen context</Label>
+                  <Label htmlFor={`case-${index}-context`}>Frozen context variable</Label>
                   <Textarea
                     id={`case-${index}-context`}
                     name={`cases[${index}][frozen_context]`}
                     className="min-h-36 text-sm leading-6"
                     maxLength={limits.maxContextBytes}
-                    placeholder="Paste the exact context supplied to this case."
+                    placeholder="Available as {{frozen_context}}; omitted from the provider request unless the template references it."
                     value={item.frozen_context}
                     onChange={event => updateCase(index, "frozen_context", event.target.value)}
                   />
@@ -864,12 +995,14 @@ function ReviewStep({
   activeCaseCount,
   basePath,
   credential,
+  requestPreviews,
   setup,
   workspaceSlug,
 }: {
   activeCaseCount: number
   basePath: string
   credential?: Credential
+  requestPreviews: RequestPreview[]
   setup: Setup
   workspaceSlug: string
 }) {
@@ -900,9 +1033,9 @@ function ReviewStep({
             detail={credential ? `${credential.label} · •••• ${credential.secretSuffix}` : "Credential unavailable"}
           />
           <ReviewRow
-            label="Prompt configuration"
-            value={`${setup.responseFormat.type === "json_object" ? "JSON object" : "Text"} · up to ${setup.generationConfig.maxOutputTokens || 512} output tokens`}
-            detail={`${setup.systemPrompt ? "System prompt included" : "No system prompt"}; user template stored`}
+            label="Provider request"
+            value={`${setup.requestMode === "provider_native_v1" ? "Provider native" : "Legacy wrapped"} · schema v${setup.requestSchemaVersion}`}
+            detail={`${responseFormatLabel(setup.responseFormat.type)} · up to ${setup.generationConfig.maxOutputTokens || 512} output tokens`}
           />
           <ReviewRow
             label="Representative cases"
@@ -920,6 +1053,41 @@ function ReviewStep({
               </p>
             </AlertDescription>
           </Alert>
+
+          {setup.requestMode === "legacy_wrapped_v1" && (
+            <Alert id="legacy-review-warning" className="border-warning/35 bg-warning/5">
+              <AlertTriangle />
+              <AlertTitle>Legacy request wrapper preserved</AlertTitle>
+              <AlertDescription>
+                These previews include the historical Context, Question, and Response requirements wrapper. No conversion was applied.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <section id="provider-request-previews" className="space-y-3" aria-labelledby="provider-request-previews-title">
+            <div>
+              <h2 id="provider-request-previews-title" className="text-base font-semibold">Exact provider-visible requests</h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Secret-free method, endpoint, API version, and body after case-variable substitution. This artifact is fingerprinted again before every call.
+              </p>
+            </div>
+            {requestPreviews.map((preview, index) => (
+              <details
+                key={preview.caseKey}
+                id={`request-preview-${index + 1}`}
+                className="group overflow-hidden rounded-xl border bg-muted/15"
+              >
+                <summary className="flex cursor-pointer list-none flex-col gap-2 px-4 py-3 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
+                  <span>
+                    <span className="block text-sm font-medium">{preview.caseName}</span>
+                    <span className="block text-xs text-muted-foreground">{preview.caseKey}</span>
+                  </span>
+                  <code className="break-all text-[11px] text-muted-foreground">{preview.requestFingerprint}</code>
+                </summary>
+                <pre className="max-h-[32rem] overflow-auto border-t bg-background p-4 text-xs leading-5"><code>{preview.artifactJson}</code></pre>
+              </details>
+            ))}
+          </section>
 
           {complete ? (
             <div className="space-y-4">
@@ -954,15 +1122,15 @@ function ReviewStep({
 
       <aside className="space-y-4">
         <CallBoundary
-          stored="Provider/model, prompts, generation settings, frozen cases, and immutable fingerprints."
-          sent="Nothing now. Future runs send only each active case's rendered request to the selected provider."
+          stored="Provider/model, versioned request template, generation settings, frozen cases, exact previews, and immutable fingerprints."
+          sent="Nothing now. Future runs send the exact reviewed body for each active case to the selected provider endpoint."
         />
         <Card>
           <CardContent className="p-5">
             <ShieldCheck className="size-5 text-success" />
             <p className="mt-3 text-sm font-medium">No silent substitutions</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              The exact provider, requested model, prompt, configuration, and case fingerprints remain part of the version provenance.
+              The exact provider, requested model, effective request body, configuration, and case fingerprints remain part of the version provenance.
             </p>
           </CardContent>
         </Card>
@@ -1152,4 +1320,10 @@ function stepLabel(step: Step) {
 
 function providerLabel(provider: Provider) {
   return provider === "openai" ? "OpenAI" : "Anthropic"
+}
+
+function responseFormatLabel(format: Setup["responseFormat"]["type"]) {
+  if (format === "json_object") return "JSON object"
+  if (format === "json_schema") return "JSON schema"
+  return "Text"
 }

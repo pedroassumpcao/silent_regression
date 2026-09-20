@@ -12,6 +12,7 @@ defmodule SilentRegression.MonitorSetups do
     CaseImport,
     CaseInput,
     GenerationConfig,
+    JsonValue,
     Limits,
     ModelCatalog,
     Monitor,
@@ -20,6 +21,7 @@ defmodule SilentRegression.MonitorSetups do
 
   alias SilentRegression.{Monitors, ProductAnalytics, Repo}
   alias SilentRegression.ProviderCredentials.ProviderCredential
+  alias SilentRegression.Providers.RequestArtifact
   alias SilentRegression.Workspaces.{Membership, Workspace}
 
   @steps [:purpose, :connection, :prompt, :cases]
@@ -140,10 +142,17 @@ defmodule SilentRegression.MonitorSetups do
     update_setup(scope, monitor_id, :prompt, fn setup ->
       case normalize_prompt_attributes(setup, attrs) do
         {:ok, normalized} ->
-          setup
-          |> Setup.prompt_changeset(normalized)
-          |> Repo.update()
-          |> preload_setup_result()
+          candidate = struct(setup, normalized)
+
+          with :ok <- validate_case_requests(candidate, stored_cases(setup)) do
+            setup
+            |> Setup.prompt_changeset(normalized)
+            |> Repo.update()
+            |> preload_setup_result()
+          else
+            {:error, _reason} ->
+              invalid_setup(setup, :request_template, "cannot render every active case")
+          end
 
         {:error, {field, message}} ->
           invalid_setup(setup, field, message)
@@ -156,7 +165,8 @@ defmodule SilentRegression.MonitorSetups do
   def update_cases(%Scope{} = scope, monitor_id, cases) when is_list(cases) do
     update_setup(scope, monitor_id, :cases, fn setup ->
       with {:ok, case_attributes} <- normalize_manual_cases(cases),
-           {:ok, normalized} <- CaseInput.normalize_many(case_attributes) do
+           {:ok, normalized} <- CaseInput.normalize_many(case_attributes),
+           :ok <- validate_case_requests(setup, normalized) do
         persist_cases(setup, normalized)
       else
         {:error, _reason} -> invalid_setup(setup, :cases, "contain invalid or incomplete data")
@@ -169,8 +179,14 @@ defmodule SilentRegression.MonitorSetups do
   def import_cases(%Scope{} = scope, monitor_id, encoded) when is_binary(encoded) do
     update_setup(scope, monitor_id, :cases, fn setup ->
       case CaseImport.parse(encoded) do
-        {:ok, normalized} -> persist_cases(setup, normalized)
-        {:error, _reason} -> invalid_setup(setup, :cases, "import is invalid or exceeds a limit")
+        {:ok, normalized} ->
+          case validate_case_requests(setup, normalized) do
+            :ok -> persist_cases(setup, normalized)
+            {:error, _reason} -> invalid_setup(setup, :cases, "cannot render every active case")
+          end
+
+        {:error, _reason} ->
+          invalid_setup(setup, :cases, "import is invalid or exceeds a limit")
       end
     end)
   end
@@ -273,6 +289,22 @@ defmodule SilentRegression.MonitorSetups do
   def stored_cases(%Setup{cases: %{"items" => cases}}) when is_list(cases), do: cases
   def stored_cases(%Setup{}), do: []
 
+  def request_previews(%Setup{} = setup) do
+    setup
+    |> stored_cases()
+    |> Enum.filter(&(value(&1, :status, "active") in ["active", :active]))
+    |> Enum.reduce_while({:ok, []}, fn case_attributes, {:ok, previews} ->
+      case RequestArtifact.build(setup, case_attributes) do
+        {:ok, built} -> {:cont, {:ok, [{case_attributes, built} | previews]}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+    |> case do
+      {:ok, previews} -> {:ok, Enum.reverse(previews)}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   def steps, do: @steps
 
   defp update_setup(
@@ -339,10 +371,12 @@ defmodule SilentRegression.MonitorSetups do
     do: {:error, :credential_provider_mismatch}
 
   defp normalize_prompt_attributes(setup, attrs) do
-    with {:ok, system_prompt} <- prompt(attrs, :system_prompt, false),
-         {:ok, user_prompt_template} <- prompt(attrs, :user_prompt_template, true),
-         {:ok, response_format} <-
-           attrs |> value(:response_format, nil) |> ResponseFormat.normalize(),
+    with {:ok, request_mode} <- RequestArtifact.cast_mode(setup.request_mode),
+         {:ok, request_template} <- request_template(setup, attrs, request_mode),
+         {:ok, {system_prompt, user_prompt_template}} <-
+           legacy_prompts(attrs, request_mode),
+         {:ok, response_format} <- normalize_response_format(attrs),
+         :ok <- validate_response_format(setup.provider, request_mode, response_format),
          {:ok, generation_config} <-
            attrs |> value(:generation_config, %{}) |> normalize_generation_config(),
          :ok <-
@@ -353,6 +387,9 @@ defmodule SilentRegression.MonitorSetups do
            ) do
       {:ok,
        %{
+         request_mode: request_mode,
+         request_schema_version: RequestArtifact.request_schema_version(),
+         request_template: request_template,
          system_prompt: system_prompt,
          user_prompt_template: user_prompt_template,
          response_format: response_format,
@@ -360,6 +397,102 @@ defmodule SilentRegression.MonitorSetups do
        }}
     end
   end
+
+  defp request_template(_setup, _attrs, :legacy_wrapped_v1), do: {:ok, %{}}
+
+  defp request_template(setup, attrs, :provider_native_v1) do
+    with {:ok, template} <- decode_request_template(attrs),
+         {:ok, template} <-
+           RequestArtifact.normalize_template(setup.provider, :provider_native_v1, template) do
+      {:ok, template}
+    else
+      _reason -> {:error, {:request_template, "is not a valid provider-native message template"}}
+    end
+  end
+
+  defp decode_request_template(attrs) do
+    case value(attrs, :request_template, nil) do
+      template when is_map(template) ->
+        {:ok, template}
+
+      nil ->
+        case value(attrs, :request_template_json, nil) do
+          encoded when is_binary(encoded) ->
+            case Jason.decode(encoded) do
+              {:ok, template} when is_map(template) -> {:ok, template}
+              _result -> {:error, :invalid_request_template}
+            end
+
+          _value ->
+            {:error, :invalid_request_template}
+        end
+
+      _template ->
+        {:error, :invalid_request_template}
+    end
+  end
+
+  defp legacy_prompts(attrs, :legacy_wrapped_v1) do
+    with {:ok, system_prompt} <- prompt(attrs, :system_prompt, false),
+         {:ok, user_prompt_template} <- prompt(attrs, :user_prompt_template, true) do
+      {:ok, {system_prompt, user_prompt_template}}
+    end
+  end
+
+  defp legacy_prompts(_attrs, :provider_native_v1), do: {:ok, {"", ""}}
+
+  defp normalize_response_format(attrs) do
+    attrs
+    |> value(:response_format, nil)
+    |> expand_response_format()
+    |> case do
+      {:ok, format} ->
+        case ResponseFormat.normalize(format) do
+          {:ok, normalized} -> {:ok, normalized}
+          {:error, _reason} -> {:error, {:response_format, "is invalid"}}
+        end
+
+      {:error, _reason} ->
+        {:error, {:response_format, "is invalid"}}
+    end
+  end
+
+  defp expand_response_format(format) when is_map(format) do
+    with {:ok, format} <- JsonValue.normalize(format) do
+      case format do
+        %{"type" => "json_schema", "schema_json" => encoded} when is_binary(encoded) ->
+          with {:ok, schema} when is_map(schema) <- Jason.decode(encoded) do
+            {:ok,
+             %{
+               "type" => "json_schema",
+               "name" => Map.get(format, "name", "response"),
+               "schema" => schema,
+               "strict" => cast_boolean(Map.get(format, "strict", true))
+             }}
+          else
+            _reason -> {:error, :invalid_json_schema}
+          end
+
+        normalized ->
+          {:ok, normalized}
+      end
+    end
+  end
+
+  defp expand_response_format(_format), do: {:error, :invalid_response_format}
+
+  defp cast_boolean(value) when value in [true, "true", "1", 1], do: true
+  defp cast_boolean(value) when value in [false, "false", "0", 0], do: false
+  defp cast_boolean(_value), do: :invalid
+
+  defp validate_response_format(:anthropic, :provider_native_v1, %{
+         "type" => "json_object"
+       }),
+       do:
+         {:error,
+          {:response_format, "requires a JSON schema for provider-native Anthropic requests"}}
+
+  defp validate_response_format(_provider, _request_mode, _response_format), do: :ok
 
   defp prompt(attrs, field, required?) do
     prompt = value(attrs, field, "")
@@ -493,6 +626,27 @@ defmodule SilentRegression.MonitorSetups do
 
   defp normalize_manual_case(_attributes, _position), do: {:error, :invalid_case}
 
+  defp validate_case_requests(setup, cases) do
+    if request_configuration_present?(setup) do
+      cases
+      |> Enum.filter(&(value(&1, :status, "active") in ["active", :active]))
+      |> Enum.reduce_while(:ok, fn case_attributes, :ok ->
+        case RequestArtifact.build(setup, case_attributes) do
+          {:ok, _built} -> {:cont, :ok}
+          {:error, reason} -> {:halt, {:error, reason}}
+        end
+      end)
+    else
+      :ok
+    end
+  end
+
+  defp request_configuration_present?(%Setup{request_mode: :provider_native_v1} = setup),
+    do: setup.provider in [:openai, :anthropic] and setup.request_template != %{}
+
+  defp request_configuration_present?(%Setup{request_mode: :legacy_wrapped_v1} = setup),
+    do: is_binary(setup.user_prompt_template) and String.trim(setup.user_prompt_template) != ""
+
   defp input_variables(attributes) do
     case value(attributes, :input_variables, nil) do
       variables when is_map(variables) ->
@@ -540,6 +694,9 @@ defmodule SilentRegression.MonitorSetups do
     %{
       provider: Atom.to_string(setup.provider),
       requested_model: setup.requested_model,
+      request_mode: Atom.to_string(setup.request_mode),
+      request_schema_version: setup.request_schema_version,
+      request_template: setup.request_template,
       system_prompt: setup.system_prompt,
       user_prompt_template: setup.user_prompt_template,
       response_format: setup.response_format,
@@ -569,6 +726,9 @@ defmodule SilentRegression.MonitorSetups do
       Map.take(setup, [
         :system_prompt,
         :user_prompt_template,
+        :request_mode,
+        :request_schema_version,
+        :request_template,
         :response_format,
         :generation_config
       ])

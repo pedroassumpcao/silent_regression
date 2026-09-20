@@ -66,7 +66,11 @@ defmodule SilentRegression.Monitors.VersionInput do
         case_set_fingerprint: Fingerprint.case_set_digest(cases)
       }
 
-      with :ok <- validate_renderable_requests(normalized, cases) do
+      with {:ok, request_artifact_fingerprints} <-
+             request_artifact_fingerprints(normalized, cases) do
+        normalized =
+          Map.put(normalized, :request_artifact_fingerprints, request_artifact_fingerprints)
+
         {:ok, Map.put(normalized, :fingerprint, Fingerprint.monitor_version_digest(normalized))}
       end
     else
@@ -123,15 +127,24 @@ defmodule SilentRegression.Monitors.VersionInput do
       else: {:error, %{field: :request_schema_version, reason: :invalid}}
   end
 
-  defp validate_renderable_requests(normalized, cases) do
+  defp request_artifact_fingerprints(normalized, cases) do
     cases
     |> Enum.filter(&(&1.status == :active))
-    |> Enum.reduce_while(:ok, fn case_definition, :ok ->
+    |> Enum.sort_by(& &1.case_key)
+    |> Enum.reduce_while({:ok, []}, fn case_definition, {:ok, fingerprints} ->
       case RequestArtifact.build(normalized, case_definition) do
-        {:ok, _artifact} -> {:cont, :ok}
-        {:error, reason} -> {:halt, {:error, %{field: :request_template, reason: reason}}}
+        {:ok, built} ->
+          entry = %{"case_key" => case_definition.case_key, "fingerprint" => built.fingerprint}
+          {:cont, {:ok, [entry | fingerprints]}}
+
+        {:error, reason} ->
+          {:halt, {:error, %{field: :request_template, reason: reason}}}
       end
     end)
+    |> case do
+      {:ok, fingerprints} -> {:ok, Enum.reverse(fingerprints)}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp legacy_prompts(attributes, :legacy_wrapped_v1) do

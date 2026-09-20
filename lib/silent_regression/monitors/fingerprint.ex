@@ -41,9 +41,7 @@ defmodule SilentRegression.Monitors.Fingerprint do
       "requested_model" => attributes.requested_model,
       "request_mode" => "provider_native_v1",
       "request_schema_version" => attributes.request_schema_version,
-      "request_template" => attributes.request_template,
-      "response_format" => attributes.response_format,
-      "generation_config" => attributes.generation_config,
+      "effective_requests" => attributes.request_artifact_fingerprints,
       "case_set_fingerprint" => attributes.case_set_fingerprint
     })
   end

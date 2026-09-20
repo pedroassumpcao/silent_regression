@@ -46,9 +46,7 @@ Task 15 implementation commit: `d49b997`.
 - [x] Confirm current OpenAI Responses and Anthropic Messages request structures from official docs.
 - [x] Finalize and document the provider-native request schema and migration behavior.
 - [x] Implement additive persistence and frozen `legacy_wrapped_v1` behavior.
-- [ ] Implement strict rendering, exact preview/fingerprinting, and direct product provider transport
-  (renderer, fingerprint verification, attempt receipts, and direct transport complete; setup preview
-  remains).
-- [ ] Update setup and review UX.
-- [ ] Add migration, payload, capture-receipt, controller, and frontend tests.
+- [x] Implement strict rendering, exact preview/fingerprinting, and direct product provider transport.
+- [x] Update setup and review UX.
+- [x] Add migration, payload, capture-receipt, controller, and frontend tests.
 - [ ] Run all local gates and record focused commits.

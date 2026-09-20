@@ -27,7 +27,7 @@ defmodule SilentRegression.Monitors.ModelCatalog do
         "reasoning_efforts" => []
       },
       "claude-sonnet-5" => %{
-        "parameters" => ~w(max_output_tokens temperature top_p),
+        "parameters" => ~w(max_output_tokens),
         "reasoning_efforts" => []
       }
     }

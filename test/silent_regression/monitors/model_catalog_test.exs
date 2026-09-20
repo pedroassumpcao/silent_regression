@@ -53,5 +53,11 @@ defmodule SilentRegression.Monitors.ModelCatalogTest do
                "max_output_tokens" => 32,
                "reasoning_effort" => "low"
              })
+
+    assert {:error, %{reason: :unsupported_parameters, parameters: ["temperature"]}} =
+             ModelCatalog.validate_generation_config(:anthropic, "claude-sonnet-5", %{
+               "max_output_tokens" => 32,
+               "temperature" => 0.0
+             })
   end
 end

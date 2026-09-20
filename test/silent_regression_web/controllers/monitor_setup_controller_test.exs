@@ -129,8 +129,16 @@ defmodule SilentRegressionWeb.MonitorSetupControllerTest do
         |> recycle()
         |> patch(~p"/app/#{workspace.slug}/monitors/#{monitor_id}/setup/prompt", %{
           "prompt" => %{
-            "system_prompt" => "Use only the supplied context.",
-            "user_prompt_template" => "Question: {{question}}",
+            "request_template_json" =>
+              Jason.encode!(%{
+                instructions: "Use only the supplied context.",
+                input: [
+                  %{
+                    role: "user",
+                    content: "Context: {{frozen_context}}\nQuestion: {{question}}"
+                  }
+                ]
+              }),
             "response_format" => %{"type" => "json_object"},
             "generation_config" => %{
               "max_output_tokens" => "512",
@@ -177,7 +185,26 @@ defmodule SilentRegressionWeb.MonitorSetupControllerTest do
       assert inertia_props(review).progress.ready
       assert inertia_props(review).activeCaseCount == 1
       assert inertia_props(review).limits.maxActiveCases == 20
-      assert inertia_props(review).setup.systemPrompt == "Use only the supplied context."
+      assert inertia_props(review).setup.requestMode == :provider_native_v1
+      assert inertia_props(review).setup.systemPrompt == ""
+
+      assert [request_preview] = inertia_props(review).requestPreviews
+      assert request_preview.caseKey == "citation-required"
+      assert request_preview.requestFingerprint =~ ~r/^[0-9a-f]{64}$/
+
+      preview = Jason.decode!(request_preview.artifactJson)
+      assert preview["body"]["instructions"] == "Use only the supplied context."
+
+      assert preview["body"]["input"] == [
+               %{
+                 "role" => "user",
+                 "content" =>
+                   "Context: Enterprise includes SSO.\nQuestion: Which plan includes SSO?"
+               }
+             ]
+
+      refute request_preview.artifactJson =~ "Response requirements:"
+      refute request_preview.artifactJson =~ "No frozen context was supplied."
 
       completed =
         review
@@ -209,7 +236,10 @@ defmodule SilentRegressionWeb.MonitorSetupControllerTest do
 
       {:ok, _setup} =
         MonitorSetups.update_prompt(scope, monitor.id, %{
-          user_prompt_template: "Question: {{question}}",
+          request_template: %{
+            instructions: "Answer from evidence.",
+            input: [%{role: "user", content: "Question: {{question}}"}]
+          },
           response_format: %{type: "text"},
           generation_config: %{max_output_tokens: 256}
         })

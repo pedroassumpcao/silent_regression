@@ -49,7 +49,7 @@ const baseProps: MonitorSetupProps = {
         reasoningEfforts: [],
       },
       "claude-sonnet-5": {
-        parameters: ["max_output_tokens", "temperature", "top_p"],
+        parameters: ["max_output_tokens"],
         reasoningEfforts: [],
       },
     },
@@ -58,6 +58,8 @@ const baseProps: MonitorSetupProps = {
     maxActiveCases: 20,
     maxTotalCases: 50,
     maxPromptBytes: 40_000,
+    maxRequestMessages: 20,
+    maxRequestTemplateBytes: 160_000,
     maxContextBytes: 100_000,
     maxVariablesBytes: 50_000,
     maxImportBytes: 2_000_000,
@@ -76,6 +78,23 @@ const baseProps: MonitorSetupProps = {
     ready: true,
   },
   releaseStage: "Private alpha",
+  requestPreviews: [
+    {
+      caseKey: "citation-required",
+      caseName: "Citation required",
+      requestFingerprint: "a".repeat(64),
+      artifactJson: JSON.stringify({
+        artifact_schema: "provider-request-artifact-v1",
+        provider: "openai",
+        http_method: "POST",
+        api_endpoint: "https://api.openai.com/v1/responses",
+        body: {
+          model: "gpt-5.6-luna",
+          input: [{ role: "user", content: "Question: Which plan includes SSO?" }],
+        },
+      }, null, 2),
+    },
+  ],
   setup: {
     id: "setup-id",
     status: "in_progress",
@@ -88,8 +107,18 @@ const baseProps: MonitorSetupProps = {
     providerCredentialId: "credential-id",
     provider: "openai",
     requestedModel: "gpt-5.6-luna",
-    systemPrompt: "Use only the supplied context.",
-    userPromptTemplate: "Question: {{question}}",
+    requestMode: "provider_native_v1",
+    requestSchemaVersion: 1,
+    requestTemplate: {
+      instructions: "Use only the supplied context.",
+      input: [{ role: "user", content: "Question: {{question}}" }],
+    },
+    requestTemplateJson: JSON.stringify({
+      instructions: "Use only the supplied context.",
+      input: [{ role: "user", content: "Question: {{question}}" }],
+    }, null, 2),
+    systemPrompt: "",
+    userPromptTemplate: "",
     responseFormat: { type: "text" },
     generationConfig: { maxOutputTokens: 512 },
     cases: [
@@ -119,6 +148,8 @@ describe("MonitorSetupView", () => {
     expect(screen.getByText(/future single-sample capture would make 1 provider call/i)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /finish and lock setup/i })).toBeInTheDocument()
     expect(screen.getAllByText(/0 calls during setup/i).length).toBeGreaterThan(0)
+    expect(screen.getByRole("heading", { name: "Exact provider-visible requests" })).toBeInTheDocument()
+    expect(screen.getByText("a".repeat(64))).toBeInTheDocument()
   })
 
   it("keeps only the named review step navigable after immutable completion", () => {
@@ -210,6 +241,31 @@ describe("MonitorSetupView", () => {
     expect(screen.queryByLabelText("Top P")).not.toBeInTheDocument()
     expect(screen.getByLabelText("Reasoning effort")).toBeInTheDocument()
     expect(screen.queryByRole("option", { name: "minimal" })).not.toBeInTheDocument()
+    expect(screen.getByLabelText("OpenAI Responses template")).toBeInTheDocument()
+    expect(screen.getByText(/adds no prompt wrapper/i)).toBeInTheDocument()
+  })
+
+  it("identifies migrated legacy wrappers instead of silently converting them", () => {
+    render(
+      <MonitorSetupView
+        {...baseProps}
+        errors={{}}
+        flash={{}}
+        setup={{
+          ...baseProps.setup,
+          requestMode: "legacy_wrapped_v1",
+          requestTemplate: {},
+          requestTemplateJson: "{}",
+          systemPrompt: "Use only supplied context.",
+          userPromptTemplate: "Question: {{question}}",
+        }}
+        step="prompt"
+      />,
+    )
+
+    expect(screen.getByText("Legacy wrapped request")).toBeInTheDocument()
+    expect(screen.getByLabelText("Legacy system prompt")).toBeInTheDocument()
+    expect(screen.getByLabelText("Legacy user prompt template")).toBeInTheDocument()
   })
 
   it("adds and removes manual cases while keeping the configured limits visible", async () => {

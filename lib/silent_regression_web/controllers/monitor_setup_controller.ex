@@ -176,6 +176,7 @@ defmodule SilentRegressionWeb.MonitorSetupController do
       model_options: ModelCatalog.all(),
       progress: progress_prop(progress),
       release_stage: "Private alpha",
+      request_previews: request_preview_props(setup),
       setup: setup_prop(setup),
       step: step
     })
@@ -194,6 +195,10 @@ defmodule SilentRegressionWeb.MonitorSetupController do
       provider_credential_id: setup.provider_credential_id,
       provider: setup.provider,
       requested_model: setup.requested_model,
+      request_mode: setup.request_mode,
+      request_schema_version: setup.request_schema_version,
+      request_template: setup.request_template,
+      request_template_json: request_template_json(setup),
       system_prompt: setup.system_prompt,
       user_prompt_template: setup.user_prompt_template,
       response_format: setup.response_format,
@@ -203,6 +208,56 @@ defmodule SilentRegressionWeb.MonitorSetupController do
       completed_at: setup.completed_at,
       updated_at: setup.updated_at
     }
+  end
+
+  defp request_template_json(%{request_mode: :provider_native_v1} = setup)
+       when setup.request_template == %{} do
+    setup.provider
+    |> request_template_example()
+    |> Jason.encode!(pretty: true)
+  end
+
+  defp request_template_json(setup), do: Jason.encode!(setup.request_template, pretty: true)
+
+  defp request_template_example(:anthropic) do
+    %{
+      "system" => "Answer only from the supplied context.",
+      "messages" => [
+        %{
+          "role" => "user",
+          "content" => "Context:\n{{frozen_context}}\n\nQuestion:\n{{question}}"
+        }
+      ]
+    }
+  end
+
+  defp request_template_example(_provider) do
+    %{
+      "instructions" => "Answer only from the supplied context.",
+      "input" => [
+        %{
+          "role" => "user",
+          "content" => "Context:\n{{frozen_context}}\n\nQuestion:\n{{question}}"
+        }
+      ]
+    }
+  end
+
+  defp request_preview_props(setup) do
+    case MonitorSetups.request_previews(setup) do
+      {:ok, previews} ->
+        Enum.map(previews, fn {case_attributes, built} ->
+          %{
+            case_key: case_attributes["case_key"],
+            case_name: case_attributes["name"],
+            request_fingerprint: built.fingerprint,
+            artifact_json: Jason.encode!(built.artifact, pretty: true)
+          }
+        end)
+
+      {:error, _reason} ->
+        []
+    end
   end
 
   defp case_prop(case_attributes) do
@@ -240,6 +295,8 @@ defmodule SilentRegressionWeb.MonitorSetupController do
       max_active_cases: Limits.fetch!(:max_active_cases),
       max_total_cases: Limits.fetch!(:max_total_cases),
       max_prompt_bytes: Limits.fetch!(:max_prompt_bytes),
+      max_request_messages: Limits.fetch!(:max_request_messages),
+      max_request_template_bytes: Limits.fetch!(:max_request_template_bytes),
       max_context_bytes: Limits.fetch!(:max_context_bytes),
       max_variables_bytes: Limits.fetch!(:max_variables_bytes),
       max_import_bytes: Limits.fetch!(:max_import_bytes),

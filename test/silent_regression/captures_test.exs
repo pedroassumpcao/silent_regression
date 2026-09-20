@@ -158,7 +158,7 @@ defmodule SilentRegression.CapturesTest do
       assert attempt.attempt_number == 1
       assert attempt.client_request_id
       assert attempt.provider_request_id
-      assert attempt.request_mode == :legacy_wrapped_v1
+      assert attempt.request_mode == :provider_native_v1
       assert attempt.request_schema_version == 1
       assert attempt.request_fingerprint == observation.request_fingerprint
 

@@ -130,10 +130,11 @@ defmodule SilentRegression.MonitorSetupsTest do
       scope: scope
     } do
       %{monitor: monitor} = MonitorSetupsFixtures.setup_fixture(scope)
+      connect_openai(scope, monitor)
 
       assert {:error, changeset} =
                MonitorSetups.update_prompt(scope, monitor.id, %{
-                 user_prompt_template: "Question: {{question}}",
+                 request_template: native_request_template(),
                  response_format: %{type: "text"},
                  generation_config: %{max_output_tokens: "9000"}
                })
@@ -142,8 +143,7 @@ defmodule SilentRegression.MonitorSetupsTest do
 
       assert {:ok, setup} =
                MonitorSetups.update_prompt(scope, monitor.id, %{
-                 system_prompt: "Use only the context.",
-                 user_prompt_template: "Question: {{question}}",
+                 request_template: native_request_template(),
                  response_format: %{type: "json_object"},
                  generation_config: %{
                    max_output_tokens: "512",
@@ -152,6 +152,9 @@ defmodule SilentRegression.MonitorSetupsTest do
                })
 
       assert setup.response_format == %{"type" => "json_object"}
+      assert setup.request_mode == :provider_native_v1
+      assert setup.system_prompt == ""
+      assert setup.user_prompt_template == ""
 
       assert setup.generation_config == %{
                "max_output_tokens" => 512,
@@ -174,8 +177,7 @@ defmodule SilentRegression.MonitorSetupsTest do
 
       assert {:error, changeset} =
                MonitorSetups.update_prompt(scope, monitor.id, %{
-                 system_prompt: "",
-                 user_prompt_template: "Question: {{question}}",
+                 request_template: native_request_template(),
                  response_format: %{type: "text"},
                  generation_config: %{max_output_tokens: "512", temperature: "0"}
                })
@@ -187,11 +189,11 @@ defmodule SilentRegression.MonitorSetupsTest do
 
     test "treats blank optional form settings as provider defaults", %{scope: scope} do
       %{monitor: monitor} = MonitorSetupsFixtures.setup_fixture(scope)
+      connect_openai(scope, monitor)
 
       assert {:ok, setup} =
                MonitorSetups.update_prompt(scope, monitor.id, %{
-                 system_prompt: "",
-                 user_prompt_template: "Question: {{question}}",
+                 request_template: native_request_template(),
                  response_format: %{type: "text"},
                  generation_config: %{
                    max_output_tokens: "512",
@@ -203,6 +205,73 @@ defmodule SilentRegression.MonitorSetupsTest do
 
       assert setup.generation_config == %{"max_output_tokens" => 512}
       assert MonitorSetups.progress(scope, setup).completed.prompt
+    end
+
+    test "preserves the explicitly marked legacy wrapper for migrated setup rows", %{scope: scope} do
+      %{monitor: monitor, setup: setup} = MonitorSetupsFixtures.setup_fixture(scope)
+      connect_openai(scope, monitor)
+
+      setup
+      |> Ecto.Changeset.change(request_mode: :legacy_wrapped_v1)
+      |> Repo.update!()
+
+      assert {:ok, setup} =
+               MonitorSetups.update_prompt(scope, monitor.id, %{
+                 system_prompt: "Use only the context.",
+                 user_prompt_template: "Question: {{question}}",
+                 response_format: %{type: "text"},
+                 generation_config: %{max_output_tokens: "512"}
+               })
+
+      assert setup.request_mode == :legacy_wrapped_v1
+      assert setup.request_template == %{}
+      assert setup.user_prompt_template == "Question: {{question}}"
+    end
+
+    test "requires a schema for provider-native Anthropic structured output", %{scope: scope} do
+      %{monitor: monitor} = MonitorSetupsFixtures.setup_fixture(scope)
+
+      credential =
+        MonitorSetupsFixtures.valid_credential_fixture(scope, %{provider: :anthropic})
+
+      assert {:ok, _setup} =
+               MonitorSetups.update_connection(scope, monitor.id, %{
+                 provider_credential_id: credential.id,
+                 provider: :anthropic,
+                 requested_model: "claude-haiku-4-5-20251001"
+               })
+
+      request_template = %{
+        system: "Classify the request.",
+        messages: [%{role: "user", content: "{{question}}"}]
+      }
+
+      assert {:error, changeset} =
+               MonitorSetups.update_prompt(scope, monitor.id, %{
+                 request_template: request_template,
+                 response_format: %{type: "json_object"},
+                 generation_config: %{max_output_tokens: "128"}
+               })
+
+      assert "requires a JSON schema for provider-native Anthropic requests" in errors_on(
+               changeset
+             ).response_format
+
+      assert {:ok, setup} =
+               MonitorSetups.update_prompt(scope, monitor.id, %{
+                 request_template: request_template,
+                 response_format: %{
+                   type: "json_schema",
+                   name: "classification",
+                   schema_json:
+                     ~s({"type":"object","properties":{"label":{"type":"string"}},"required":["label"],"additionalProperties":false}),
+                   strict: "true"
+                 },
+                 generation_config: %{max_output_tokens: "128"}
+               })
+
+      assert setup.response_format["type"] == "json_schema"
+      assert setup.response_format["schema"]["required"] == ["label"]
     end
 
     test "persists normalized manual cases and the same versioned JSON import", %{scope: scope} do
@@ -244,6 +313,31 @@ defmodule SilentRegression.MonitorSetupsTest do
 
       assert MonitorSetups.progress(scope, manual_setup).completed.cases
     end
+
+    test "rejects cases that cannot render the saved provider request", %{scope: scope} do
+      %{monitor: monitor} = MonitorSetupsFixtures.setup_fixture(scope)
+      connect_openai(scope, monitor)
+
+      assert {:ok, _setup} =
+               MonitorSetups.update_prompt(scope, monitor.id, %{
+                 request_template: native_request_template(),
+                 response_format: %{type: "text"},
+                 generation_config: %{max_output_tokens: "128"}
+               })
+
+      assert {:error, changeset} =
+               MonitorSetups.update_cases(scope, monitor.id, [
+                 %{
+                   case_key: "missing-question",
+                   name: "Missing question",
+                   input_variables_json: "{}",
+                   frozen_context: "Evidence",
+                   status: "active"
+                 }
+               ])
+
+      assert "contain invalid or incomplete data" in errors_on(changeset).cases
+    end
   end
 
   describe "completion" do
@@ -268,7 +362,7 @@ defmodule SilentRegression.MonitorSetupsTest do
         |> Enum.filter(&(&1.name == "monitor_setup.completed"))
 
       assert completion.properties == %{"completed_count" => 4, "total_count" => 4}
-      refute inspect(completion) =~ completed.version.system_prompt
+      refute inspect(completion) =~ "Answer only from the supplied context."
     end
 
     test "rejects incomplete and repeated promotion", %{scope: scope} do
@@ -338,5 +432,30 @@ defmodule SilentRegression.MonitorSetupsTest do
       assert %{status: [_message]} = errors_on(changeset)
       assert Repo.get!(Setup, setup.id).status == :in_progress
     end
+  end
+
+  defp connect_openai(scope, monitor) do
+    credential = MonitorSetupsFixtures.valid_credential_fixture(scope)
+
+    {:ok, _setup} =
+      MonitorSetups.update_connection(scope, monitor.id, %{
+        provider_credential_id: credential.id,
+        provider: :openai,
+        requested_model: "gpt-5.6-luna"
+      })
+
+    credential
+  end
+
+  defp native_request_template do
+    %{
+      instructions: "Use only the context.",
+      input: [
+        %{
+          role: "user",
+          content: "Context: {{frozen_context}}\nQuestion: {{question}}"
+        }
+      ]
+    }
   end
 end

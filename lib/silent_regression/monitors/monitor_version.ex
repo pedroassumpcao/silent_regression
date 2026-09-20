@@ -34,7 +34,7 @@ defmodule SilentRegression.Monitors.MonitorVersion do
     field :request_schema_version, :integer, default: 1
     field :request_template, :map, default: %{}
     field :system_prompt, :string, default: ""
-    field :user_prompt_template, :string
+    field :user_prompt_template, :string, default: ""
     field :response_format, :map
     field :generation_config, :map
     field :case_set_fingerprint, :string

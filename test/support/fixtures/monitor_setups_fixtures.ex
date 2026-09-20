@@ -35,9 +35,8 @@ defmodule SilentRegression.MonitorSetupsFixtures do
 
     {:ok, _setup} =
       MonitorSetups.update_prompt(scope, result.monitor.id, %{
-        system_prompt: "Answer only from the supplied context.",
-        user_prompt_template: "Question: {{question}}",
-        response_format: %{type: "json_object"},
+        request_template: request_template(credential.provider),
+        response_format: response_format(credential.provider),
         generation_config: %{max_output_tokens: "256"}
       })
 
@@ -62,4 +61,31 @@ defmodule SilentRegression.MonitorSetupsFixtures do
 
   defp requested_model(:openai), do: "gpt-5.6-luna"
   defp requested_model(:anthropic), do: "claude-haiku-4-5-20251001"
+
+  defp request_template(:openai) do
+    %{
+      instructions: "Answer only from the supplied context.",
+      input: [
+        %{
+          role: "user",
+          content: "Context:\n{{frozen_context}}\n\nQuestion:\n{{question}}"
+        }
+      ]
+    }
+  end
+
+  defp request_template(:anthropic) do
+    %{
+      system: "Answer only from the supplied context.",
+      messages: [
+        %{
+          role: "user",
+          content: "Context:\n{{frozen_context}}\n\nQuestion:\n{{question}}"
+        }
+      ]
+    }
+  end
+
+  defp response_format(:openai), do: %{type: "json_object"}
+  defp response_format(:anthropic), do: %{type: "text"}
 end
