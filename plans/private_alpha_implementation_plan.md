@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–21 complete; Task 22 is next; Gate A is complete and Gates B–D block the first design-partner pilot
+> **Status:** Tasks 1–21 complete; Task 22 is in progress; Gate A is complete and Gates B–D block the first design-partner pilot
 >
-> **Progress:** 21 of 27 tasks complete; Task 22 is next
+> **Progress:** 21 of 27 tasks complete; Task 22 is in progress
 >
 > **Last revised:** 2026-09-20
 >
@@ -1086,7 +1086,7 @@ checking, and a production asset build.
 
 ### Task 22 — Successor workflow configuration
 
-**Status:** Not started
+**Status:** In progress
 
 **Gate:** B — Recoverable monitoring
 
@@ -1101,6 +1101,15 @@ an immutable successor rather than recreating the monitor.
 - [ ] Preview compatibility and reviewed-reference invalidation before activation.
 - [ ] Activate atomically and reuse the corrected replacement-reference lifecycle.
 - [ ] Test a missed-regression review that adds a case and returns the monitor to service.
+
+**Implementation decision:** Copy the active executable configuration into a new mutable setup with
+durable source-version and optional motivating-review links. Only completion creates an immutable
+draft version, and neither phase changes active execution. Owner activation requires an approved
+unchanged contract carry-forward, exact-model credential proof, no unfinished run, and one locked
+transaction that retires/approves contract evidence, advances version lineage, attaches the future
+credential, and moves the monitor to replacement-reference capture. Every successor invalidates the
+old reviewed reference explicitly; normal reference approval plus schedule activation restores
+service.
 
 ### Task 23 — Incident-centered alerting
 

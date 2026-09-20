@@ -280,6 +280,28 @@ This applies delayed retry only to known transient capacity boundaries and retai
 retry budget rather than immediately repeating provider work, following the retry classification
 guidance in [Microsoft's transient-fault guidance](https://learn.microsoft.com/en-us/azure/architecture/best-practices/transient-faults).
 
+#### Task 22 successor-workflow boundary
+
+Successor authoring separates mutable preparation from executable authority:
+
+- a copied setup is the only mutable object. Immutable monitor versions, contract proof, historical
+  captures, and the active credential reference remain untouched while users edit or leave/resume;
+- completed setups are durable history, so PostgreSQL partial uniqueness is used to permit only one
+  `in_progress` setup per monitor without discarding earlier completed setup provenance;
+- the active contract remains authoritative during authoring. An unchanged semantic/proof clone is
+  created for the candidate only in the activation transaction, avoiding a window where the active
+  monitor has no approved contract;
+- activation uses ordinary transactional control flow with row locks because each dependent step
+  must either all commit or all roll back: contract carry-forward, version lifecycle, credential
+  attachment, monitor state, and reference invalidation; and
+- the successor cannot run until an owner reviews the impact, proves exact-model access, activates
+  atomically, captures a replacement reviewed reference, and explicitly restores its schedule.
+
+PostgreSQL documents partial `UNIQUE` indexes as the mechanism for enforcing uniqueness over only a
+selected subset of rows: [PostgreSQL `CREATE INDEX`](https://www.postgresql.org/docs/15/sql-createindex.html).
+Ecto's transaction guidance confirms that regular transactional control flow is appropriate when
+operations depend on prior results: [Ecto.Multi documentation](https://hexdocs.pm/ecto/Ecto.Multi.html).
+
 ### Incident-centered alerts
 
 Observations and evaluations remain immutable. A mutable incident groups the actionable lifecycle

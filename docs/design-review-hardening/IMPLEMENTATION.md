@@ -138,9 +138,25 @@ recovers automatically without becoming a permanent pause or weakening the works
 
 ### Task 22: successor workflow configuration
 
-- Copy the active request, cases, expectations, and provider configuration into a successor draft.
-- Let users edit and validate it without mutating history.
-- Disclose reference invalidation and activate only through explicit approval.
+1. Make setup history append-only by replacing global monitor uniqueness with one partial unique
+   `in_progress` row. Add immutable source-version and optional motivating-review links.
+2. Start an owner-authorized successor by copying the active request mode/template, model,
+   credential selection, response/generation configuration, cases, and exact expectations into a
+   resumable setup; keep every active execution reference unchanged.
+3. Reuse the existing setup editor and immutable completion boundary. Successor completion creates
+   only a draft monitor version and never rebinds the active credential.
+4. Add a successor review surface that compares source and candidate, discloses exact changed
+   areas, model-proof readiness, absence of active work, contract carry-forward, and mandatory
+   replacement-reference impact.
+5. Activate only for an owner inside one locked transaction: verify source/candidate/setup identity,
+   exact-model access, no unfinished run, and unchanged approved contract proof; clone and approve
+   the contract for the candidate, retire predecessor contract/version, attach the selected
+   credential, and enter `baseline_pending` with all schedule/wait fields cleared.
+6. Support an optional current review decision whose action is prompt, case, or provider change;
+   preserve the link through completed setup history and show it in activation review.
+7. Prove leave/resume editing, active-service isolation, cross-workspace/role guards, stale preview
+   rejection, atomic activation, immutable history, case-addition motivation, replacement reference,
+   and schedule restoration.
 
 ## Gate C — Pilot usability
 

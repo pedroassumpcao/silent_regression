@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate B — Recoverable monitoring
-- Current task: Task 22 — successor workflow configuration (next)
+- Current task: Task 22 — successor workflow configuration (in progress)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -19,7 +19,7 @@
 | 19 | Credential successor rebinding | Complete (`b5ae9f5`, `eaf97fd`) |
 | 20 | Authentication breaker recovery | Complete (`e639ce6`, `5d42d0a`, `6403357`) |
 | 21 | Temporary capacity and coverage state | Complete (`0b06ca8`) |
-| 22 | Successor workflow configuration | Not started |
+| 22 | Successor workflow configuration | In progress |
 | 23 | Incident-centered alerting | Not started |
 | 24 | Reviewed reference capture language | Not started |
 | 25 | Credential-free demo and focused imports | Not started |
@@ -270,3 +270,33 @@ workspace closure/purge handles the new state.
 Verification passed on 2026-09-20 (America/Chicago): `mix precommit` with 640 Elixir tests,
 frontend TypeScript and 55 tests, and `mix assets.build`. Task 21 and Gate B's temporary-capacity
 half are complete; Task 22 is next.
+
+## Task 22 log
+
+- [x] Inspect immutable monitor versions, mutable setup drafts, contract/reference compatibility,
+  review actions, credential proof, active-run locks, and current setup routes.
+- [x] Define a copied successor setup that does not affect active execution while it is edited.
+- [x] Define atomic activation, exact-model proof, contract carry-forward, and mandatory replacement
+  reference behavior.
+- [ ] Add additive setup origin/motivation schema and partial in-progress uniqueness.
+- [ ] Implement start/edit/complete/preview/activate operations and review linkage.
+- [ ] Add authenticated successor UI and entry points.
+- [ ] Prove a missed-regression case addition through replacement reference and restored service.
+- [ ] Run migration audits and all verification gates; record focused commits.
+
+Decisions:
+
+- A successor starts as a full copy of the active provider request, credential selection, generation
+  settings, cases, and expectations. Editing the mutable setup never changes the active version,
+  credential, approved contract, schedule, or reviewed reference.
+- Completed setup creates an immutable draft `MonitorVersion`; it still has no execution authority.
+- The currently approved deterministic contract is carried forward unchanged and rebound to the
+  successor only inside the activation transaction. Contract semantic/proof evidence is preserved;
+  contract editing remains the separate contract-revision workflow.
+- Activation is owner-only and locks the monitor, source/candidate versions, setup, credential, and
+  active-run state. It requires fresh exact-model proof, retires/approves contract versions, changes
+  future monitor references, and moves the monitor to replacement-reference capture atomically.
+- Every executable successor requires a new reviewed reference because the active immutable version
+  identity changes. The preview says this before activation and old captures remain unchanged.
+- Only one in-progress setup is allowed per monitor, while completed cold-start and successor setups
+  remain durable history through a partial unique index.
