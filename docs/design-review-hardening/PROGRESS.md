@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate B — Recoverable monitoring
-- Current task: Task 21 — temporary capacity and coverage state (in progress)
+- Current task: Task 22 — successor workflow configuration (next)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -18,7 +18,7 @@
 | 18 | Contract proof coverage, severity, and bounded rescore | Complete |
 | 19 | Credential successor rebinding | Complete (`b5ae9f5`, `eaf97fd`) |
 | 20 | Authentication breaker recovery | Complete (`e639ce6`, `5d42d0a`, `6403357`) |
-| 21 | Temporary capacity and coverage state | In progress |
+| 21 | Temporary capacity and coverage state | Complete (`0b06ca8`) |
 | 22 | Successor workflow configuration | Not started |
 | 23 | Incident-centered alerting | Not started |
 | 24 | Reviewed reference capture language | Not started |
@@ -239,12 +239,12 @@ Task 21 is next.
   legacy pause data.
 - [x] Define explicit wait fields, original-slot preservation, UTC-boundary retry, exact capacity
   classification, one owner notification, and conservative legacy behavior.
-- [ ] Add the additive capacity-wait and delivery schema.
-- [ ] Implement due-only capacity checks, automatic bounded retry, coverage state, and notification.
-- [ ] Expose waiting, retry, last-success, and overdue state in Operations UI.
-- [ ] Prove run/call exhaustion, no premature stop, boundary recovery, no cap bypass, delivery
+- [x] Add the additive capacity-wait and delivery schema.
+- [x] Implement due-only capacity checks, automatic bounded retry, coverage state, and notification.
+- [x] Expose waiting, retry, last-success, and overdue state in Operations UI.
+- [x] Prove run/call exhaustion, no premature stop, boundary recovery, no cap bypass, delivery
   deduplication, and legacy/purge compatibility.
-- [ ] Run migration audits and all verification gates; record focused commits.
+- [x] Run migration audits and all verification gates; record focused commits.
 
 Decisions:
 
@@ -257,3 +257,16 @@ Decisions:
   each owner. Repeated dispatcher wakes do not create notification storms.
 - Existing capacity-paused monitors are not auto-reclassified because their missed slot and
   interruption boundary were never persisted.
+
+Local implementation commit: `0b06ca8`.
+
+The additive migration preserved all 11 local capture runs and all 4 exact-model validation rows.
+No local monitor was waiting during migration, and the three existing notification deliveries were
+retained. Focused coverage proves future schedules are not stopped by today's usage, both daily
+capacity reasons are explicit, per-run overflow remains a safety pause, the original slot is retried
+at the UTC boundary through the atomic cap check, owner email is content-free and deduplicated, and
+workspace closure/purge handles the new state.
+
+Verification passed on 2026-09-20 (America/Chicago): `mix precommit` with 640 Elixir tests,
+frontend TypeScript and 55 tests, and `mix assets.build`. Task 21 and Gate B's temporary-capacity
+half are complete; Task 22 is next.

@@ -120,10 +120,21 @@ scheduled spend implicitly.
 
 ### Task 21: temporary capacity and coverage state
 
-- Distinguish capacity waiting from safety/incompatibility pauses.
-- Map every limit reason accurately, expose next retry and last successful check, and notify when
-  coverage stops.
-- Verify automatic recovery across a simulated quota boundary.
+1. Persist a due schedule's daily-capacity reason, original intended slot, interruption time, and
+   UTC retry boundary while keeping the monitor active. Leave legacy pauses unchanged.
+2. Restrict periodic eligibility sweeps to persistent safety conditions. At dispatch, route daily
+   run/call exhaustion into waiting and per-run overflow into an accurately labeled pause.
+3. Retry the original slot through the ordinary locked run authorization, clear waiting only on
+   successful schedule advancement, and retain the original slot in the run identity.
+4. Add durable owner-only, preference-aware, content-free delivery evidence with per-episode
+   deduplication.
+5. Expose retry, original due time, last successful check, and overdue coverage in Operations;
+   prevent schedule edits or manual runs from implying a cap bypass while still allowing pause.
+6. Verify both daily capacity reasons, per-run overflow, UTC-boundary recovery, exact identity,
+   notification behavior, closure, purge, frontend behavior, and additive migration preservation.
+
+Completion: implemented in `0b06ca8`; all verification gates passed. Daily quota exhaustion now
+recovers automatically without becoming a permanent pause or weakening the workspace limits.
 
 ### Task 22: successor workflow configuration
 

@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–20 complete; Task 21 is in progress; Gate A is complete and Gates B–D block the first design-partner pilot
+> **Status:** Tasks 1–21 complete; Task 22 is next; Gate A is complete and Gates B–D block the first design-partner pilot
 >
-> **Progress:** 20 of 27 tasks complete; Task 21 is in progress
+> **Progress:** 21 of 27 tasks complete; Task 22 is next
 >
 > **Last revised:** 2026-09-20
 >
@@ -1055,7 +1055,7 @@ schedule automatically. All local gates passed with 638 Elixir tests and 54 fron
 
 ### Task 21 — Temporary capacity and coverage state
 
-**Status:** In progress
+**Status:** Complete
 
 **Gate:** B — Recoverable monitoring
 
@@ -1064,11 +1064,11 @@ monitoring coverage.
 
 **Checklist:**
 
-- [ ] Distinguish waiting for capacity from safety and incompatibility pauses.
-- [ ] Map every capacity reason accurately and show the next retry boundary.
-- [ ] Expose last successful check, overdue coverage, and owner notification.
-- [ ] Resume/retry automatically when the temporary boundary clears without bypassing hard caps.
-- [ ] Test exhaustion and recovery across a simulated UTC limit boundary.
+- [x] Distinguish waiting for capacity from safety and incompatibility pauses.
+- [x] Map every capacity reason accurately and show the next retry boundary.
+- [x] Expose last successful check, overdue coverage, and owner notification.
+- [x] Resume/retry automatically when the temporary boundary clears without bypassing hard caps.
+- [x] Test exhaustion and recovery across a simulated UTC limit boundary.
 
 **Implementation decision:** Daily workspace run/call exhaustion is a durable waiting condition,
 not a safety pause. A due schedule records its original intended slot, interruption time, exact UTC
@@ -1077,6 +1077,12 @@ slot through ordinary locked capacity authorization after reset. Per-run overflo
 persistent accurately labeled pause. Operations exposes waiting, last successful execution, and
 overdue coverage, while a deduplicated content-free email notifies owners once per wait episode.
 Legacy capacity pauses remain unchanged because the missing intended slot cannot be inferred.
+
+**Completion:** Implemented in `0b06ca8`. Daily run/call exhaustion is now a durable active wait
+with exact UTC retry, original-slot identity, overdue coverage, and one content-free owner email.
+The same locked cap authorization governs recovery; per-run overflow remains an accurately labeled
+persistent pause. All local gates passed with 640 Elixir tests, 55 frontend tests, TypeScript
+checking, and a production asset build.
 
 ### Task 22 — Successor workflow configuration
 
@@ -2091,6 +2097,30 @@ The product is ready for the first external design partner only when:
   `mix assets.build`. Coverage includes successful recovery, failed-probe retry, retrip, no-call
   guard enforcement, owner/member access, controller state, and workspace purge.
 - Focused commits: `b2e6d80`, `e639ce6`, `5d42d0a`, and `6403357`. Task 21 is next.
+
+### 2026-09-20 — Task 21 complete
+
+- Added explicit capacity-wait state for due daily/weekly schedules: reason, original intended slot,
+  interruption time, and exact next UTC reset. Waiting monitors remain active and legacy pauses are
+  not reclassified without evidence.
+- Removed daily workspace capacity from the periodic persistent-failure sweep. Dispatch checks the
+  cap only when work is due, while per-run overflow remains an accurately labeled persistent pause.
+- Retried the preserved slot through the same workspace/monitor locks and atomic run authorization;
+  successful planning clears the wait and advances from the original cadence without a catch-up
+  burst or a new identity.
+- Added Operations coverage state with original due time, retry time, last successful check, and
+  overdue status. Manual runs and schedule edits stay unavailable during the automatic wait, while
+  owners retain an explicit Pause action.
+- Added a durable, preference-aware owner notification that contains only monitor metadata and UTC
+  times. A monitor/reason/original-slot identity prevents repeated dispatcher wakes from creating
+  duplicate email.
+- Migration audit preserved all 11 local capture runs, all 4 exact-model validation rows, and all 3
+  existing notification deliveries; no data wipe was needed and zero waits were invented.
+- Verification passed with `mix precommit` (640 Elixir tests), frontend TypeScript and 55 tests, and
+  `mix assets.build`. Focused coverage includes run/call exhaustion, no premature pause, simulated
+  UTC recovery, cap reauthorization, exact scheduled identity, email deduplication, closure, and
+  purge.
+- Focused commit: `0b06ca8`. Task 22 is next.
 
 ## 17. References
 
