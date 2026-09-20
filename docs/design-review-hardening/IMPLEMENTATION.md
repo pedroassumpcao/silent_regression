@@ -113,6 +113,11 @@ successor releases the predecessor for a safe retry.
    in a later epoch, failed-probe retry, tenancy, authorization, and purge compatibility. Run
    frontend checks, `mix precommit`, the production asset build, and additive migration audits.
 
+Completion: implemented in `e639ce6`, `5d42d0a`, and `6403357`; all verification gates passed.
+Recovery now requires fresh owner-authorized proof, performs at most one non-generative validation
+request and one zero-retry completion probe, preserves every earlier failure, and never resumes
+scheduled spend implicitly.
+
 ### Task 21: temporary capacity and coverage state
 
 - Distinguish capacity waiting from safety/incompatibility pauses.

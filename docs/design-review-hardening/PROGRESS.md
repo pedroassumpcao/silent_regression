@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate B — Recoverable monitoring
-- Current task: Task 20 — authentication breaker recovery (in progress)
+- Current task: Task 21 — temporary capacity and coverage state (not started)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -17,7 +17,7 @@
 | 17 | Case-specific expectations | Complete |
 | 18 | Contract proof coverage, severity, and bounded rescore | Complete |
 | 19 | Credential successor rebinding | Complete (`b5ae9f5`, `eaf97fd`) |
-| 20 | Authentication breaker recovery | In progress |
+| 20 | Authentication breaker recovery | Complete (`e639ce6`, `5d42d0a`, `6403357`) |
 | 21 | Temporary capacity and coverage state | Not started |
 | 22 | Successor workflow configuration | Not started |
 | 23 | Incident-centered alerting | Not started |
@@ -194,13 +194,13 @@ legacy-lineage recovery. Task 19 is complete; Task 20 is next.
   Operations UI.
 - [x] Define immutable recovery epochs, fresh post-trip validation, a one-call/zero-retry probe,
   explicit resume after success, and post-success failure windows.
-- [ ] Add the additive recovery schema, probe capture kind, and purge compatibility.
-- [ ] Implement owner authorization, fresh validation, bounded planning, execution guards, and
+- [x] Add the additive recovery schema, probe capture kind, and purge compatibility.
+- [x] Implement owner authorization, fresh validation, bounded planning, execution guards, and
   epoch-aware failure counting.
-- [ ] Expose recovery state and next actions through the authenticated Operations flow.
-- [ ] Prove trip, repair, probe, resume, failed-probe retry, and retrip through context/controller
+- [x] Expose recovery state and next actions through the authenticated Operations flow.
+- [x] Prove trip, repair, probe, resume, failed-probe retry, and retrip through context/controller
   operations.
-- [ ] Run migration audits and all verification gates; record focused commits.
+- [x] Run migration audits and all verification gates; record focused commits.
 
 Decisions:
 
@@ -212,3 +212,22 @@ Decisions:
   spend; the owner uses the existing Resume action.
 - Recovery probes remain operational evidence and do not enter normal result history or alert
   generation.
+
+Local implementation commits:
+
+- `b2e6d80` — Task 20 research decisions and execution plan
+- `e639ce6` — immutable epochs, fresh exact-model proof, bounded probe, breaker semantics, and API
+- `5d42d0a` — owner/member recovery states, exact call disclosure, and explicit-resume UI
+- `6403357` — recovery-epoch workspace-purge coverage
+
+The additive migration audit preserved all 11 local capture runs (7 baseline, 3 manual, and 1
+scheduled) and all 4 exact-model validation rows. The recovery table correctly began empty, the
+immutable update trigger is installed, model-validation time now retains six-digit precision, and
+the capture-kind constraint admits the new probe kind. No local data wipe was needed.
+
+Verification passed on 2026-09-20 (America/Chicago): `mix precommit` with 638 Elixir tests, 54
+frontend tests with TypeScript checking, and `mix assets.build`. Focused coverage proves trip,
+same-credential repair, a single-case/single-call/zero-retry probe, no-call rejection without a
+recovery record, explicit resume, preserved failures, later retrip, failed-probe retry through a new
+epoch, owner/member authorization, controller state, and purge compatibility. Task 20 is complete;
+Task 21 is next.

@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–19 complete; Task 20 is in progress; Gate A is complete and Gates B–D block the first design-partner pilot
+> **Status:** Tasks 1–20 complete; Task 21 is next; Gate A is complete and Gates B–D block the first design-partner pilot
 >
-> **Progress:** 19 of 27 tasks complete; Task 20 is in progress
+> **Progress:** 20 of 27 tasks complete; Task 21 is not started
 >
 > **Last revised:** 2026-09-20
 >
@@ -316,8 +316,8 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 16 | Provider-native request artifacts | 15 | Complete | `20aa6e2`, `ffb1675`, `7123ea7`, `a6b909f`, `d26177a`, `1805ee7`, `38eec36` |
 | 17 | Case-specific deterministic expectations | 16 | Complete | `8308389`, `d19d9e9`, `736c64f`, `c0e081a`, `3ccee78`, `3ae10cc` |
 | 18 | Contract proof coverage, severity, and bounded rescore | 17 | Complete | `fd2194d`, `67e20fb`, `9d1cda5` |
-| 19 | Credential successor rebinding | 16 | In progress | — |
-| 20 | Authentication-breaker recovery | 19 | Not started | — |
+| 19 | Credential successor rebinding | 16 | Complete | `640cb8a`, `b5ae9f5`, `eaf97fd`, `a856b28` |
+| 20 | Authentication-breaker recovery | 19 | Complete | `b2e6d80`, `e639ce6`, `5d42d0a`, `6403357` |
 | 21 | Temporary capacity and coverage state | 20 | Not started | — |
 | 22 | Successor workflow configuration | 17, 19–21 | Not started | — |
 | 23 | Incident-centered alerting | 18, 22 | Not started | — |
@@ -1025,7 +1025,7 @@ revoking an unactivated successor releases the predecessor for a fresh replaceme
 
 ### Task 20 — Authentication-breaker recovery
 
-**Status:** In progress
+**Status:** Complete
 
 **Gate:** B — Recoverable monitoring
 
@@ -1034,11 +1034,11 @@ back to healthy execution.
 
 **Checklist:**
 
-- [ ] Persist a breaker recovery epoch/event without deleting old failures.
-- [ ] Require current credential/model validation and owner authorization for a bounded probe.
-- [ ] Count consecutive authentication failures only within the active epoch.
-- [ ] Represent probe success/failure and the next action in the product UI.
-- [ ] Test trip, repair, probe, resume, and retrip through public context/controller operations.
+- [x] Persist a breaker recovery epoch/event without deleting old failures.
+- [x] Require current credential/model validation and owner authorization for a bounded probe.
+- [x] Count consecutive authentication failures only within the active epoch.
+- [x] Represent probe success/failure and the next action in the product UI.
+- [x] Test trip, repair, probe, resume, and retrip through public context/controller operations.
 
 **Implementation decision:** Store an immutable recovery epoch for every owner-authorized attempt.
 Authorization performs a fresh exact-model metadata validation after the latest breaker trip, then
@@ -1046,6 +1046,12 @@ queues one stable active case with one sample, zero retries, and a one-call ceil
 probe starts the next failure-counting epoch but leaves the monitor paused until the owner explicitly
 resumes its existing cadence. Failed or unknown probes remain recoverable, normal history and alerts
 exclude probe captures, and no old failure evidence is changed or deleted.
+
+**Completion:** Immutable recovery epochs, the guarded `authentication_probe` capture kind,
+post-success failure windows, an owner-only authenticated operation, and the full Operations-page
+recovery flow are implemented in `e639ce6`, `5d42d0a`, and `6403357`. The flow discloses one
+content-free metadata request plus at most one zero-retry completion call and never resumes the
+schedule automatically. All local gates passed with 638 Elixir tests and 54 frontend tests.
 
 ### Task 21 — Temporary capacity and coverage state
 
@@ -1285,6 +1291,7 @@ The product is ready for the first external design partner only when:
 | 2026-09-19 | Accept the Sol/Astra review recommendations and require Gates A–D before the first pilot | Request fidelity, case correctness, ordinary recovery, alert recurrence, product truth, reproducibility, and hosted controls are core to the narrow promise; semantic judges, billing, and broader scope remain deferred | 15–27 |
 | 2026-09-19 | Preserve local history through additive migrations | Existing runs, references, alerts, and reviews are useful compatibility evidence; legacy request behavior must be frozen and labeled rather than silently transformed | 16–23 |
 | 2026-09-20 | Stage credential successors and activate future references atomically | Per-model access proof, explicit impact review, in-flight work blockers, conservative reference replacement, and retryable staged identities restore monitoring without rewriting historical runs or references | 19 |
+| 2026-09-20 | Recover authentication breakers through owner-authorized immutable probe epochs | Fresh exact-model validation plus one zero-retry completion probe proves repaired access without erasing failure history or silently restarting scheduled spend | 20 |
 
 ## 16. Session log
 
@@ -2049,6 +2056,33 @@ The product is ready for the first external design partner only when:
   provenance, reference replacement, schedule reactivation, bounded execution, staged setup,
   revoked-successor retry, and legacy lineage recovery.
 - Focused commits: `640cb8a`, `b5ae9f5`, and `eaf97fd`. Task 20 is next.
+
+### 2026-09-20 — Task 20 complete
+
+- Added immutable, monotonically numbered authentication-recovery epochs linked to the workspace,
+  monitor, credential, authorizing owner, exact model-validation timestamp/request ID, and probe
+  capture. A database trigger rejects updates while workspace purge can remove the full customer
+  graph through existing cascades.
+- Added a distinct `authentication_probe` capture kind. Planning always selects the first stable
+  active case, forces one sample, zero retries, one planned call, and one maximum call, retains the
+  compatible reviewed-reference snapshot, and refuses execution without its matching durable
+  recovery record.
+- Changed breaker calculation to consider only terminal manual/scheduled runs after the latest
+  successful probe. All older failures and attempts remain unchanged; two later consecutive
+  authentication failures open a new recovery window.
+- Added an owner-only operation under the authenticated, workspace-scoped Operations routes. It
+  performs one fresh, non-generative exact-model validation before creating and enqueueing the
+  probe. Members can inspect recovery state but cannot authorize it.
+- Added ready, in-progress, failed, and succeeded recovery guidance with explicit disclosure of the
+  one metadata request, one maximum completion call, and zero retries. Successful recovery unlocks
+  the existing Resume action but never restarts monitoring automatically.
+- Migration audit preserved 7 baseline, 3 manual, and 1 scheduled local runs plus all 4 exact-model
+  validation rows. The recovery table started empty, the immutable trigger is installed, timestamp
+  precision is six digits, and no local data wipe was needed.
+- Verification passed with `mix precommit` (638 Elixir tests), frontend TypeScript and 54 tests, and
+  `mix assets.build`. Coverage includes successful recovery, failed-probe retry, retrip, no-call
+  guard enforcement, owner/member access, controller state, and workspace purge.
+- Focused commits: `b2e6d80`, `e639ce6`, `5d42d0a`, and `6403357`. Task 21 is next.
 
 ## 17. References
 
