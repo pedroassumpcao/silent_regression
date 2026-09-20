@@ -226,6 +226,13 @@ available until a real partner format is inspected.
 - Make the repository gate run backend, frontend, and production asset verification.
 - Add committed CI and a repeatable browser journey.
 
+Completion: implemented in `53dcfe8`. The repository pins Erlang/OTP 29.0.6, Elixir 1.20.4,
+Node 24.4.1, and npm 11.4.2; `mix precommit` now covers backend compilation/tests, formatting,
+dependency-lock hygiene, TypeScript, frontend tests, and production assets. Default verification
+depends only on tracked manifests and fixtures, while private live-run artifact integrity checks are
+explicitly opt-in. Committed CI also executes a disposable invitation-to-demo browser journey. The
+complete gate and browser journey passed from a detached clean worktree with no ignored evidence.
+
 ### Task 27: hosted security and operations
 
 - Apply recent authentication to sensitive credential, run, and deletion actions; decide whether

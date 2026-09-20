@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–25 complete; Task 26 is in progress; Gates A–C are complete and Gate D blocks the first design-partner pilot
+> **Status:** Tasks 1–26 complete; Task 27 is in progress; Gates A–C are complete and Gate D blocks the first design-partner pilot
 >
-> **Progress:** 25 of 27 tasks complete; Task 26 is in progress
+> **Progress:** 26 of 27 tasks complete; Task 27 is in progress
 >
 > **Last revised:** 2026-09-20
 >
@@ -323,8 +323,8 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 23 | Incident-centered alerting | 18, 22 | Complete | `e9edd50`, `85a99f4`, `7cab70f` |
 | 24 | Reviewed reference capture language | 16–18, 23 | Complete | `f9ad312`, `bf16677`, `46c9fed` |
 | 25 | Credential-free demo and focused imports | 17, 18, 24 | Complete | `89e62d7` |
-| 26 | Reproducible verification and toolchain | 15–25 | In progress | — |
-| 27 | Hosted security and operations | 19–26 | Not started | — |
+| 26 | Reproducible verification and toolchain | 15–25 | Complete | `53dcfe8` |
+| 27 | Hosted security and operations | 19–26 | In progress | — |
 
 ## 10. Implementation tasks
 
@@ -1178,7 +1178,7 @@ reduce setup friction using evidence from real design-partner formats.
 
 ### Task 26 — Reproducible verification and toolchain
 
-**Status:** In progress
+**Status:** Complete
 
 **Gate:** D — Hosted-pilot readiness
 
@@ -1187,15 +1187,15 @@ by the project.
 
 **Checklist:**
 
-- [ ] Remove ignored benchmark artifacts from committed test dependencies or commit safe fixtures.
-- [ ] Pin supported Elixir, Erlang/OTP, and Node versions.
-- [ ] Include TypeScript, frontend tests, and production assets in the repository gate.
-- [ ] Add committed CI and a repeatable browser journey with deterministic data.
-- [ ] Verify from a clean checkout without local ignored evidence.
+- [x] Remove ignored benchmark artifacts from committed test dependencies or commit safe fixtures.
+- [x] Pin supported Elixir, Erlang/OTP, and Node versions.
+- [x] Include TypeScript, frontend tests, and production assets in the repository gate.
+- [x] Add committed CI and a repeatable browser journey with deterministic data.
+- [x] Verify from a clean checkout without local ignored evidence.
 
 ### Task 27 — Hosted security and operations
 
-**Status:** Not started
+**Status:** In progress
 
 **Gate:** D — Hosted-pilot readiness
 
@@ -2222,6 +2222,20 @@ The product is ready for the first external design partner only when:
 - Verification passed with `mix precommit` (655 Elixir tests), frontend TypeScript and 64 tests, and
   `mix assets.build`.
 - Focused commit: `89e62d7`. Task 26 is next.
+
+### 2026-09-20 — Task 26 complete
+
+- Removed ignored private benchmark outputs from the default test contract while retaining their
+  hash checks behind an explicit `runtime_artifact` tag for operators who possess the evidence.
+- Pinned Erlang/OTP 29.0.6, Elixir 1.20.4, Node 24.4.1, and npm 11.4.2 in committed toolchain files.
+- Expanded `mix precommit` to cover strict formatting, dependency-lock hygiene, 655 backend tests,
+  TypeScript, 64 frontend tests, and production assets.
+- Added committed GitHub Actions CI with PostgreSQL and the complete repository gate.
+- Added an isolated Playwright CLI journey from a one-time invitation through all four sealed demo
+  steps, with zero provider calls and local-only snapshots, screenshot, and trace.
+- Repeated `mix deps.get`, `mix assets.setup`, the full repository gate, and the browser journey in a
+  detached clean worktree containing no ignored artifacts; all passed.
+- Focused implementation commit: `53dcfe8`. Task 27 is next.
 
 ## 17. References
 

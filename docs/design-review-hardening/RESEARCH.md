@@ -442,3 +442,20 @@ transaction.
   require held-out tests.
 - Recent-auth and production operations are first-pilot gates, but broad enterprise controls remain
   deferred.
+
+## Task 26 reproducibility findings
+
+The clean-checkout failure was narrower than the product test suite: two semantic-layer integrity
+tests treated ignored, private live-run output as required source fixtures. The tracked freeze and
+configuration manifests remain useful, and their tracked held-out inputs can be verified in every
+clone. Paid-call artifacts are still valuable forensic evidence, but their hashes belong in an
+explicit operator check rather than the default correctness gate.
+
+The reproducible boundary is therefore:
+
+- default CI verifies every tracked backend, frontend, asset, manifest, and held-out fixture;
+- `runtime_artifact` verifies locally retained private live-run evidence only when explicitly
+  requested;
+- a deterministic browser journey creates a disposable tenant and database and makes no provider
+  calls; and
+- exact runtime versions are repository state, not workstation folklore.

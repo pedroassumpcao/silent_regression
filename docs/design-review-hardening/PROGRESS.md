@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate D — Hosted-pilot readiness
-- Current task: Task 26 — reproducible verification and toolchain (in progress)
+- Current task: Task 27 — hosted security and operations (in progress)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -23,8 +23,8 @@
 | 23 | Incident-centered alerting | Complete (`85a99f4`) |
 | 24 | Reviewed reference capture language | Complete (`bf16677`) |
 | 25 | Credential-free demo and focused imports | Complete (`89e62d7`) |
-| 26 | Reproducible verification and toolchain | In progress |
-| 27 | Hosted security and operations | Not started |
+| 26 | Reproducible verification and toolchain | Complete (`53dcfe8`) |
+| 27 | Hosted security and operations | In progress |
 
 ## Task 15 log
 
@@ -430,3 +430,27 @@ The additive migration preserved all 34 existing monitor-target product events a
 expanded name/target constraints. No local data wipe was needed. Verification passed on 2026-09-20
 with `mix precommit` (655 Elixir tests), frontend TypeScript and 64 tests, and `mix assets.build`.
 Focused implementation commit: `89e62d7`. Task 26 is next.
+
+## Task 26 log
+
+- [x] Replace default dependencies on ignored live-run artifacts with tracked manifest and fixture
+  integrity checks; retain private-artifact verification behind the explicit `runtime_artifact` tag.
+- [x] Pin the supported Erlang/OTP, Elixir, Node, and npm versions.
+- [x] Expand `mix precommit` to include strict formatting, lock hygiene, backend tests, TypeScript,
+  frontend tests, and the production asset build.
+- [x] Add committed CI with PostgreSQL and the complete repository gate.
+- [x] Add a deterministic Playwright CLI journey through invitation acceptance, workspace entry,
+  and all four credential-free demo evidence steps.
+- [x] Run the complete gate and browser journey from a detached clean worktree containing no
+  ignored spike evidence.
+
+The default suite now excludes only two explicit private live-artifact integrity checks; those
+checks still pass locally when requested with `--include runtime_artifact`. They no longer make a
+clone's correctness depend on uncommitted paid-call output. The browser journey provisions and
+drops its own uniquely partitioned test database and uses an isolated local port.
+
+Verification passed on 2026-09-20 in both the working tree and a detached clean worktree:
+`mix precommit` ran 655 Elixir tests with 2 private-artifact tests excluded by default, 64 frontend
+tests with TypeScript checking, and the production asset build. The invitation-to-demo browser
+journey completed with zero provider calls and retained its snapshot, screenshot, and trace only as
+ignored local diagnostics. Focused implementation commit: `53dcfe8`. Task 27 is next.
