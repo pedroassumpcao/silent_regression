@@ -67,6 +67,9 @@ deterministic product wedge. The authoritative task status remains in
 6. Add context, constraint, controller, worker/manual-mode, migration/backfill, alert-severity, and
    frontend tests. Run `mix precommit`, frontend checks, and the production asset build.
 
+Completion: implemented in `67e20fb` and `9d1cda5`; all verification gates passed. Gate A is
+complete.
+
 ## Gate B — Recoverable monitoring
 
 ### Task 19: credential successor rebinding

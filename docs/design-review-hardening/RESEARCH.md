@@ -231,6 +231,13 @@ Before each schema-bearing task, tests must exercise the migration against a dat
 legacy monitor, run, baseline, alert, and review history. Destructive reset remains an explicit
 last resort, not an implementation shortcut.
 
+Task 18 finalized that schema as additive `proof_schema_version`/`proof_fingerprint` fields on
+contract versions, exact-rule `contract_coverage_waivers`, and durable `contract_rescore_runs` plus
+ordered `contract_rescore_items`. Legacy contract rows deliberately retain null proof fields; proof
+is not invented retroactively. Candidates move through `pending_rescore` or `rescore_failed`, while
+the one approved predecessor remains the execution source until a successful final activation
+transaction.
+
 ## UX direction
 
 - Show an exact per-case provider request preview before spend authorization.

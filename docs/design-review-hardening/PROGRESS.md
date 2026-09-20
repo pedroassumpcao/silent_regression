@@ -3,8 +3,8 @@
 ## Current status
 
 - Program: in progress
-- Current gate: Gate A — Product truth
-- Current task: Task 18 — contract proof coverage, severity, and bounded rescore (in progress)
+- Current gate: Gate B — Recoverable monitoring
+- Current task: Task 19 — credential successor rebinding (next)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -15,7 +15,7 @@
 | 15 | Review program and truthful public evidence | Complete (`d49b997`) |
 | 16 | Provider-native request artifacts | Complete |
 | 17 | Case-specific expectations | Complete |
-| 18 | Contract proof coverage, severity, and bounded rescore | In progress |
+| 18 | Contract proof coverage, severity, and bounded rescore | Complete |
 | 19 | Credential successor rebinding | Not started |
 | 20 | Authentication breaker recovery | Not started |
 | 21 | Temporary capacity and coverage state | Not started |
@@ -109,10 +109,10 @@ distinct `case_expectation_failure` alert. Task 17 is complete.
 - [x] Define rule-level proof, critical/warning policy, exact-rule waiver binding, and the bounded
   flat-composite boundary.
 - [x] Define a pinned durable rescore/activation lifecycle that keeps the prior contract active.
-- [ ] Implement coverage analysis, owner waivers, and proof fingerprints.
-- [ ] Expose severity and coverage in authoring/review.
-- [ ] Implement durable bounded rescore state, workers, progress, failure, and atomic activation.
-- [ ] Run migration audits and all verification gates; record focused commits.
+- [x] Implement coverage analysis, owner waivers, and proof fingerprints.
+- [x] Expose severity and coverage in authoring/review.
+- [x] Implement durable bounded rescore state, workers, progress, failure, and atomic activation.
+- [x] Run migration audits and all verification gates; record focused commits.
 
 Decisions:
 
@@ -124,3 +124,20 @@ Decisions:
 - Initial contracts with no history still approve synchronously. A successor with history is sealed
   and activated only after its exact materialized observation set is rescored in bounded batches.
 - Oban Basic is sufficient; no Pro workflow/batch feature or new dependency is required.
+
+Local implementation commits:
+
+- `fd2194d` — research decisions and Task 18 execution plan
+- `67e20fb` — rule-level proof coverage, severity controls, exact-rule waivers, and proof identity
+- `9d1cda5` — pinned durable rescore batches, safe candidate lifecycle, progress UI, and atomic activation
+
+The additive migration audit preserved all nine local contract versions: 4 approved, 4 retired, and
+1 draft. Their proof fields remain `NULL` as explicit legacy evidence rather than being inferred.
+Both history guards are installed, and the new waiver/run/item tables began empty. New approvals
+must carry `rule_coverage_v1` proof. No local data wipe was needed.
+
+Verification passed on 2026-09-19 (America/Chicago): `mix precommit` with 625 Elixir tests, 50
+frontend tests with TypeScript checking, and `mix assets.build`. Focused coverage includes an exact
+51-item snapshot split into 50/1 batches, exclusion of a later observation, continued use of the old
+approved contract while pending, evaluator-error failure without partial activation, and retry-draft
+recovery. Task 18 and Gate A are complete.

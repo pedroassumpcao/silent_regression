@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–16 complete; design-review hardening is in progress and Gates A–D block the first design-partner pilot
+> **Status:** Tasks 1–18 complete; Gate A is complete and Gates B–D block the first design-partner pilot
 >
-> **Progress:** 17 of 27 tasks complete; Task 18 is next
+> **Progress:** 18 of 27 tasks complete; Task 19 is next
 >
 > **Last revised:** 2026-09-19
 >
@@ -315,7 +315,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 15 | Design-review program and truthful public evidence | 1–14 | Complete | `d49b997` |
 | 16 | Provider-native request artifacts | 15 | Complete | `20aa6e2`, `ffb1675`, `7123ea7`, `a6b909f`, `d26177a`, `1805ee7`, `38eec36` |
 | 17 | Case-specific deterministic expectations | 16 | Complete | `8308389`, `d19d9e9`, `736c64f`, `c0e081a`, `3ccee78`, `3ae10cc` |
-| 18 | Contract proof coverage, severity, and bounded rescore | 17 | In progress | — |
+| 18 | Contract proof coverage, severity, and bounded rescore | 17 | Complete | `fd2194d`, `67e20fb`, `9d1cda5` |
 | 19 | Credential successor rebinding | 16 | Not started | — |
 | 20 | Authentication-breaker recovery | 19 | Not started | — |
 | 21 | Temporary capacity and coverage state | 20 | Not started | — |
@@ -974,7 +974,7 @@ shapes and values.
 
 ### Task 18 — Contract proof coverage, severity, and bounded rescore
 
-**Status:** In progress
+**Status:** Complete
 
 **Gate:** A — Product truth
 
@@ -983,13 +983,13 @@ already supported by the engine.
 
 **Checklist:**
 
-- [ ] Compute positive and negative fixture coverage per rule and relevant branch.
-- [ ] Block approval on uncovered critical rules unless an owner records an explicit waiver.
-- [ ] Expose supported severity controls in authoring, fixture results, readiness, and evidence.
-- [ ] Keep composite-expression authoring bounded; do not expose unsafe arbitrary DSL editing.
-- [ ] Pin a historical-observation cutoff, rescore in bounded durable batches, show progress, and keep
+- [x] Compute positive and negative fixture coverage per rule and relevant branch.
+- [x] Block approval on uncovered critical rules unless an owner records an explicit waiver.
+- [x] Expose supported severity controls in authoring, fixture results, readiness, and evidence.
+- [x] Keep composite-expression authoring bounded; do not expose unsafe arbitrary DSL editing.
+- [x] Pin a historical-observation cutoff, rescore in bounded durable batches, show progress, and keep
   the prior approved contract active until the new rescore succeeds.
-- [ ] Add coverage, waiver authorization, severity, and regression tests.
+- [x] Add coverage, waiver authorization, severity, and regression tests.
 
 **Acceptance criteria:**
 
@@ -1979,6 +1979,32 @@ The product is ready for the first external design partner only when:
   frontend tests, TypeScript checking, and `mix assets.build`.
 - Focused commits: `8308389`, `d19d9e9`, `736c64f`, `c0e081a`, and `3ccee78`.
 - Task 17 and its Gate A product-truth scope are complete. Task 18 is next.
+
+### 2026-09-19 — Task 18 complete
+
+- Replaced global pass/fail fixture readiness with per-rule positive and negative proof derived only
+  from evaluator-confirmed, fully matching fixtures. A global negative now proves only the leaves it
+  actually fails.
+- Exposed critical and warning severity in structured authoring and sealed evidence. Critical leaves
+  require both branches; warning gaps stay visible without blocking approval.
+- Added owner-only, rationale-bearing waivers bound to the exact rule fingerprint. Semantic edits
+  invalidate waivers, and approved waiver history is database-protected.
+- Added separate `rule_coverage_v1` proof identity without changing behavior-compatibility
+  fingerprints. Existing approved and retired rows remain explicit legacy records with null proof
+  fields rather than receiving invented evidence.
+- Replaced synchronous all-history rescoring with an exact materialized observation set, serial Oban
+  Basic work in batches of 50, persisted item/run progress, and `pending_rescore`/`rescore_failed`
+  candidate states. The old contract remains approved and in use throughout pending or failed work.
+- Activation is one final transaction that writes the immutable summary, retires the predecessor,
+  approves the candidate, and completes the run. Evaluator or terminal worker errors fail closed and
+  retain a retry path copied from the sealed failed candidate.
+- The additive migration preserved 4 approved, 4 retired, and 1 draft local contract versions; both
+  history triggers remained installed, and no local data wipe was required.
+- Focused tests prove a 51-item 50/1 batch split, exact cutoff exclusion, old-contract execution while
+  pending, evaluator-error failure without partial activation, and retry recovery. Final gates pass:
+  625 Elixir tests, 50 frontend tests, TypeScript checking, and `mix assets.build`.
+- Focused commits: `fd2194d`, `67e20fb`, and `9d1cda5`. Task 18 and Gate A are complete; Task 19 is
+  next.
 
 ## 17. References
 
