@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react"
-import { Head, router, useForm, usePage } from "@inertiajs/react"
+import { Head, Link, router, useForm, usePage } from "@inertiajs/react"
 import {
+  ArrowRight,
   CheckCircle2,
   Clock3,
   KeyRound,
@@ -8,6 +9,7 @@ import {
   LockKeyhole,
   MoreHorizontal,
   RefreshCw,
+  ShieldAlert,
   ShieldCheck,
   Trash2,
 } from "lucide-react"
@@ -49,6 +51,14 @@ import type { SharedPageProps } from "@/types/page"
 type Provider = "openai" | "anthropic"
 type CredentialStatus = "pending_validation" | "valid" | "invalid" | "revoked" | "superseded"
 
+type MonitorImpact = {
+  id: string
+  name: string
+  state: string
+  requestedModels: string[]
+  referenceReplacementRequired: boolean
+}
+
 type Credential = {
   id: string
   provider: Provider
@@ -63,6 +73,11 @@ type Credential = {
   lastProviderRequestId: string | null
   lastValidationAttempts: number | null
   supersedesId: string | null
+  successorId: string | null
+  replacementPending: boolean
+  verifiedModels: string[]
+  attachedMonitors: MonitorImpact[]
+  replacementImpact: MonitorImpact[]
   insertedAt: string
 }
 
@@ -316,6 +331,14 @@ function CredentialRow({
   workspaceSlug: string
 }) {
   const active = activeStatuses.includes(credential.status)
+  const canRotate = active && !credential.successorId && !credential.replacementPending
+  const referenceRecovery = credential.attachedMonitors.filter(
+    monitor => monitor.referenceReplacementRequired,
+  )
+  const recoveryMonitors = credential.replacementPending
+    ? credential.replacementImpact
+    : referenceRecovery
+  const showRecovery = credential.replacementPending || referenceRecovery.length > 0
   const [validating, setValidating] = useState(false)
 
   function validateCredential() {
@@ -331,6 +354,7 @@ function CredentialRow({
   }
 
   return (
+    <>
     <TableRow id={`credential-${credential.id}`}>
       <TableCell>
         <div className="font-medium">{credential.label}</div>
@@ -340,10 +364,20 @@ function CredentialRow({
           <code className="font-mono">•••• {credential.secretSuffix}</code>
           {credential.supersedesId && (
             <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
-              Rotated
+              {credential.replacementPending ? "Replacement pending" : "Replacement active"}
+            </Badge>
+          )}
+          {credential.successorId && (
+            <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+              Successor created
             </Badge>
           )}
         </div>
+        {credential.attachedMonitors.length > 0 && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {credential.attachedMonitors.length} attached {credential.attachedMonitors.length === 1 ? "monitor" : "monitors"}
+          </p>
+        )}
       </TableCell>
       <TableCell>
         <StatusBadge status={credential.status} />
@@ -361,6 +395,15 @@ function CredentialRow({
         <div className="mt-1 max-w-52 truncate font-mono text-xs text-muted-foreground">
           {credential.lastProviderRequestId || "No request ID"}
         </div>
+        {credential.verifiedModels.length > 0 && (
+          <div className="mt-2 flex max-w-64 flex-wrap gap-1">
+            {credential.verifiedModels.map(model => (
+              <Badge key={model} variant="outline" className="max-w-full truncate font-mono text-[10px]">
+                {model}
+              </Badge>
+            ))}
+          </div>
+        )}
       </TableCell>
       {canManage && (
         <TableCell className="text-right">
@@ -377,11 +420,19 @@ function CredentialRow({
                 {validating ? <LoaderCircle className="animate-spin" /> : <RefreshCw />}
                 {validating ? "Validating…" : "Validate"}
               </Button>
-              <RotateCredentialDialog
-                credential={credential}
-                secretError={secretError}
-                workspaceSlug={workspaceSlug}
-              />
+              {canRotate && (
+                <RotateCredentialDialog
+                  credential={credential}
+                  secretError={secretError}
+                  workspaceSlug={workspaceSlug}
+                />
+              )}
+              {credential.replacementPending && (
+                <ActivateReplacementDialog
+                  credential={credential}
+                  workspaceSlug={workspaceSlug}
+                />
+              )}
               <RevokeCredentialDialog credential={credential} workspaceSlug={workspaceSlug} />
             </div>
           ) : (
@@ -392,6 +443,18 @@ function CredentialRow({
         </TableCell>
       )}
     </TableRow>
+    {showRecovery && (
+      <TableRow id={`credential-recovery-${credential.id}`} className="hover:bg-transparent">
+        <TableCell colSpan={canManage ? 5 : 4} className="pt-0">
+          <CredentialRecoveryPanel
+            credential={credential}
+            monitors={recoveryMonitors}
+            workspaceSlug={workspaceSlug}
+          />
+        </TableCell>
+      </TableRow>
+    )}
+    </>
   )
 }
 
@@ -428,8 +491,9 @@ function RotateCredentialDialog({
         <DialogHeader>
           <DialogTitle>Rotate {credential.label}</DialogTitle>
           <DialogDescription>
-            The replacement gets a new identity. Historical runs keep referencing this credential,
-            which becomes superseded.
+            The replacement gets a new identity while this credential remains attached. After the
+            replacement passes every affected model check, activation changes future references;
+            historical runs continue to reference this identity.
           </DialogDescription>
         </DialogHeader>
         <form id={`rotate-credential-form-${credential.id}`} className="space-y-4" onSubmit={rotateCredential}>
@@ -460,6 +524,137 @@ function RotateCredentialDialog({
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function ActivateReplacementDialog({
+  credential,
+  workspaceSlug,
+}: {
+  credential: Credential
+  workspaceSlug: string
+}) {
+  const [open, setOpen] = useState(false)
+  const form = useForm({})
+  const models = Array.from(
+    new Set(credential.replacementImpact.flatMap(monitor => monitor.requestedModels)),
+  ).sort()
+  const replacementReferences = credential.replacementImpact.filter(
+    monitor => monitor.referenceReplacementRequired,
+  ).length
+
+  function activateReplacement() {
+    form.post(`/app/${workspaceSlug}/credentials/${credential.id}/activate-replacement`, {
+      preserveScroll: true,
+      onSuccess: () => setOpen(false),
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button id={`activate-replacement-${credential.id}`} type="button" size="sm">
+          <ShieldCheck /> Activate
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Validate and activate {credential.label}?</DialogTitle>
+          <DialogDescription>
+            Silent Regression will make {models.length || 1} non-generative provider metadata {models.length === 1 ? "request" : "requests"}, then atomically move future execution for {credential.replacementImpact.length} {credential.replacementImpact.length === 1 ? "monitor" : "monitors"}. The current credential remains attached if any check fails.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 rounded-xl border bg-muted/30 p-4 text-sm">
+          <div>
+            <p className="font-medium">Models to verify</p>
+            <p className="mt-1 break-words font-mono text-xs text-muted-foreground">
+              {models.length > 0 ? models.join(", ") : "General provider access"}
+            </p>
+          </div>
+          <div>
+            <p className="font-medium">Reviewed-reference consequence</p>
+            <p className="mt-1 text-muted-foreground">
+              {replacementReferences > 0
+                ? `${replacementReferences} ${replacementReferences === 1 ? "monitor" : "monitors"} will pause until an owner captures and approves a replacement baseline.`
+                : "No approved monitor reference needs replacement."}
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="outline">Cancel</Button>
+          </DialogClose>
+          <Button type="button" disabled={form.processing} onClick={activateReplacement}>
+            {form.processing ? <LoaderCircle className="animate-spin" /> : <ShieldCheck />}
+            {form.processing ? "Validating…" : "Validate and activate"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function CredentialRecoveryPanel({
+  credential,
+  monitors,
+  workspaceSlug,
+}: {
+  credential: Credential
+  monitors: MonitorImpact[]
+  workspaceSlug: string
+}) {
+  const pending = credential.replacementPending
+
+  return (
+    <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-left">
+      <div className="flex items-start gap-3">
+        <ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-600" />
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">
+            {pending ? "Review replacement impact" : "Replacement baseline required"}
+          </p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            {pending
+              ? "The predecessor remains attached. Activation validates every model below and changes only future execution references; historical runs keep their original credential identity."
+              : "The credential cutover is complete. Monitoring stays paused until the reviewed reference is replaced through the normal baseline flow."}
+          </p>
+
+          {monitors.length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              No monitors are attached, so activation only completes the credential lineage.
+            </p>
+          ) : (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {monitors.map(monitor => (
+                <div key={monitor.id} className="rounded-lg border bg-background/80 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{monitor.name}</p>
+                      <p className="mt-1 break-words font-mono text-[11px] text-muted-foreground">
+                        {monitor.requestedModels.join(", ") || "No current model"}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="capitalize">{monitor.state.replaceAll("_", " ")}</Badge>
+                  </div>
+                  {monitor.referenceReplacementRequired && (
+                    <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
+                      <span className="text-xs text-amber-700">New baseline required</span>
+                      {!pending && (
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/app/${workspaceSlug}/monitors/${monitor.id}/baseline`}>
+                            Restore reference <ArrowRight />
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 

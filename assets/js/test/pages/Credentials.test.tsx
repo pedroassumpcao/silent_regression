@@ -32,6 +32,11 @@ const credential = {
   lastProviderRequestId: "req_safe",
   lastValidationAttempts: 1,
   supersedesId: null,
+  successorId: null,
+  replacementPending: false,
+  verifiedModels: ["gpt-5.6-luna"],
+  attachedMonitors: [],
+  replacementImpact: [],
   insertedAt: "2026-09-14T19:00:00Z",
 }
 
@@ -55,7 +60,46 @@ describe("CredentialsView", () => {
     expect(screen.getByRole("button", { name: "Revoke" })).toBeInTheDocument()
     expect(screen.getByText("•••• 9xYz")).toBeInTheDocument()
     expect(screen.getByText("req_safe")).toBeInTheDocument()
+    expect(screen.getByText("gpt-5.6-luna")).toBeInTheDocument()
     expect(container).not.toHaveTextContent("sk-test-secret-must-never-render")
+  })
+
+  it("shows the affected monitors and conservative reference consequence before activation", () => {
+    render(
+      <CredentialsView
+        auth={auth}
+        canManage
+        credentials={[
+          {
+            ...credential,
+            id: "successor-id",
+            label: "Rotated OpenAI",
+            status: "pending_validation",
+            supersedesId: "credential-id",
+            replacementPending: true,
+            verifiedModels: [],
+            replacementImpact: [
+              {
+                id: "monitor-id",
+                name: "Billing classifier",
+                state: "active",
+                requestedModels: ["gpt-5.6-luna"],
+                referenceReplacementRequired: true,
+              },
+            ],
+          },
+        ]}
+        errors={{}}
+        flash={{}}
+        releaseStage="Private alpha"
+      />,
+    )
+
+    expect(screen.getByText("Review replacement impact")).toBeInTheDocument()
+    expect(screen.getByText("Billing classifier")).toBeInTheDocument()
+    expect(screen.getByText("New baseline required")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Activate" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Rotate" })).not.toBeInTheDocument()
   })
 
   it("keeps members read-only while explaining their future execution access", () => {
