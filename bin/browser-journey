@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_root="$(cd "$(dirname "$0")/.." && pwd)"
+playwright_cli="$project_root/assets/node_modules/.bin/playwright-cli"
+journey_id="browser-journey-$$"
+journey_port="$((4100 + $$ % 1000))"
+journey_partition="_${journey_id//-/_}"
+journey_output="$project_root/output/playwright/$journey_id"
+server_pid=""
+
+if [[ ! -x "$playwright_cli" ]]; then
+  echo "Playwright CLI is unavailable. Run mix assets.setup first." >&2
+  exit 1
+fi
+
+mkdir -p "$journey_output"
+
+export MIX_ENV=test
+export MIX_TEST_PARTITION="$journey_partition"
+export PORT="$journey_port"
+export PLAYWRIGHT_CLI_SESSION="$journey_id"
+
+cleanup() {
+  set +e
+  "$playwright_cli" close >/dev/null 2>&1
+  if [[ -n "$server_pid" ]]; then
+    kill "$server_pid" >/dev/null 2>&1
+    wait "$server_pid" >/dev/null 2>&1
+  fi
+  cd "$project_root"
+  mix ecto.drop --quiet >/dev/null 2>&1
+}
+
+trap cleanup EXIT INT TERM
+
+cd "$project_root"
+mix ecto.create --quiet
+mix ecto.migrate --quiet
+
+PHX_SERVER=true mix phx.server >"$journey_output/server.log" 2>&1 &
+server_pid="$!"
+
+base_url="http://127.0.0.1:$journey_port"
+for _attempt in $(seq 1 240); do
+  if curl --fail --silent --show-error "$base_url" >/dev/null 2>&1; then
+    break
+  fi
+
+  if ! kill -0 "$server_pid" >/dev/null 2>&1; then
+    echo "Phoenix stopped before the browser journey began. See $journey_output/server.log" >&2
+    exit 1
+  fi
+
+  sleep 0.25
+done
+
+if ! curl --fail --silent --show-error "$base_url" >/dev/null 2>&1; then
+  echo "Phoenix did not become ready. See $journey_output/server.log" >&2
+  exit 1
+fi
+
+invite_output="$(mix silent_regression.invite \
+  --workspace-name "Browser Journey" \
+  --workspace-slug "$journey_id" \
+  --email "$journey_id@example.com" \
+  --role owner)"
+
+invitation_path="$(printf '%s\n' "$invite_output" | sed -En 's#^Invitation URL: https?://[^/]*/#/#p')"
+
+if [[ -z "$invitation_path" ]]; then
+  echo "The browser fixture did not produce an invitation path." >&2
+  exit 1
+fi
+
+cd "$journey_output"
+"$playwright_cli" open "$base_url$invitation_path"
+"$playwright_cli" tracing-start
+
+"$playwright_cli" run-code "async page => { await page.getByRole('button', {name: 'Accept invitation'}).click(); await page.waitForURL(/\\/app\\/$journey_id$/); }"
+"$playwright_cli" run-code "async page => { await page.locator('#open-guided-demo-button').click(); await page.waitForURL(/\\/demo$/); }"
+"$playwright_cli" run-code "async page => { await page.locator('#start-guided-demo').click(); await page.locator('#demo-step-request').waitFor(); }"
+"$playwright_cli" run-code "async page => { await page.getByRole('button', {name: 'Continue to expected behavior'}).click(); await page.locator('#demo-step-expectation').waitFor(); }"
+"$playwright_cli" run-code "async page => { await page.getByRole('button', {name: 'Prove the case expectation'}).click(); await page.locator('#demo-step-reference').waitFor(); }"
+"$playwright_cli" run-code "async page => { await page.getByRole('button', {name: 'Compare the next sample'}).click(); await page.locator('#demo-step-incident').waitFor(); }"
+"$playwright_cli" run-code "async page => { await page.getByRole('button', {name: 'Complete the demo'}).click(); await page.locator('#demo-complete').waitFor(); if (!await page.getByText('You found the silent regression').isVisible()) throw new Error('completion evidence missing'); }"
+
+"$playwright_cli" snapshot
+"$playwright_cli" screenshot
+"$playwright_cli" tracing-stop
+
+echo "Browser journey passed: invitation -> workspace -> zero-call demo -> exact incident evidence"
+echo "Artifacts: $journey_output"

@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      MIX_ENV: test
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Erlang and Elixir
+        uses: erlef/setup-beam@v1.24.1
+        with:
+          otp-version: 29.0.6
+          elixir-version: 1.20.4
+
+      - name: Set up Node and npm cache
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.4.1
+          cache: npm
+          cache-dependency-path: assets/package-lock.json
+
+      - name: Install backend dependencies
+        run: mix deps.get
+
+      - name: Install frontend and asset tools
+        run: mix assets.setup
+
+      - name: Run the complete repository gate
+        run: mix precommit
+
+      - name: Install Chromium for the browser journey
+        run: assets/node_modules/.bin/playwright-cli install-browser chromium
+
+      - name: Run the deterministic browser journey
+        run: bin/browser-journey

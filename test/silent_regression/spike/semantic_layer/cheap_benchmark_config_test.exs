@@ -21,9 +21,6 @@ defmodule SilentRegression.Spike.SemanticLayer.CheapBenchmarkConfigTest do
     assert CheapBenchmarkConfig.heldout().fixture_set_id ==
              "semantic-pairs-heldout-control-20260910T042832Z-1-v1-approved"
 
-    for source <- null_sources,
-        do: assert_file_hash(source.path, source.artifact_sha256)
-
     assert_file_hash(
       CheapBenchmarkConfig.tuning().path,
       CheapBenchmarkConfig.tuning().artifact_sha256
@@ -33,6 +30,14 @@ defmodule SilentRegression.Spike.SemanticLayer.CheapBenchmarkConfigTest do
       CheapBenchmarkConfig.heldout().path,
       CheapBenchmarkConfig.heldout().artifact_sha256
     )
+  end
+
+  @tag :runtime_artifact
+  test "matches the private live-run artifacts when they are locally available" do
+    sources = [CheapBenchmarkConfig.baseline() | CheapBenchmarkConfig.fit_controls()]
+
+    for source <- sources,
+        do: assert_file_hash(source.path, source.artifact_sha256)
   end
 
   test "predeclares three distinct evaluation seeds and the complete correction family" do

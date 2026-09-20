@@ -1,11 +1,9 @@
 defmodule SilentRegression.Spike.SemanticLayer.CheapBenchmarkFreezeTest do
   use ExUnit.Case, async: true
 
-  alias SilentRegression.Spike.SemanticLayer.BenchmarkResult
   alias SilentRegression.Spike.SemanticLayer.CheapBenchmarkFreeze
-  alias SilentRegression.Spike.SemanticLayer.Storage
 
-  test "pins a passing tuning selection and every final-evaluation input" do
+  test "pins the selection policy and committed held-out fixture input" do
     assert {:ok, freeze} = CheapBenchmarkFreeze.load()
 
     assert freeze["selection_policy"]["heldout_labels_used"] == false
@@ -14,12 +12,21 @@ defmodule SilentRegression.Spike.SemanticLayer.CheapBenchmarkFreezeTest do
              "semantic-representation-field-aware-v2"
            ]
 
+    assert_file_hash(freeze["heldout_fixture_set"])
+  end
+
+  @tag :runtime_artifact
+  test "matches private tuning artifacts when they are locally available" do
+    assert {:ok, freeze} = CheapBenchmarkFreeze.load()
+
     assert_file_hash(freeze["tuning_result"])
     assert_file_hash(freeze["selected_representation"])
     assert_file_hash(freeze["calibration"])
-    assert_file_hash(freeze["heldout_fixture_set"])
 
-    assert {:ok, tuning} = read_benchmark(freeze["tuning_result"]["path"])
+    assert {:ok, tuning} =
+             SilentRegression.Spike.SemanticLayer.Storage.read(freeze["tuning_result"]["path"])
+
+    assert %SilentRegression.Spike.SemanticLayer.BenchmarkResult{} = tuning
     assert tuning.evaluation_role == "method_selection"
     assert tuning.summary["gate_status"] == "passed"
 
@@ -37,13 +44,6 @@ defmodule SilentRegression.Spike.SemanticLayer.CheapBenchmarkFreezeTest do
 
     assert {:error, %{type: :invalid_selected_representation}} =
              CheapBenchmarkFreeze.validate(changed_method)
-  end
-
-  defp read_benchmark(path) do
-    case Storage.read(path) do
-      {:ok, %BenchmarkResult{} = result} -> {:ok, result}
-      other -> other
-    end
   end
 
   defp assert_file_hash(reference) do
