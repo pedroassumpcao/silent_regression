@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate B — Recoverable monitoring
-- Current task: Task 22 — successor workflow configuration (in progress)
+- Current task: Task 23 — incident-centered alerting (next)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -19,7 +19,7 @@
 | 19 | Credential successor rebinding | Complete (`b5ae9f5`, `eaf97fd`) |
 | 20 | Authentication breaker recovery | Complete (`e639ce6`, `5d42d0a`, `6403357`) |
 | 21 | Temporary capacity and coverage state | Complete (`0b06ca8`) |
-| 22 | Successor workflow configuration | In progress |
+| 22 | Successor workflow configuration | Complete (`20367c0`) |
 | 23 | Incident-centered alerting | Not started |
 | 24 | Reviewed reference capture language | Not started |
 | 25 | Credential-free demo and focused imports | Not started |
@@ -278,11 +278,11 @@ half are complete; Task 22 is next.
 - [x] Define a copied successor setup that does not affect active execution while it is edited.
 - [x] Define atomic activation, exact-model proof, contract carry-forward, and mandatory replacement
   reference behavior.
-- [ ] Add additive setup origin/motivation schema and partial in-progress uniqueness.
-- [ ] Implement start/edit/complete/preview/activate operations and review linkage.
-- [ ] Add authenticated successor UI and entry points.
-- [ ] Prove a missed-regression case addition through replacement reference and restored service.
-- [ ] Run migration audits and all verification gates; record focused commits.
+- [x] Add additive setup origin/motivation schema and partial in-progress uniqueness.
+- [x] Implement start/edit/complete/preview/activate operations and review linkage.
+- [x] Add authenticated successor UI and entry points.
+- [x] Prove a missed-regression case addition through replacement reference and restored service.
+- [x] Run migration audits and all verification gates; record focused commits.
 
 Decisions:
 
@@ -300,3 +300,21 @@ Decisions:
   identity changes. The preview says this before activation and old captures remain unchanged.
 - Only one in-progress setup is allowed per monitor, while completed cold-start and successor setups
   remain durable history through a partial unique index.
+
+Local implementation commits:
+
+- `3383065` — Task 22 research decisions and execution plan
+- `20367c0` — copied successor authoring, governed activation, review linkage, and recovery proof
+
+The additive migrations preserved all four existing completed setups, produced zero inferred
+successor rows, and left zero duplicate in-progress rows. The partial unique index, immutable-origin
+trigger, provenance-preserving foreign keys, and expanded product-event constraint are installed.
+No local data wipe was needed.
+
+Verification passed on 2026-09-20 (America/Chicago): `mix precommit` with 644 Elixir tests, 59
+frontend tests with TypeScript checking, and `mix assets.build`. End-to-end coverage proves a
+reviewed missed regression can seed a case change, active monitoring and its reference remain valid
+through mutable and immutable draft preparation, stale activation rolls back, exact-model and
+active-run guards fail closed, activation carries forward exact contract proof, a replacement
+reviewed reference is required, and explicit schedule activation restores service. Workspace purge
+also removes the full successor-origin graph. Task 22 and Gate B are complete; Task 23 is next.

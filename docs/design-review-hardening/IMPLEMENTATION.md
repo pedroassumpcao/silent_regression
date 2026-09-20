@@ -158,6 +158,10 @@ recovers automatically without becoming a permanent pause or weakening the works
    rejection, atomic activation, immutable history, case-addition motivation, replacement reference,
    and schedule restoration.
 
+Completion: implemented in `20367c0`; all verification gates passed. Active monitoring now remains
+authoritative throughout successor editing and immutable candidate review, while owner activation
+atomically changes future execution and enters the existing replacement-reference lifecycle.
+
 ## Gate C — Pilot usability
 
 ### Task 23: incident-centered alerting

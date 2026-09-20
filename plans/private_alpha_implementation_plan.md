@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–21 complete; Task 22 is in progress; Gate A is complete and Gates B–D block the first design-partner pilot
+> **Status:** Tasks 1–22 complete; Task 23 is next; Gates A–B are complete and Gates C–D block the first design-partner pilot
 >
-> **Progress:** 21 of 27 tasks complete; Task 22 is in progress
+> **Progress:** 22 of 27 tasks complete; Task 23 is next
 >
 > **Last revised:** 2026-09-20
 >
@@ -318,8 +318,8 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 18 | Contract proof coverage, severity, and bounded rescore | 17 | Complete | `fd2194d`, `67e20fb`, `9d1cda5` |
 | 19 | Credential successor rebinding | 16 | Complete | `640cb8a`, `b5ae9f5`, `eaf97fd`, `a856b28` |
 | 20 | Authentication-breaker recovery | 19 | Complete | `b2e6d80`, `e639ce6`, `5d42d0a`, `6403357` |
-| 21 | Temporary capacity and coverage state | 20 | In progress | — |
-| 22 | Successor workflow configuration | 17, 19–21 | Not started | — |
+| 21 | Temporary capacity and coverage state | 20 | Complete | `628ea87`, `0b06ca8`, `54b23fc` |
+| 22 | Successor workflow configuration | 17, 19–21 | Complete | `3383065`, `20367c0` |
 | 23 | Incident-centered alerting | 18, 22 | Not started | — |
 | 24 | Reviewed reference capture language | 16–18, 23 | Not started | — |
 | 25 | Credential-free demo and focused imports | 17, 18, 24 | Not started | — |
@@ -1086,7 +1086,7 @@ checking, and a production asset build.
 
 ### Task 22 — Successor workflow configuration
 
-**Status:** In progress
+**Status:** Complete
 
 **Gate:** B — Recoverable monitoring
 
@@ -1095,12 +1095,12 @@ an immutable successor rather than recreating the monitor.
 
 **Checklist:**
 
-- [ ] Copy active configuration into a persisted successor draft with origin linkage.
-- [ ] Support safe edit/resume/validation without mutating approved history.
-- [ ] Link the successor to a motivating review when one exists.
-- [ ] Preview compatibility and reviewed-reference invalidation before activation.
-- [ ] Activate atomically and reuse the corrected replacement-reference lifecycle.
-- [ ] Test a missed-regression review that adds a case and returns the monitor to service.
+- [x] Copy active configuration into a persisted successor draft with origin linkage.
+- [x] Support safe edit/resume/validation without mutating approved history.
+- [x] Link the successor to a motivating review when one exists.
+- [x] Preview compatibility and reviewed-reference invalidation before activation.
+- [x] Activate atomically and reuse the corrected replacement-reference lifecycle.
+- [x] Test a missed-regression review that adds a case and returns the monitor to service.
 
 **Implementation decision:** Copy the active executable configuration into a new mutable setup with
 durable source-version and optional motivating-review links. Only completion creates an immutable
@@ -1110,6 +1110,15 @@ transaction that retires/approves contract evidence, advances version lineage, a
 credential, and moves the monitor to replacement-reference capture. Every successor invalidates the
 old reviewed reference explicitly; normal reference approval plus schedule activation restores
 service.
+
+**Completion:** Implemented in `20367c0`. Owners can copy an active configuration from Operations or
+a prompt/case/provider review, safely edit and resume it without changing execution, seal an
+immutable candidate, inspect exact changed areas and activation guards, and atomically activate it
+only with exact-model proof, unchanged approved contract proof, and no unfinished run. Activation
+preserves historical evidence, requires a replacement reviewed reference, and returns through the
+existing explicit schedule flow. Additive migration audits preserved all four local setup histories;
+all gates passed with 644 Elixir tests, 59 frontend tests, TypeScript checking, and a production
+asset build.
 
 ### Task 23 — Incident-centered alerting
 
@@ -2130,6 +2139,28 @@ The product is ready for the first external design partner only when:
   UTC recovery, cap reauthorization, exact scheduled identity, email deduplication, closure, and
   purge.
 - Focused commit: `0b06ca8`. Task 22 is next.
+
+### 2026-09-20 — Task 22 complete
+
+- Added durable source-version and optional motivating-review provenance to mutable setup history,
+  with one partial-unique in-progress setup per monitor and database-protected immutable origins.
+- Copied the active provider request, model, credential selection, generation/response settings,
+  cases, and expectations into a resumable successor without changing active execution.
+- Made setup completion produce only an immutable draft. Approved references remain compatible and
+  scheduled monitoring continues until an owner performs governed activation.
+- Added an authenticated workspace successor review surface with exact changed areas, model proof,
+  contract proof, active-run state, replacement-reference impact, and owner-only confirmation.
+- Linked prompt/case/provider review actions directly to successor creation while keeping contract
+  changes in the separate contract-revision workflow.
+- Activated source/candidate version lineage, unchanged contract proof, credential selection, and
+  monitor replacement-reference state in one locked transaction with stale-preview protection.
+- Proved the full missed-regression case-addition path through replacement reference approval and
+  explicit schedule restoration, plus tenant/role, rollback, migration, and purge behavior.
+- Migration audit preserved all four existing completed setup rows, created no successor rows, and
+  found no duplicate in-progress rows. No local data wipe was needed.
+- Verification passed with `mix precommit` (644 Elixir tests), frontend TypeScript and 59 tests, and
+  `mix assets.build`.
+- Focused commits: `3383065` and `20367c0`. Task 23 is next.
 
 ## 17. References
 
