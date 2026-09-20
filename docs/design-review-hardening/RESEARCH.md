@@ -340,6 +340,33 @@ The action queue uses ordinary page-number pagination at 20 incidents per page a
 history at 25 per page. Counts come from database aggregates rather than the visible page, so broad
 failure volume cannot make the workspace summary misleading.
 
+#### Task 24 reviewed-reference language boundary
+
+The product keeps `baseline` in routes, schemas, context APIs, and immutable provenance fields.
+Renaming those stable internals would add migration and compatibility risk without changing the
+customer's evidence. Customer-facing copy instead uses **reviewed reference capture** or **pinned
+reviewed reference** wherever “baseline” could imply a learned distribution or universal health.
+
+The capture and results surfaces must explain four separate jobs:
+
+- the approved shared contract defines configuration-wide deterministic constraints;
+- case-specific expectations define the exact answer properties required for individual cases;
+- the reviewed reference capture pins exact provider/model/configuration provenance, records
+  inspected outputs, and supplies conservative latency/token reference maxima; and
+- recurring monitoring samples the configured cases at the selected cadence. A passing sample is
+  evidence for that execution, not proof of universal behavior or a measured failure probability.
+
+Call counts are also distinct evidence. **Planned calls** are the normal execution count,
+**maximum reserved calls** include bounded retry capacity and are used for authorization/limits,
+and **actual calls** exist only after provider attempts. The application has no versioned provider
+price table, currency, or exchange-rate snapshot, so a currency estimate must be labeled
+unavailable rather than inferred from call or token ceilings.
+
+Exceptional reference approval records that an owner inspected and accepted deterministic failures
+in that exact reference membership. It does not weaken the approved contract, suppress later
+findings, or establish that the same future output is acceptable; incident occurrences retain an
+explicit exceptional-reference flag.
+
 ## Data-model impact
 
 A local data wipe is **not required or recommended**. The changes can be additive and the existing

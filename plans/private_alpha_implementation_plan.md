@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–23 complete; Task 24 is next; Gates A–B are complete and Gates C–D block the first design-partner pilot
+> **Status:** Tasks 1–23 complete; Task 24 is in progress; Gates A–B are complete and Gates C–D block the first design-partner pilot
 >
-> **Progress:** 23 of 27 tasks complete; Task 24 is next
+> **Progress:** 23 of 27 tasks complete; Task 24 is in progress
 >
 > **Last revised:** 2026-09-20
 >
@@ -1140,7 +1140,7 @@ every piece of exact evidence.
 
 ### Task 24 — Reviewed reference capture language
 
-**Status:** Not started
+**Status:** In progress
 
 **Gate:** C — Pilot usability
 

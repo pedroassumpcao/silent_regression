@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate C — Pilot usability
-- Current task: Task 24 — reviewed reference capture language (not started)
+- Current task: Task 24 — reviewed reference capture language (in progress)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -21,7 +21,7 @@
 | 21 | Temporary capacity and coverage state | Complete (`0b06ca8`) |
 | 22 | Successor workflow configuration | Complete (`20367c0`) |
 | 23 | Incident-centered alerting | Complete (`85a99f4`) |
-| 24 | Reviewed reference capture language | Not started |
+| 24 | Reviewed reference capture language | In progress |
 | 25 | Credential-free demo and focused imports | Not started |
 | 26 | Reproducible verification and toolchain | Not started |
 | 27 | Hosted security and operations | Not started |
@@ -368,3 +368,26 @@ review-bound owner resolution, linked episodes after resolution or conservative 
 exceptional-reference disclosure, tenant isolation, and recovered-incident purge. A 50-occurrence
 load test retained every exact alert and occurrence while enqueueing only counts 1, 5, 20, and 50.
 Task 23 is complete; Task 24 is next.
+
+## Task 24 log
+
+- [x] Inventory customer-facing baseline, sampling, operational comparison, and spend language.
+- [x] Confirm that stable internal baseline schemas/routes remain unchanged.
+- [x] Define reviewed-reference, sampling-limit, exceptional-approval, and call-accounting copy.
+- [ ] Update capture, operations, results, run evidence, recovery, and public privacy surfaces.
+- [ ] Add copy regressions for the four evidence roles and unavailable currency estimate.
+- [ ] Run frontend/backend/build gates and record the focused commit.
+
+Decisions:
+
+- Customer copy says “reviewed reference capture” where “baseline” could imply statistical
+  calibration; stable internal names and URLs remain unchanged.
+- Contract rules, case expectations, reviewed-reference provenance/operational maxima, and recurring
+  samples are four separate evidence layers and will be explained together.
+- One configured sample is evidence for that exact execution, not universal health or a measured
+  regression probability. Increasing samples changes coverage and spend but still does not prove a
+  distribution.
+- Maximum reserved calls include retry capacity; actual calls are provider attempts. Currency cost
+  is unavailable because the product has no versioned provider price/currency snapshot.
+- Exceptional approval is attributable acceptance of the exact reference membership only. It does
+  not suppress later incidents or weaken deterministic rules.
