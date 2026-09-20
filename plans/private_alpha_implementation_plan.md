@@ -2,7 +2,7 @@
 
 > **Status:** Tasks 1–16 complete; design-review hardening is in progress and Gates A–D block the first design-partner pilot
 >
-> **Progress:** 16 of 27 tasks complete; Task 17 in progress
+> **Progress:** 17 of 27 tasks complete; Task 18 is next
 >
 > **Last revised:** 2026-09-19
 >
@@ -949,7 +949,7 @@ Anthropic `claude-haiku-4-5-20251001` smoke passed the same gates in one call an
 
 ### Task 17 — Case-specific deterministic expectations
 
-**Status:** In progress
+**Status:** Complete
 
 **Gate:** A — Product truth
 
@@ -961,10 +961,10 @@ shapes and values.
 - [x] Define a bounded expectation schema for labels, typed JSON Pointer values, alternatives,
   numeric tolerances, source IDs, and abstention.
 - [x] Add immutable expectation data and schema identity to case versions.
-- [ ] Extend manual setup and versioned import with usable expectation authoring.
+- [x] Extend manual setup and versioned import with usable expectation authoring.
 - [x] Evaluate observations against both the shared contract and exact case expectation fingerprint.
-- [ ] Present expectation evidence separately from generic contract evidence.
-- [ ] Add conformance, held-out, historical-rescore, and end-to-end coverage.
+- [x] Present expectation evidence separately from generic contract evidence.
+- [x] Add conformance, held-out, historical-rescore, and end-to-end coverage.
 
 **Acceptance criteria:**
 
@@ -1220,7 +1220,7 @@ The product is ready for the first external design partner only when:
 - [x] OpenAI and Anthropic smoke tests pass under explicit call caps.
 - [x] Every behavior-affecting edit produces a compatible new version or invalidates the baseline.
 - [x] Scheduled work is durable, bounded, and unique.
-- [ ] Exact provider-native request artifacts and case-specific expectations are proven end to end.
+- [x] Exact provider-native request artifacts and case-specific expectations are proven end to end.
 - [ ] Credential, authentication-breaker, and temporary-capacity recovery pass full lifecycle tests.
 - [ ] Recurring failures produce bounded incident notifications while preserving exact evidence.
 - [x] Alerts show deterministic evidence and do not claim semantic understanding.
@@ -1957,6 +1957,28 @@ The product is ready for the first external design partner only when:
   `results/provider_smoke/anthropic-20260920T034202Z-a3fedd4f-e6ef-457a-8f00-153bc5d229d3.json`.
 - With local verification and both separately authorized provider smokes passing, Task 16 is
   complete. Task 17, case-specific deterministic expectations, is next.
+
+### 2026-09-19 — Task 17 complete
+
+- Added explicit `no_case_expectation` and bounded `case_expectation_v1` schemas covering labels,
+  typed JSON Pointer values, numeric tolerances, source IDs, and abstention without executable or
+  semantic predicates.
+- Added immutable expectation payloads and fingerprints to case versions and separate shared
+  contract, case-expectation, and overall outcomes to capture evaluations. Existing local rows were
+  backfilled without a data wipe; legacy case fingerprints remain stable.
+- Kept case import v1 compatible, added v2 expectation imports, and added manual JSON authoring,
+  exact review summaries, validation limits, and explicit no-expectation labels.
+- Bound both live capture and historical rescore to the immutable case expectation fingerprint.
+  Baseline review, result history, run detail, diagnostics, and alerts now keep shared-contract,
+  case-specific, and operational evidence separate.
+- Added a distinct `case_expectation_failure` alert category. End-to-end coverage proves an output
+  can pass the globally allowed-label contract while failing the exact case expectation, without a
+  misleading contract-failure alert.
+- Conformance, held-out, numeric-boundary, legacy-import, migration/backfill, historical-rescore,
+  controller, frontend, and end-to-end coverage pass. Final local gates: 619 Elixir tests, 48
+  frontend tests, TypeScript checking, and `mix assets.build`.
+- Focused commits: `8308389`, `d19d9e9`, `736c64f`, `c0e081a`, and `3ccee78`.
+- Task 17 and its Gate A product-truth scope are complete. Task 18 is next.
 
 ## 17. References
 

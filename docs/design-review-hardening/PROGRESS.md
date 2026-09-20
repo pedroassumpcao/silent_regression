@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate A — Product truth
-- Current task: Task 17 — case-specific expectations (in progress)
+- Current task: Task 18 — contract proof coverage, severity, and bounded rescore (not started)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | 15 | Review program and truthful public evidence | Complete (`d49b997`) |
 | 16 | Provider-native request artifacts | Complete |
-| 17 | Case-specific expectations | In progress |
+| 17 | Case-specific expectations | Complete |
 | 18 | Contract proof coverage, severity, and bounded rescore | Not started |
 | 19 | Credential successor rebinding | Not started |
 | 20 | Authentication breaker recovery | Not started |
@@ -78,6 +78,26 @@ latency. Task 16 is complete.
 - [x] Implement expectation parsing, evaluation, fingerprints, and fixtures.
 - [x] Add additive immutable persistence and legacy backfills.
 - [x] Bind capture and historical-rescore evaluation to exact case expectations.
-- [ ] Extend setup/import and review authoring.
-- [ ] Present expectation evidence separately in results and alerts.
-- [ ] Run all verification gates and record focused commits.
+- [x] Extend setup/import and review authoring.
+- [x] Present expectation evidence separately in baseline review, run history, run detail, and alerts.
+- [x] Prove expectation-only failures end to end while the shared contract passes.
+- [x] Run all verification gates and record focused commits.
+
+Local implementation commits:
+
+- `8308389` — Task 17 research, schema decision, and execution checklist
+- `d19d9e9` — bounded parser/evaluator and conformance/held-out fixtures
+- `736c64f` — additive immutable persistence, capture evaluation, rescore, and import compatibility
+- `c0e081a` — manual/import authoring and exact setup review
+- `3ccee78` — separate result evidence and case-expectation alert category
+
+The two additive migrations preserved all local history. The backfill audit found 4/4 existing case
+versions in explicit `no_case_expectation`, 14/14 existing evaluations with their original status
+preserved as `contract_status`, and the immutable-evaluation trigger still installed. Case import v1
+remains accepted and produces the explicit no-expectation state; import v2 carries optional bounded
+expectations.
+
+Local gates passed on 2026-09-19 (America/Chicago): 619 Elixir tests, 48 frontend tests,
+TypeScript checking, and `mix assets.build`. End-to-end coverage proves that `rejected` can pass the
+shared allowed-label contract while failing a case that expects `approved`, producing only a
+distinct `case_expectation_failure` alert. Task 17 is complete.

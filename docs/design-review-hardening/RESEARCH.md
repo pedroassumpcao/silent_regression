@@ -112,7 +112,8 @@ Each immutable case version should be able to declare bounded expectations such 
 - numeric values with explicit tolerance;
 - required/allowed source identifiers;
 - abstention requirements; and
-- expected deterministic rule outcomes where that remains useful.
+- a separate result for every configured case check, while shared-rule outcomes stay on the
+  contract layer.
 
 Evaluation must bind an observation to the exact case expectation fingerprint. Expectations are
 not executable code, regular expressions, or semantic scoring. Generic contract rules remain
