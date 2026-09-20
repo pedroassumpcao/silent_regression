@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–18 complete; Gate A is complete and Gates B–D block the first design-partner pilot
+> **Status:** Tasks 1–18 complete; Task 19 is in progress; Gate A is complete and Gates B–D block the first design-partner pilot
 >
-> **Progress:** 18 of 27 tasks complete; Task 19 is next
+> **Progress:** 18 of 27 tasks complete; Task 19 is in progress
 >
 > **Last revised:** 2026-09-19
 >
@@ -316,7 +316,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 16 | Provider-native request artifacts | 15 | Complete | `20aa6e2`, `ffb1675`, `7123ea7`, `a6b909f`, `d26177a`, `1805ee7`, `38eec36` |
 | 17 | Case-specific deterministic expectations | 16 | Complete | `8308389`, `d19d9e9`, `736c64f`, `c0e081a`, `3ccee78`, `3ae10cc` |
 | 18 | Contract proof coverage, severity, and bounded rescore | 17 | Complete | `fd2194d`, `67e20fb`, `9d1cda5` |
-| 19 | Credential successor rebinding | 16 | Not started | — |
+| 19 | Credential successor rebinding | 16 | In progress | — |
 | 20 | Authentication-breaker recovery | 19 | Not started | — |
 | 21 | Temporary capacity and coverage state | 20 | Not started | — |
 | 22 | Successor workflow configuration | 17, 19–21 | Not started | — |
@@ -999,7 +999,7 @@ already supported by the engine.
 
 ### Task 19 — Credential successor rebinding
 
-**Status:** Not started
+**Status:** In progress
 
 **Gate:** B — Recoverable monitoring
 
@@ -1013,6 +1013,14 @@ already supported by the engine.
 - [ ] Preserve historical credential IDs and audit the replacement relationship.
 - [ ] Apply the conservative reviewed-reference compatibility policy and show any replacement need.
 - [ ] Test rotation through validation, rebinding, resume, and bounded fake-provider execution.
+
+**Implementation decision:** Rotation is a staged successor operation. Creating the successor keeps
+the predecessor usable; exact model checks are persisted per credential/model; owner activation
+validates every affected active/draft model and atomically moves only future monitor references.
+Credential identity conservatively invalidates the reviewed reference, so active monitors pause for
+a replacement reference and ordinary schedule activation. In-progress runs or pending reference
+captures block cutover. Historical run/reference credential IDs and legacy rotation lineages remain
+unchanged and recoverable.
 
 ### Task 20 — Authentication-breaker recovery
 

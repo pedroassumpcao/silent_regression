@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate B — Recoverable monitoring
-- Current task: Task 19 — credential successor rebinding (next)
+- Current task: Task 19 — credential successor rebinding (in progress)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -16,7 +16,7 @@
 | 16 | Provider-native request artifacts | Complete |
 | 17 | Case-specific expectations | Complete |
 | 18 | Contract proof coverage, severity, and bounded rescore | Complete |
-| 19 | Credential successor rebinding | Not started |
+| 19 | Credential successor rebinding | In progress |
 | 20 | Authentication breaker recovery | Not started |
 | 21 | Temporary capacity and coverage state | Not started |
 | 22 | Successor workflow configuration | Not started |
@@ -141,3 +141,29 @@ frontend tests with TypeScript checking, and `mix assets.build`. Focused coverag
 51-item snapshot split into 50/1 batches, exclusion of a later observation, continued use of the old
 approved contract while pending, evaluator-error failure without partial activation, and retry-draft
 recovery. Task 18 and Gate A are complete.
+
+## Task 19 log
+
+- [x] Reconfirm the accepted credential-recovery finding and inspect credential rotation,
+  monitor/setup attachment, exact-model validation, capture planning, reviewed-reference
+  compatibility, scheduling, routes, and the current credential UI.
+- [x] Define staged successor activation, durable per-model validation, atomic impact locking,
+  in-flight-work blockers, historical provenance preservation, and conservative reference
+  invalidation.
+- [ ] Add the per-model validation schema/backfill and route readiness through it.
+- [ ] Implement staged rotation and transactional successor activation.
+- [ ] Expose impact and recovery guidance through authenticated workspace product flows.
+- [ ] Prove rotation, multi-model validation, rebinding, replacement reference capture, schedule
+  activation, and bounded fake-provider execution.
+- [ ] Run migration audits and all verification gates; record focused commits.
+
+Decisions:
+
+- A newly created successor does not supersede a still-usable predecessor. Supersession and monitor
+  rebinding happen together only after successful validation and owner activation.
+- Exact model access is durable per credential/model. The existing last-validation fields remain a
+  safe summary but are no longer the authorization proof for every monitor.
+- Credential identity remains part of reviewed-reference compatibility. Rebinding never blesses an
+  old reference captured with different secret material.
+- Pending captures block activation; Task 19 will not silently cancel already-authorized work.
+- Existing already-superseded rotation lineages remain eligible for recovery without a data reset.

@@ -74,9 +74,21 @@ complete.
 
 ### Task 19: credential successor rebinding
 
-- Show affected monitors and validate the successor against their requested models.
-- Rebind future execution atomically while preserving historical credential provenance.
-- Apply a conservative reference-compatibility policy and resume through public product flows.
+1. Add workspace-scoped, per-credential/model validation state and backfill exact successful legacy
+   validations. Route baseline and operations readiness through that state while retaining the
+   credential's last-validation fields as a safe human-readable summary.
+2. Change rotation into a staged successor: preserve the predecessor until activation, reject
+   duplicate pending successors, and keep legacy already-superseded predecessors recoverable.
+3. Present directly attached monitors, active/draft requested models, successor lineage, and the
+   reviewed-reference consequence on the credential page.
+4. Add an owner-only activation operation. Validate each distinct affected model without completion
+   calls, then lock the credential pair and affected monitors, reject in-progress run/reference work,
+   recheck the impact snapshot, and atomically update future monitor references.
+5. Preserve all historical capture/reference credential IDs. Treat credential identity as a
+   conservative reviewed-reference compatibility field, pause active monitors as incompatible, and
+   direct owners through replacement reference capture and ordinary schedule activation.
+6. Add context, controller, frontend, migration/backfill, concurrency/blocker, and full fake-provider
+   lifecycle tests. Run frontend checks, `mix precommit`, and the production asset build.
 
 ### Task 20: authentication breaker recovery
 

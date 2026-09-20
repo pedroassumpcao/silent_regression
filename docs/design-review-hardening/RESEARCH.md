@@ -203,6 +203,29 @@ or batch dependency is introduced.
 - Workflow changes start from an immutable successor draft copied from the active configuration.
   Activation discloses reference invalidation and links back to the motivating review when present.
 
+#### Task 19 credential-replacement boundary
+
+Credential replacement is a staged activation rather than an immediate supersession:
+
+- creating a successor keeps the predecessor usable until the owner activates the replacement;
+- the credential screen shows every directly attached monitor and the active/draft model
+  requirements that the replacement must satisfy;
+- exact model-access results are stored per credential/model instead of relying on the credential's
+  single last-validation summary;
+- activation validates every distinct affected model with non-generative provider metadata calls,
+  then locks the predecessor, successor, and affected monitors for one future-reference cutover;
+- an in-progress capture or pending reference capture blocks cutover rather than cancelling or
+  silently invalidating already-authorized work;
+- capture runs, observations, and reference snapshots retain their original credential IDs; only
+  `monitors.provider_credential_id` changes; and
+- credential identity remains part of reviewed-reference compatibility. Active monitors are paused
+  with `incompatible_configuration` at cutover and use the existing public replacement-reference
+  and schedule flows to return to service.
+
+Legacy rotations whose predecessor was already marked superseded remain recoverable through the
+same activation operation. Existing successful exact-model validation summaries are backfilled into
+the per-model table; no historical row or local workspace data is rewritten.
+
 ### Incident-centered alerts
 
 Observations and evaluations remain immutable. A mutable incident groups the actionable lifecycle
