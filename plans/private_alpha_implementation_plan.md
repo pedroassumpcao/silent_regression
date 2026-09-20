@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–15 complete; design-review hardening is in progress and Gates A–D block the first design-partner pilot
+> **Status:** Tasks 1–16 complete; design-review hardening is in progress and Gates A–D block the first design-partner pilot
 >
-> **Progress:** 15 of 27 tasks complete; Task 16 in progress
+> **Progress:** 16 of 27 tasks complete; Task 17 is next
 >
 > **Last revised:** 2026-09-19
 >
@@ -313,7 +313,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 13 | Structured review and versioned correction loop | 8, 12 | Complete | `56066af`, `124bf89`, `c82203e`, `631b68a`, `6133982`, `a79bcaa` |
 | 14 | Onboarding telemetry, notifications, security, and pilot readiness | 2–13 | Complete | `9e40ee9`, `f45a06e`, `1ab2387`, `57d031d`, `0aacfcd`, `fe3e7e5`, `babfbf6`, `227e778`, `985481b`, `0824532` |
 | 15 | Design-review program and truthful public evidence | 1–14 | Complete | `d49b997` |
-| 16 | Provider-native request artifacts | 15 | In progress | — |
+| 16 | Provider-native request artifacts | 15 | Complete | `20aa6e2`, `ffb1675`, `7123ea7`, `a6b909f`, `d26177a`, `1805ee7`, `38eec36` |
 | 17 | Case-specific deterministic expectations | 16 | Not started | — |
 | 18 | Contract proof coverage, severity, and bounded rescore | 17 | Not started | — |
 | 19 | Credential successor rebinding | 16 | Not started | — |
@@ -909,7 +909,7 @@ first concrete product overclaim.
 
 ### Task 16 — Provider-native request artifacts
 
-**Status:** In progress
+**Status:** Complete
 
 **Gate:** A — Product truth
 
@@ -926,7 +926,7 @@ artifact without silently changing legacy monitors.
 - [x] Remove product execution's dependency on spike prompt construction while preserving the spike.
 - [x] Add setup-to-wire payload tests proving no undisclosed wrapper or empty-context sentence is added.
 - [x] Run the separately authorized OpenAI smoke test after local gates pass.
-- [ ] Run the separately authorized Anthropic smoke test after local gates pass.
+- [x] Run the separately authorized Anthropic smoke test after local gates pass.
 
 **Local completion evidence:** `provider_native_v1` now emits strict OpenAI Responses or Anthropic
 Messages artifacts with no implicit wrapper, while migrated versions remain `legacy_wrapped_v1`.
@@ -937,8 +937,9 @@ evidence exposes the receipt mode, schema, and fingerprint. The local data migra
 existing rows and defaults only new setups to native mode. Verification passed with 608 Elixir
 tests, 46 frontend tests, TypeScript checking, and the production asset build. The separately
 authorized OpenAI `gpt-5.6-luna` smoke passed in one call and one attempt with exact model
-provenance, a complete response, and a passing deterministic contract. The task remains in progress
-solely for the separately authorized Anthropic live smoke call.
+provenance, a complete response, and a passing deterministic contract. The separately authorized
+Anthropic `claude-haiku-4-5-20251001` smoke passed the same gates in one call and one attempt. Task
+16 is complete.
 
 **Acceptance criteria:**
 
@@ -1942,6 +1943,20 @@ The product is ready for the first external design partner only when:
 - A secret-free passed receipt was written to
   `results/provider_smoke/openai-20260920T033924Z-aea0ee3e-67d3-4e08-95aa-10965aa0ba84.json`.
   Task 16 remains in progress for the separately authorized Anthropic smoke gate.
+
+### 2026-09-19 — Task 16 complete
+
+- Received separate just-in-time authorization for exactly one Anthropic
+  `claude-haiku-4-5-20251001` call using preview fingerprint
+  `04fa0a8615c82154f3d5137773fad27f5554d39044a6241f02fcf94e3812ee32`.
+- Anthropic completed the native request successfully in one call and one attempt. The returned
+  model exactly matched the requested model, completion was complete, and the deterministic
+  `approved` contract passed with 30 input tokens, 4 output tokens, 8 output bytes, and 800 ms
+  latency.
+- A secret-free passed receipt was written to
+  `results/provider_smoke/anthropic-20260920T034202Z-a3fedd4f-e6ef-457a-8f00-153bc5d229d3.json`.
+- With local verification and both separately authorized provider smokes passing, Task 16 is
+  complete. Task 17, case-specific deterministic expectations, is next.
 
 ## 17. References
 
