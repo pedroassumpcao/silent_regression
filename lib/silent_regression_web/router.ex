@@ -23,6 +23,10 @@ defmodule SilentRegressionWeb.Router do
     plug SilentRegressionWeb.Plugs.FetchWorkspaceScope
   end
 
+  pipeline :recent_authentication do
+    plug :require_sudo_mode
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
   end
@@ -69,11 +73,6 @@ defmodule SilentRegressionWeb.Router do
     post "/monitors/:monitor_id/successor", MonitorSuccessorController, :start
     get "/monitors/:monitor_id/successor", MonitorSuccessorController, :show
 
-    post "/monitors/:monitor_id/successor/validate-model",
-         MonitorSuccessorController,
-         :validate_model
-
-    post "/monitors/:monitor_id/successor/activate", MonitorSuccessorController, :activate
     get "/monitors/:monitor_id/contract", ContractAuthoringController, :show
     put "/monitors/:monitor_id/contract", ContractAuthoringController, :save
     post "/monitors/:monitor_id/contract/fixtures", ContractAuthoringController, :create_fixture
@@ -97,19 +96,10 @@ defmodule SilentRegressionWeb.Router do
     post "/monitors/:monitor_id/contract/approve", ContractAuthoringController, :approve
     post "/monitors/:monitor_id/contract/revise", ContractAuthoringController, :revise
     get "/monitors/:monitor_id/baseline", BaselineController, :show
-    post "/monitors/:monitor_id/baseline/validate-model", BaselineController, :validate_model
-    post "/monitors/:monitor_id/baseline/authorize", BaselineController, :authorize
     post "/monitors/:monitor_id/baseline/approve", BaselineController, :approve
     post "/monitors/:monitor_id/baseline/reject", BaselineController, :reject
     get "/monitors/:monitor_id/operations", MonitorOperationsController, :show
-    patch "/monitors/:monitor_id/operations/schedule", MonitorOperationsController, :configure
-    post "/monitors/:monitor_id/operations/run-now", MonitorOperationsController, :run_now
     post "/monitors/:monitor_id/operations/pause", MonitorOperationsController, :pause
-    post "/monitors/:monitor_id/operations/resume", MonitorOperationsController, :resume
-
-    post "/monitors/:monitor_id/operations/authentication-recovery",
-         MonitorOperationsController,
-         :authorize_authentication_recovery
 
     get "/monitors/:monitor_id/results", RunResultController, :index
     get "/monitors/:monitor_id/runs/:run_id", RunResultController, :show
@@ -127,9 +117,29 @@ defmodule SilentRegressionWeb.Router do
     get "/settings/notifications", NotificationPreferenceController, :edit
     patch "/settings/notifications", NotificationPreferenceController, :update
     get "/settings/data", WorkspaceDataController, :edit
+    get "/credentials", ProviderCredentialController, :index
+  end
+
+  scope "/app/:workspace_slug", SilentRegressionWeb do
+    pipe_through [:browser, :authenticated, :workspace_scope, :recent_authentication]
+
+    post "/monitors/:monitor_id/successor/validate-model",
+         MonitorSuccessorController,
+         :validate_model
+
+    post "/monitors/:monitor_id/successor/activate", MonitorSuccessorController, :activate
+    post "/monitors/:monitor_id/baseline/validate-model", BaselineController, :validate_model
+    post "/monitors/:monitor_id/baseline/authorize", BaselineController, :authorize
+    patch "/monitors/:monitor_id/operations/schedule", MonitorOperationsController, :configure
+    post "/monitors/:monitor_id/operations/run-now", MonitorOperationsController, :run_now
+    post "/monitors/:monitor_id/operations/resume", MonitorOperationsController, :resume
+
+    post "/monitors/:monitor_id/operations/authentication-recovery",
+         MonitorOperationsController,
+         :authorize_authentication_recovery
+
     post "/settings/data/close", WorkspaceDataController, :close
     post "/settings/data/delete", WorkspaceDataController, :delete
-    get "/credentials", ProviderCredentialController, :index
     post "/credentials", ProviderCredentialController, :create
     post "/credentials/:id/validate", ProviderCredentialController, :validate
     post "/credentials/:id/rotate", ProviderCredentialController, :rotate

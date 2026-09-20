@@ -242,5 +242,23 @@ defmodule SilentRegressionWeb.UserAuth do
     put_session(conn, :user_return_to, current_path(conn))
   end
 
-  defp maybe_store_return_to(conn), do: conn
+  defp maybe_store_return_to(conn) do
+    case get_req_header(conn, "referer") do
+      [referer] -> maybe_store_local_referer(conn, URI.parse(referer))
+      _other -> conn
+    end
+  end
+
+  defp maybe_store_local_referer(conn, %URI{host: host, path: path, query: query})
+       when is_binary(path) do
+    if host == conn.host and String.starts_with?(path, "/") and
+         not String.starts_with?(path, "//") do
+      return_to = if query in [nil, ""], do: path, else: path <> "?" <> query
+      put_session(conn, :user_return_to, return_to)
+    else
+      conn
+    end
+  end
+
+  defp maybe_store_local_referer(conn, _uri), do: conn
 end
