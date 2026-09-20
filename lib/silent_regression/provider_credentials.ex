@@ -10,11 +10,16 @@ defmodule SilentRegression.ProviderCredentials do
 
   alias SilentRegression.Accounts.Scope
   alias SilentRegression.Audit
-  alias SilentRegression.ProviderCredentials.ProviderCredential
+  alias SilentRegression.Baselines.BaselineSnapshot
+  alias SilentRegression.Captures.CaptureRun
+  alias SilentRegression.Monitors.{ModelCatalog, Monitor}
+  alias SilentRegression.ProviderCredentials.{ModelValidation, ProviderCredential}
   alias SilentRegression.Providers
   alias SilentRegression.Providers.{CredentialValidation, Failure}
   alias SilentRegression.Repo
   alias SilentRegression.Workspaces.{Membership, Workspace}
+
+  @active_run_statuses [:planned, :queued, :running]
 
   @safe_fields [
     :id,
@@ -49,6 +54,69 @@ defmodule SilentRegression.ProviderCredentials do
 
   def list_credentials(%Scope{}), do: {:error, :workspace_required}
 
+  def list_credential_overviews(
+        %Scope{
+          workspace: %Workspace{id: workspace_id},
+          membership: %Membership{}
+        } = scope
+      ) do
+    credentials = list_credentials(scope)
+    impacts = credential_impacts(workspace_id)
+    verified_models = verified_models_by_credential(workspace_id)
+    credentials_by_id = Map.new(credentials, &{&1.id, &1})
+
+    successors =
+      credentials
+      |> Enum.reject(&(is_nil(&1.supersedes_id) or &1.status == :revoked))
+      |> Map.new(&{&1.supersedes_id, &1.id})
+
+    Enum.map(credentials, fn credential ->
+      replacement_impact =
+        if credential.supersedes_id && credential.status != :revoked do
+          impacts
+          |> Map.get(credential.supersedes_id, [])
+          |> Enum.map(&impact_for_target(&1, credential.id))
+        else
+          []
+        end
+
+      predecessor = Map.get(credentials_by_id, credential.supersedes_id)
+
+      replacement_pending =
+        credential.status != :revoked and not is_nil(predecessor) and
+          (credential.status != :valid or
+             predecessor.status in [:pending_validation, :valid, :invalid] or
+             Map.get(impacts, predecessor.id, []) != [])
+
+      credential
+      |> Map.put(
+        :attached_monitors,
+        impacts
+        |> Map.get(credential.id, [])
+        |> Enum.map(&impact_for_target(&1, credential.id))
+      )
+      |> Map.put(:replacement_impact, replacement_impact)
+      |> Map.put(:replacement_pending, replacement_pending)
+      |> Map.put(:successor_id, Map.get(successors, credential.id))
+      |> Map.put(:verified_models, Map.get(verified_models, credential.id, []))
+    end)
+  end
+
+  def list_credential_overviews(%Scope{}), do: {:error, :workspace_required}
+
+  def list_selectable_credentials(%Scope{} = scope) do
+    case list_credential_overviews(scope) do
+      overviews when is_list(overviews) ->
+        overviews
+        |> Enum.filter(&(&1.status == :valid))
+        |> Enum.reject(&(&1.replacement_pending or not is_nil(&1.successor_id)))
+        |> Enum.map(&Map.take(&1, @safe_fields))
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
   def get_credential(
         %Scope{
           workspace: %Workspace{id: workspace_id},
@@ -72,6 +140,35 @@ defmodule SilentRegression.ProviderCredentials do
   end
 
   def get_credential(%Scope{}, _credential_id), do: {:error, :workspace_required}
+
+  def model_access_verified?(%ProviderCredential{} = credential, model)
+      when is_binary(model) do
+    ModelValidation
+    |> where(
+      [validation],
+      validation.workspace_id == ^credential.workspace_id and
+        validation.provider_credential_id == ^credential.id and
+        validation.requested_model == ^model and validation.returned_model == ^model and
+        validation.status == :succeeded
+    )
+    |> Repo.exists?()
+  end
+
+  def model_access_verified?(_credential, _model), do: false
+
+  def verified_models(%ProviderCredential{} = credential) do
+    ModelValidation
+    |> where(
+      [validation],
+      validation.workspace_id == ^credential.workspace_id and
+        validation.provider_credential_id == ^credential.id and
+        validation.status == :succeeded and
+        validation.returned_model == validation.requested_model
+    )
+    |> order_by([validation], asc: validation.requested_model)
+    |> select([validation], validation.requested_model)
+    |> Repo.all()
+  end
 
   def create_credential(
         %Scope{
@@ -113,20 +210,13 @@ defmodule SilentRegression.ProviderCredentials do
       Repo.transaction(fn ->
         with %ProviderCredential{} = credential <- lock_credential(workspace.id, credential_id),
              :ok <- ensure_active(credential),
-             {:ok, superseded} <-
-               credential
-               |> ProviderCredential.supersede_changeset(DateTime.utc_now(:second))
-               |> Repo.update(),
+             :ok <- ensure_no_successor(credential),
              {:ok, successor} <-
                %ProviderCredential{}
-               |> ProviderCredential.rotation_changeset(workspace, user, superseded, attrs)
+               |> ProviderCredential.rotation_changeset(workspace, user, credential, attrs)
                |> Repo.insert(log: false) do
-          record_event!(superseded, user.id, "provider_credential.superseded", %{
-            "successor_id" => successor.id
-          })
-
           record_event!(successor, user.id, "provider_credential.rotated", %{
-            "supersedes_id" => superseded.id
+            "supersedes_id" => credential.id
           })
 
           to_safe_metadata(successor)
@@ -141,6 +231,32 @@ defmodule SilentRegression.ProviderCredentials do
   end
 
   def rotate_credential(%Scope{}, _credential_id, _attrs), do: {:error, :owner_required}
+
+  def activate_replacement(
+        %Scope{
+          workspace: %Workspace{id: workspace_id},
+          membership: %Membership{role: :owner}
+        } = scope,
+        successor_id
+      ) do
+    with {:ok, successor_id} <- cast_credential_id(successor_id),
+         %ProviderCredential{} = successor <- load_credential(workspace_id, successor_id),
+         :ok <- ensure_active(successor),
+         %ProviderCredential{} = predecessor <- load_predecessor(successor),
+         :ok <- ensure_replacement_pair(predecessor, successor),
+         impact <- replacement_impact(workspace_id, predecessor.id),
+         :ok <- ensure_no_replacement_work(impact.monitor_ids),
+         :ok <- ensure_allowed_models(successor.provider, impact.requested_models),
+         :ok <- validate_replacement_models(scope, successor, impact.requested_models) do
+      finalize_replacement(scope, predecessor.id, successor.id, impact)
+    else
+      :error -> {:error, :not_found}
+      nil -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def activate_replacement(%Scope{}, _successor_id), do: {:error, :owner_required}
 
   def revoke_credential(
         %Scope{
@@ -188,9 +304,12 @@ defmodule SilentRegression.ProviderCredentials do
          {:ok, options} <- validation_options(attrs),
          %ProviderCredential{} = credential <- load_credential(workspace_id, credential_id),
          :ok <- ensure_active(credential) do
-      result = Providers.validate_credential(credential.provider, credential.secret, options)
+      result =
+        credential.provider
+        |> Providers.validate_credential(credential.secret, options)
+        |> require_exact_model()
 
-      case persist_validation(workspace_id, credential_id, user.id, result) do
+      case persist_validation(workspace_id, credential_id, user, result) do
         {:ok, metadata} -> return_validation(result, metadata)
         {:error, reason} -> {:error, reason}
       end
@@ -202,6 +321,327 @@ defmodule SilentRegression.ProviderCredentials do
   end
 
   def validate_credential(%Scope{}, _credential_id, _attrs), do: {:error, :owner_required}
+
+  defp finalize_replacement(scope, predecessor_id, successor_id, expected_impact) do
+    Repo.transaction(fn ->
+      with %ProviderCredential{} = predecessor <-
+             lock_credential(scope.workspace.id, predecessor_id),
+           %ProviderCredential{} = successor <- lock_credential(scope.workspace.id, successor_id),
+           :ok <- ensure_active(successor),
+           :ok <- ensure_replacement_pair(predecessor, successor),
+           monitors <- locked_attached_monitors(scope.workspace.id, predecessor.id),
+           current_impact <- impact_snapshot(monitors, approved_baselines(scope.workspace.id)),
+           :ok <- ensure_impact_unchanged(expected_impact, current_impact),
+           :ok <- ensure_no_replacement_work(current_impact.monitor_ids),
+           :ok <- ensure_model_proof(successor, current_impact.requested_models),
+           {:ok, predecessor, superseded?} <- supersede_predecessor(predecessor),
+           {:ok, rebound} <- rebind_monitors(monitors, predecessor, successor, scope.user) do
+        if superseded? do
+          record_event!(predecessor, scope.user.id, "provider_credential.superseded", %{
+            "successor_id" => successor.id
+          })
+        end
+
+        record_event!(successor, scope.user.id, "provider_credential.replacement_activated", %{
+          "predecessor_id" => predecessor.id,
+          "affected_monitor_count" => length(rebound),
+          "requested_model_count" => length(current_impact.requested_models),
+          "reference_replacement_count" =>
+            Enum.count(
+              current_impact.requirements,
+              &reference_replacement_required?(&1, successor.id)
+            )
+        })
+
+        %{
+          credential: to_safe_metadata(successor),
+          affected_monitor_count: length(rebound),
+          requested_models: current_impact.requested_models,
+          reference_replacement_count:
+            Enum.count(
+              current_impact.requirements,
+              &reference_replacement_required?(&1, successor.id)
+            )
+        }
+      else
+        nil -> Repo.rollback(:not_found)
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp validate_replacement_models(scope, successor, []) do
+    case validate_credential(scope, successor.id) do
+      {:ok, _credential} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp validate_replacement_models(scope, successor, models) do
+    Enum.reduce_while(models, :ok, fn model, :ok ->
+      case validate_credential(scope, successor.id, %{model: model}) do
+        {:ok, _credential} -> {:cont, :ok}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp ensure_allowed_models(provider, models) do
+    if Enum.all?(models, &match?({:ok, _pair}, ModelCatalog.validate(provider, &1))),
+      do: :ok,
+      else: {:error, :affected_model_not_allowed}
+  end
+
+  defp ensure_model_proof(%ProviderCredential{status: :valid} = successor, models) do
+    if Enum.all?(models, &model_access_verified?(successor, &1)),
+      do: :ok,
+      else: {:error, :replacement_validation_stale}
+  end
+
+  defp ensure_model_proof(%ProviderCredential{}, _models),
+    do: {:error, :replacement_validation_stale}
+
+  defp ensure_impact_unchanged(expected, current) do
+    if expected.requirements == current.requirements,
+      do: :ok,
+      else: {:error, :replacement_impact_changed}
+  end
+
+  defp ensure_no_replacement_work([]), do: :ok
+
+  defp ensure_no_replacement_work(monitor_ids) do
+    run_in_progress? =
+      CaptureRun
+      |> where(
+        [run],
+        run.monitor_id in ^monitor_ids and run.status in ^@active_run_statuses
+      )
+      |> Repo.exists?()
+
+    reference_in_progress? =
+      BaselineSnapshot
+      |> where(
+        [snapshot],
+        snapshot.monitor_id in ^monitor_ids and snapshot.status == :pending
+      )
+      |> Repo.exists?()
+
+    if run_in_progress? or reference_in_progress?,
+      do: {:error, :replacement_work_in_progress},
+      else: :ok
+  end
+
+  defp supersede_predecessor(%ProviderCredential{status: :superseded} = predecessor),
+    do: {:ok, predecessor, false}
+
+  defp supersede_predecessor(%ProviderCredential{status: :revoked} = predecessor),
+    do: {:ok, predecessor, false}
+
+  defp supersede_predecessor(%ProviderCredential{} = predecessor) do
+    predecessor
+    |> ProviderCredential.supersede_changeset(DateTime.utc_now(:second))
+    |> Repo.update()
+    |> case do
+      {:ok, predecessor} -> {:ok, predecessor, true}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp rebind_monitors(monitors, predecessor, successor, user) do
+    now = DateTime.utc_now(:second)
+
+    Enum.reduce_while(monitors, {:ok, []}, fn monitor, {:ok, rebound} ->
+      previous_state = monitor.state
+
+      case monitor
+           |> Monitor.credential_replacement_changeset(successor, now)
+           |> Repo.update() do
+        {:ok, updated} ->
+          record_monitor_rebound!(updated, predecessor, successor, user, previous_state)
+          {:cont, {:ok, [updated | rebound]}}
+
+        {:error, reason} ->
+          {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp record_monitor_rebound!(monitor, predecessor, successor, user, previous_state) do
+    Audit.record_event!(%{
+      action: "monitor.credential_rebound",
+      target_type: "monitor",
+      target_id: monitor.id,
+      workspace_id: monitor.workspace_id,
+      actor_user_id: user.id,
+      metadata: %{
+        "predecessor_credential_id" => predecessor.id,
+        "successor_credential_id" => successor.id,
+        "reference_policy" => "replacement_required",
+        "from_state" => Atom.to_string(previous_state),
+        "to_state" => Atom.to_string(monitor.state)
+      }
+    })
+  end
+
+  defp replacement_impact(workspace_id, predecessor_id) do
+    workspace_id
+    |> attached_monitors(predecessor_id)
+    |> impact_snapshot(approved_baselines(workspace_id))
+  end
+
+  defp impact_snapshot(monitors, approved_baselines) do
+    requirements =
+      monitors
+      |> Enum.map(&impact_requirement(&1, approved_baselines))
+      |> Enum.sort_by(& &1.monitor_id)
+
+    %{
+      requirements: requirements,
+      monitor_ids: Enum.map(requirements, & &1.monitor_id),
+      requested_models:
+        requirements
+        |> Enum.flat_map(& &1.requested_models)
+        |> Enum.uniq()
+        |> Enum.sort()
+    }
+  end
+
+  defp impact_requirement(monitor, approved_baselines) do
+    %{
+      monitor_id: monitor.id,
+      active_version_id: monitor.active_version_id,
+      draft_version_id: monitor.draft_version_id,
+      requested_models: requested_models(monitor),
+      baseline_credential_id: Map.get(approved_baselines, monitor.id)
+    }
+  end
+
+  defp credential_impacts(workspace_id) do
+    approved_baselines = approved_baselines(workspace_id)
+
+    Monitor
+    |> where(
+      [monitor],
+      monitor.workspace_id == ^workspace_id and not is_nil(monitor.provider_credential_id)
+    )
+    |> order_by([monitor], asc: monitor.name, asc: monitor.id)
+    |> preload([:active_version, :draft_version])
+    |> Repo.all()
+    |> Enum.group_by(& &1.provider_credential_id)
+    |> Map.new(fn {credential_id, monitors} ->
+      impacts = Enum.map(monitors, &monitor_impact(&1, approved_baselines))
+
+      {credential_id, impacts}
+    end)
+  end
+
+  defp monitor_impact(monitor, approved_baselines) do
+    %{
+      id: monitor.id,
+      name: monitor.name,
+      state: monitor.state,
+      requested_models: requested_models(monitor),
+      baseline_credential_id: Map.get(approved_baselines, monitor.id)
+    }
+  end
+
+  defp impact_for_target(impact, credential_id) do
+    impact
+    |> Map.put(
+      :reference_replacement_required,
+      reference_replacement_required?(impact, credential_id)
+    )
+    |> Map.delete(:baseline_credential_id)
+  end
+
+  defp reference_replacement_required?(impact, credential_id) do
+    not is_nil(impact.baseline_credential_id) and impact.baseline_credential_id != credential_id
+  end
+
+  defp requested_models(monitor) do
+    [monitor.active_version, monitor.draft_version]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(& &1.requested_model)
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp attached_monitors(workspace_id, credential_id) do
+    Monitor
+    |> where(
+      [monitor],
+      monitor.workspace_id == ^workspace_id and
+        monitor.provider_credential_id == ^credential_id
+    )
+    |> order_by([monitor], asc: monitor.id)
+    |> preload([:active_version, :draft_version])
+    |> Repo.all()
+  end
+
+  defp locked_attached_monitors(workspace_id, credential_id) do
+    monitors =
+      Monitor
+      |> where(
+        [monitor],
+        monitor.workspace_id == ^workspace_id and
+          monitor.provider_credential_id == ^credential_id
+      )
+      |> order_by([monitor], asc: monitor.id)
+      |> lock("FOR UPDATE")
+      |> Repo.all()
+
+    Repo.preload(monitors, [:active_version, :draft_version])
+  end
+
+  defp approved_baselines(workspace_id) do
+    BaselineSnapshot
+    |> where(
+      [snapshot],
+      snapshot.workspace_id == ^workspace_id and snapshot.status == :approved
+    )
+    |> select([snapshot], {snapshot.monitor_id, snapshot.provider_credential_id})
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  defp verified_models_by_credential(workspace_id) do
+    ModelValidation
+    |> where(
+      [validation],
+      validation.workspace_id == ^workspace_id and validation.status == :succeeded and
+        validation.returned_model == validation.requested_model
+    )
+    |> order_by([validation], asc: validation.requested_model)
+    |> select([validation], {validation.provider_credential_id, validation.requested_model})
+    |> Repo.all()
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+  end
+
+  defp ensure_no_successor(credential) do
+    if Repo.exists?(
+         from candidate in ProviderCredential,
+           where: candidate.supersedes_id == ^credential.id and candidate.status != :revoked
+       ),
+       do: {:error, :replacement_pending},
+       else: :ok
+  end
+
+  defp load_predecessor(%ProviderCredential{supersedes_id: nil}), do: nil
+
+  defp load_predecessor(%ProviderCredential{} = successor) do
+    load_credential(successor.workspace_id, successor.supersedes_id)
+  end
+
+  defp ensure_replacement_pair(predecessor, successor) do
+    if successor.supersedes_id == predecessor.id and
+         successor.workspace_id == predecessor.workspace_id and
+         successor.provider == predecessor.provider and
+         predecessor.status in [:pending_validation, :valid, :invalid, :revoked, :superseded] do
+      :ok
+    else
+      {:error, :invalid_replacement}
+    end
+  end
 
   defp lock_credential(workspace_id, credential_id) do
     ProviderCredential
@@ -248,12 +688,14 @@ defmodule SilentRegression.ProviderCredentials do
     end
   end
 
-  defp persist_validation(workspace_id, credential_id, actor_user_id, result) do
+  defp persist_validation(workspace_id, credential_id, user, result) do
     Repo.transaction(fn ->
       with %ProviderCredential{} = credential <- lock_credential(workspace_id, credential_id),
            :ok <- ensure_active(credential),
-           {:ok, credential} <- update_validation(credential, result) do
-        record_validation_event!(credential, actor_user_id, result)
+           at <- DateTime.utc_now(:second),
+           {:ok, credential} <- update_validation(credential, result, at),
+           :ok <- upsert_model_validation(credential, user, result, at) do
+        record_validation_event!(credential, user.id, result)
         to_safe_metadata(credential)
       else
         nil -> Repo.rollback(:not_found)
@@ -262,17 +704,81 @@ defmodule SilentRegression.ProviderCredentials do
     end)
   end
 
-  defp update_validation(credential, {:ok, %CredentialValidation{} = result}) do
+  defp update_validation(credential, {:ok, %CredentialValidation{} = result}, at) do
     credential
-    |> ProviderCredential.validation_changeset(result, DateTime.utc_now(:second))
+    |> ProviderCredential.validation_changeset(result, at)
     |> Repo.update()
   end
 
-  defp update_validation(credential, {:error, %Failure{} = failure}) do
+  defp update_validation(credential, {:error, %Failure{} = failure}, at) do
     credential
-    |> ProviderCredential.validation_changeset(failure, DateTime.utc_now(:second))
+    |> ProviderCredential.validation_changeset(failure, at)
     |> Repo.update()
   end
+
+  defp upsert_model_validation(
+         credential,
+         user,
+         {:ok, %CredentialValidation{requested_model: requested_model} = result},
+         at
+       )
+       when is_binary(requested_model) do
+    credential
+    |> model_validation(requested_model)
+    |> ModelValidation.success_changeset(credential, user, result, at)
+    |> Repo.insert_or_update()
+    |> case do
+      {:ok, _validation} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp upsert_model_validation(
+         credential,
+         user,
+         {:error, %Failure{requested_model: requested_model} = failure},
+         at
+       )
+       when is_binary(requested_model) do
+    credential
+    |> model_validation(requested_model)
+    |> ModelValidation.failure_changeset(credential, user, failure, at)
+    |> Repo.insert_or_update()
+    |> case do
+      {:ok, _validation} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp upsert_model_validation(_credential, _user, _result, _at), do: :ok
+
+  defp model_validation(credential, requested_model) do
+    Repo.get_by(ModelValidation,
+      provider_credential_id: credential.id,
+      requested_model: requested_model
+    ) || %ModelValidation{}
+  end
+
+  defp require_exact_model(
+         {:ok,
+          %CredentialValidation{
+            requested_model: requested_model,
+            returned_model: returned_model
+          } = result}
+       )
+       when is_binary(requested_model) and requested_model != returned_model do
+    {:error,
+     %Failure{
+       category: :model_mismatch,
+       message: "The provider returned a different model identity than the one requested.",
+       request_id: result.request_id,
+       requested_model: requested_model,
+       returned_model: returned_model,
+       attempts: result.attempts
+     }}
+  end
+
+  defp require_exact_model(result), do: result
 
   defp return_validation({:ok, %CredentialValidation{}}, metadata), do: {:ok, metadata}
   defp return_validation({:error, %Failure{} = failure}, _metadata), do: {:error, failure}

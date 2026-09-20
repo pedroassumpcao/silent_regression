@@ -116,6 +116,11 @@ defmodule SilentRegressionWeb.Router do
     post "/credentials", ProviderCredentialController, :create
     post "/credentials/:id/validate", ProviderCredentialController, :validate
     post "/credentials/:id/rotate", ProviderCredentialController, :rotate
+
+    post "/credentials/:id/activate-replacement",
+         ProviderCredentialController,
+         :activate_replacement
+
     delete "/credentials/:id", ProviderCredentialController, :revoke
   end
 

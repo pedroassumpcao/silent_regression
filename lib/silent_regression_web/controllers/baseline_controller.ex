@@ -3,7 +3,7 @@ defmodule SilentRegressionWeb.BaselineController do
 
   import Inertia.Controller, only: [assign_errors: 2]
 
-  alias SilentRegression.Baselines
+  alias SilentRegression.{Baselines, ProviderCredentials}
   alias SilentRegressionWeb.RateLimit
 
   @terminal_run_statuses [:succeeded, :partial_failed, :failed, :cancelled, :needs_review]
@@ -240,9 +240,11 @@ defmodule SilentRegressionWeb.BaselineController do
             secret_suffix: credential.secret_suffix,
             status: credential.status,
             model_access_verified:
-              (version && credential.last_validation_status == :succeeded) and
-                credential.last_requested_model == version.requested_model and
-                credential.last_returned_model == version.requested_model
+              version &&
+                ProviderCredentials.model_access_verified?(
+                  credential,
+                  version.requested_model
+                )
           }
     }
   end

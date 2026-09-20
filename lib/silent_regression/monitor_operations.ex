@@ -13,6 +13,7 @@ defmodule SilentRegression.MonitorOperations do
   alias SilentRegression.Captures.{CaptureObservation, CaptureRun}
   alias SilentRegression.MonitorOperations.Schedule
   alias SilentRegression.Monitors.{CaseVersion, Monitor, MonitorVersion}
+  alias SilentRegression.ProviderCredentials
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Repo
   alias SilentRegression.RunResults
@@ -414,14 +415,12 @@ defmodule SilentRegression.MonitorOperations do
       %ProviderCredential{
         workspace_id: workspace_id,
         provider: provider,
-        status: :valid,
-        last_validation_status: :succeeded,
-        last_requested_model: requested_model,
-        last_returned_model: requested_model
-      }
-      when workspace_id == monitor.workspace_id and provider == version.provider and
-             requested_model == version.requested_model ->
-        :ok
+        status: :valid
+      } = credential
+      when workspace_id == monitor.workspace_id and provider == version.provider ->
+        if ProviderCredentials.model_access_verified?(credential, version.requested_model),
+          do: :ok,
+          else: {:error, :credential_unavailable}
 
       _credential ->
         {:error, :credential_unavailable}

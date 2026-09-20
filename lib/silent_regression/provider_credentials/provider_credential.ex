@@ -11,6 +11,7 @@ defmodule SilentRegression.ProviderCredentials.ProviderCredential do
 
   alias SilentRegression.Accounts.User
   alias SilentRegression.Encrypted.Binary, as: EncryptedBinary
+  alias SilentRegression.ProviderCredentials.ModelValidation
   alias SilentRegression.Providers.{CredentialValidation, Failure}
   alias SilentRegression.Workspaces.Workspace
 
@@ -51,7 +52,8 @@ defmodule SilentRegression.ProviderCredentials.ProviderCredential do
     belongs_to :created_by_user, User
     belongs_to :revoked_by_user, User
     belongs_to :supersedes, __MODULE__
-    has_one :successor, __MODULE__, foreign_key: :supersedes_id
+    has_many :successors, __MODULE__, foreign_key: :supersedes_id
+    has_many :model_validations, ModelValidation
 
     timestamps(type: :utc_datetime)
   end

@@ -2,13 +2,20 @@ defmodule SilentRegression.ProviderCredentialsTest do
   use SilentRegression.DataCase, async: false
 
   import ExUnit.CaptureLog
+  import SilentRegression.ContractAuthoringFixtures
+  import SilentRegression.MonitorsFixtures
   import SilentRegression.ProviderCredentialsFixtures
   import SilentRegression.WorkspacesFixtures
 
   alias SilentRegression.Accounts.Scope
   alias SilentRegression.Audit
+  alias SilentRegression.Baselines
+  alias SilentRegression.Captures
+  alias SilentRegression.Captures.{CaptureObservation, ProviderAttempt}
+  alias SilentRegression.MonitorOperations
+  alias SilentRegression.Monitors.Monitor
   alias SilentRegression.ProviderCredentials
-  alias SilentRegression.ProviderCredentials.ProviderCredential
+  alias SilentRegression.ProviderCredentials.{ModelValidation, ProviderCredential}
   alias SilentRegression.Repo
 
   describe "create_credential/2 and safe reads" do
@@ -148,7 +155,7 @@ defmodule SilentRegression.ProviderCredentialsTest do
   end
 
   describe "rotation and revocation" do
-    test "rotation creates a successor and preserves the superseded identity" do
+    test "rotation stages a successor without disabling the predecessor" do
       scope = workspace_scope_fixture()
       old = provider_credential_fixture(scope, %{provider: :anthropic, label: "Claude"})
 
@@ -163,11 +170,11 @@ defmodule SilentRegression.ProviderCredentialsTest do
       assert successor.supersedes_id == old.id
       assert successor.status == :pending_validation
 
-      assert {:ok, superseded} = ProviderCredentials.get_credential(scope, old.id)
-      assert superseded.status == :superseded
-      assert superseded.superseded_at
+      assert {:ok, predecessor} = ProviderCredentials.get_credential(scope, old.id)
+      assert predecessor.status == :pending_validation
+      assert predecessor.superseded_at == nil
 
-      assert {:error, :not_active} =
+      assert {:error, :replacement_pending} =
                ProviderCredentials.rotate_credential(scope, old.id, %{
                  secret: "sk-ant-test-second-rotation"
                })
@@ -175,8 +182,7 @@ defmodule SilentRegression.ProviderCredentialsTest do
       assert MapSet.new(event_actions(scope)) ==
                MapSet.new([
                  "provider_credential.created",
-                 "provider_credential.rotated",
-                 "provider_credential.superseded"
+                 "provider_credential.rotated"
                ])
     end
 
@@ -197,6 +203,35 @@ defmodule SilentRegression.ProviderCredentialsTest do
                })
 
       assert "provider_credential.revoked" in event_actions(scope)
+    end
+
+    test "revoking a staged successor releases the predecessor for a replacement retry" do
+      scope = workspace_scope_fixture()
+      predecessor = provider_credential_fixture(scope)
+      assert {:ok, _validated} = ProviderCredentials.validate_credential(scope, predecessor.id)
+
+      assert {:ok, first_successor} =
+               ProviderCredentials.rotate_credential(scope, predecessor.id, %{
+                 secret: "sk-test-first-successor"
+               })
+
+      assert {:ok, _validated} =
+               ProviderCredentials.validate_credential(scope, first_successor.id)
+
+      assert ProviderCredentials.list_selectable_credentials(scope) == []
+      assert {:ok, revoked} = ProviderCredentials.revoke_credential(scope, first_successor.id)
+      assert revoked.status == :revoked
+
+      assert [selectable] = ProviderCredentials.list_selectable_credentials(scope)
+      assert selectable.id == predecessor.id
+
+      assert {:ok, second_successor} =
+               ProviderCredentials.rotate_credential(scope, predecessor.id, %{
+                 secret: "sk-test-second-successor"
+               })
+
+      assert second_successor.supersedes_id == predecessor.id
+      assert second_successor.id != first_successor.id
     end
   end
 
@@ -224,6 +259,20 @@ defmodule SilentRegression.ProviderCredentialsTest do
       assert validated.last_validation_attempts == 1
       assert validated.last_validated_at
       refute Map.has_key?(validated, :secret)
+
+      model_validation =
+        Repo.get_by!(ModelValidation,
+          provider_credential_id: credential.id,
+          requested_model: "claude-test"
+        )
+
+      assert model_validation.status == :succeeded
+      assert model_validation.returned_model == "claude-test"
+
+      assert ProviderCredentials.model_access_verified?(
+               Repo.get!(ProviderCredential, credential.id),
+               "claude-test"
+             )
 
       event =
         scope
@@ -280,6 +329,38 @@ defmodule SilentRegression.ProviderCredentialsTest do
       assert pending.last_failure_category == :rate_limited
     end
 
+    test "a returned model mismatch is persisted as failed exact-model proof" do
+      scope = workspace_scope_fixture()
+
+      credential =
+        provider_credential_fixture(scope, %{
+          secret: "sk-test-validation-model-mismatch"
+        })
+
+      assert {:error, failure} =
+               ProviderCredentials.validate_credential(scope, credential.id, %{
+                 model: "gpt-5.6-luna"
+               })
+
+      assert failure.category == :model_mismatch
+      assert failure.requested_model == "gpt-5.6-luna"
+      assert failure.returned_model == "gpt-5.6-luna-unexpected"
+
+      validation =
+        Repo.get_by!(ModelValidation,
+          provider_credential_id: credential.id,
+          requested_model: "gpt-5.6-luna"
+        )
+
+      assert validation.status == :failed
+      assert validation.failure_category == :model_mismatch
+
+      refute ProviderCredentials.model_access_verified?(
+               Repo.get!(ProviderCredential, credential.id),
+               "gpt-5.6-luna"
+             )
+    end
+
     test "members and other workspaces cannot trigger provider validation" do
       accepted = accepted_workspace_fixture()
       owner_scope = Scope.for_workspace(accepted.user, accepted.workspace, accepted.membership)
@@ -306,6 +387,235 @@ defmodule SilentRegression.ProviderCredentialsTest do
       assert {:ok, unchanged} = ProviderCredentials.get_credential(scope, credential.id)
       assert unchanged.status == :pending_validation
       assert unchanged.last_validation_status == nil
+    end
+  end
+
+  describe "activate_replacement/2" do
+    test "validates all affected models and atomically rebinds only future execution" do
+      scope = workspace_scope_fixture()
+      fixture = operational_monitor_fixture(scope)
+      predecessor = Repo.get!(ProviderCredential, fixture.credential.id)
+
+      second_monitor = monitor_fixture(scope, %{name: "Second model monitor"})
+
+      _second_version =
+        version_fixture(scope, second_monitor, %{requested_model: "gpt-5.6-sol"})
+
+      second_monitor
+      |> Monitor.credential_changeset(predecessor)
+      |> Repo.update!()
+
+      assert {:ok, successor} =
+               ProviderCredentials.rotate_credential(scope, predecessor.id, %{
+                 secret: "sk-test-successor-valid"
+               })
+
+      overviews = ProviderCredentials.list_credential_overviews(scope)
+      predecessor_overview = Enum.find(overviews, &(&1.id == predecessor.id))
+      successor_overview = Enum.find(overviews, &(&1.id == successor.id))
+
+      assert predecessor_overview.successor_id == successor.id
+
+      assert Enum.map(predecessor_overview.attached_monitors, & &1.id) |> Enum.sort() ==
+               Enum.sort([fixture.monitor.id, second_monitor.id])
+
+      assert Enum.sort(
+               Enum.flat_map(successor_overview.replacement_impact, & &1.requested_models)
+             ) ==
+               ["gpt-5.6-luna", "gpt-5.6-sol"]
+
+      assert Enum.any?(
+               successor_overview.replacement_impact,
+               &(&1.id == fixture.monitor.id and &1.reference_replacement_required)
+             )
+
+      assert {:ok, result} = ProviderCredentials.activate_replacement(scope, successor.id)
+      assert result.affected_monitor_count == 2
+      assert result.requested_models == ["gpt-5.6-luna", "gpt-5.6-sol"]
+      assert result.reference_replacement_count == 1
+
+      assert {:ok, superseded} = ProviderCredentials.get_credential(scope, predecessor.id)
+      assert superseded.status == :superseded
+      assert superseded.superseded_at
+
+      assert {:ok, activated} = ProviderCredentials.get_credential(scope, successor.id)
+      assert activated.status == :valid
+
+      assert ProviderCredentials.verified_models(Repo.get!(ProviderCredential, successor.id)) == [
+               "gpt-5.6-luna",
+               "gpt-5.6-sol"
+             ]
+
+      active_monitor = Repo.get!(Monitor, fixture.monitor.id)
+      assert active_monitor.provider_credential_id == successor.id
+      assert active_monitor.state == :paused
+      assert active_monitor.pause_reason == :incompatible_configuration
+      assert active_monitor.next_run_at == nil
+
+      draft_monitor = Repo.get!(Monitor, second_monitor.id)
+      assert draft_monitor.provider_credential_id == successor.id
+      assert draft_monitor.state == :draft
+
+      assert Repo.get!(SilentRegression.Baselines.BaselineSnapshot, fixture.baseline.id).provider_credential_id ==
+               predecessor.id
+
+      assert Repo.get!(SilentRegression.Captures.CaptureRun, fixture.baseline.capture_run_id).provider_credential_id ==
+               predecessor.id
+
+      assert {:error, :incompatible_baseline} =
+               Baselines.current_compatible(scope, fixture.monitor.id)
+
+      assert {:ok, state} = Baselines.get_state(scope, fixture.monitor.id)
+      assert state.preflight.replacement?
+      assert state.preflight.ready?
+      assert :provider_credential_id in state.compatibility.mismatches
+
+      assert {:ok, replacement_baseline} =
+               Baselines.authorize(scope, fixture.monitor.id, %{
+                 authorization_key: Ecto.UUID.generate(),
+                 samples_per_case: state.preflight.samples_per_case,
+                 preview_fingerprint: state.preflight.preview_fingerprint
+               })
+
+      Enum.each(replacement_baseline.capture_run.observations, fn observation ->
+        assert :ok =
+                 Captures.execute_observation(
+                   replacement_baseline.capture_run_id,
+                   observation.id
+                 )
+      end)
+
+      assert {:ok, approved_replacement} =
+               Baselines.approve(scope, fixture.monitor.id, %{approval_mode: :normal})
+
+      assert approved_replacement.provider_credential_id == successor.id
+
+      assert {:ok, resumed} =
+               MonitorOperations.configure(scope, fixture.monitor.id, %{cadence: :manual})
+
+      assert resumed.state == :active
+      assert resumed.pause_reason == nil
+
+      assert {:ok, run} = MonitorOperations.run_now(scope, fixture.monitor.id)
+      assert run.provider_credential_id == successor.id
+      assert run.maximum_call_count == 2
+
+      [observation] =
+        Repo.all(
+          from observation in CaptureObservation,
+            where: observation.capture_run_id == ^run.id
+        )
+
+      assert :ok = Captures.execute_observation(run.id, observation.id)
+      assert {:ok, completed_run} = Captures.get_run(scope, run.id)
+      assert completed_run.status == :succeeded
+
+      assert Repo.aggregate(
+               from(attempt in ProviderAttempt, where: attempt.capture_run_id == ^run.id),
+               :count
+             ) == 1
+
+      actions = scope |> Audit.list_workspace_events() |> Enum.map(& &1.action)
+      assert "provider_credential.superseded" in actions
+      assert "provider_credential.replacement_activated" in actions
+      assert Enum.count(actions, &(&1 == "monitor.credential_rebound")) == 2
+    end
+
+    test "blocks cutover while an affected run is in progress" do
+      scope = workspace_scope_fixture()
+      fixture = operational_monitor_fixture(scope)
+
+      assert {:ok, run} = MonitorOperations.run_now(scope, fixture.monitor.id)
+      assert run.status == :queued
+
+      assert {:ok, successor} =
+               ProviderCredentials.rotate_credential(scope, fixture.credential.id, %{
+                 secret: "sk-test-successor-valid"
+               })
+
+      assert {:error, :replacement_work_in_progress} =
+               ProviderCredentials.activate_replacement(scope, successor.id)
+
+      assert Repo.get!(Monitor, fixture.monitor.id).provider_credential_id ==
+               fixture.credential.id
+
+      assert Repo.get!(ProviderCredential, fixture.credential.id).status == :valid
+      assert Repo.get!(ProviderCredential, successor.id).status == :pending_validation
+
+      refute Repo.exists?(
+               from validation in ModelValidation,
+                 where: validation.provider_credential_id == ^successor.id
+             )
+    end
+
+    test "blocks cutover while an affected baseline decision is pending" do
+      scope = workspace_scope_fixture()
+      fixture = baseline_ready_monitor_fixture(scope)
+      assert {:ok, preflight} = Baselines.preflight(scope, fixture.monitor.id)
+
+      assert {:ok, snapshot} =
+               Baselines.authorize(scope, fixture.monitor.id, %{
+                 authorization_key: Ecto.UUID.generate(),
+                 samples_per_case: preflight.samples_per_case,
+                 preview_fingerprint: preflight.preview_fingerprint
+               })
+
+      assert {:ok, cancelled_run} = Captures.cancel_run(scope, snapshot.capture_run_id)
+      assert cancelled_run.status == :cancelled
+
+      assert {:ok, successor} =
+               ProviderCredentials.rotate_credential(scope, fixture.credential.id, %{
+                 secret: "sk-test-successor-valid"
+               })
+
+      assert {:error, :replacement_work_in_progress} =
+               ProviderCredentials.activate_replacement(scope, successor.id)
+
+      assert Repo.get!(Monitor, fixture.monitor.id).provider_credential_id ==
+               fixture.credential.id
+
+      assert Repo.get!(ProviderCredential, successor.id).status == :pending_validation
+
+      refute Repo.exists?(
+               from validation in ModelValidation,
+                 where: validation.provider_credential_id == ^successor.id
+             )
+    end
+
+    test "recovers a legacy lineage whose predecessor was already superseded" do
+      scope = workspace_scope_fixture()
+      fixture = operational_monitor_fixture(scope)
+
+      assert {:ok, successor} =
+               ProviderCredentials.rotate_credential(scope, fixture.credential.id, %{
+                 secret: "sk-test-legacy-successor-valid"
+               })
+
+      fixture.credential.id
+      |> then(&Repo.get!(ProviderCredential, &1))
+      |> ProviderCredential.supersede_changeset(DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      assert {:ok, result} = ProviderCredentials.activate_replacement(scope, successor.id)
+      assert result.affected_monitor_count == 1
+      assert Repo.get!(Monitor, fixture.monitor.id).provider_credential_id == successor.id
+      assert Repo.get!(ProviderCredential, fixture.credential.id).status == :superseded
+    end
+
+    test "members cannot inspect replacement impact through a mutation or activate it" do
+      owner_scope = workspace_scope_fixture()
+      credential = provider_credential_fixture(owner_scope)
+
+      assert {:ok, successor} =
+               ProviderCredentials.rotate_credential(owner_scope, credential.id, %{
+                 secret: "sk-test-successor-valid"
+               })
+
+      member = invite_and_accept_member(owner_scope)
+      member_scope = Scope.for_workspace(member.user, member.workspace, member.membership)
+
+      assert {:error, :owner_required} =
+               ProviderCredentials.activate_replacement(member_scope, successor.id)
     end
   end
 

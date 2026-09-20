@@ -1,7 +1,7 @@
 defmodule SilentRegression.MonitorSetupsTest do
   use SilentRegression.DataCase, async: true
 
-  alias SilentRegression.{MonitorSetups, Monitors, ProductAnalytics, Repo}
+  alias SilentRegression.{MonitorSetups, Monitors, ProductAnalytics, ProviderCredentials, Repo}
   alias SilentRegression.MonitorSetups.Setup
 
   alias SilentRegression.{
@@ -124,6 +124,51 @@ defmodule SilentRegression.MonitorSetupsTest do
       assert setup.provider_credential_id == valid.id
       assert setup.provider == :openai
       assert MonitorSetups.progress(scope, setup).completed.connection
+    end
+
+    test "keeps both sides of a staged rotation unavailable to new monitors until activation", %{
+      scope: scope
+    } do
+      %{monitor: monitor} = MonitorSetupsFixtures.setup_fixture(scope)
+      predecessor = MonitorSetupsFixtures.valid_credential_fixture(scope)
+
+      assert {:ok, successor} =
+               ProviderCredentials.rotate_credential(scope, predecessor.id, %{
+                 secret: "sk-test-successor-valid"
+               })
+
+      assert {:ok, _validated} =
+               ProviderCredentials.validate_credential(scope, successor.id, %{
+                 model: "gpt-5.6-luna"
+               })
+
+      assert ProviderCredentials.list_selectable_credentials(scope) == []
+
+      for credential <- [predecessor, successor] do
+        assert {:error, changeset} =
+                 MonitorSetups.update_connection(scope, monitor.id, %{
+                   provider_credential_id: credential.id,
+                   provider: "openai",
+                   requested_model: "gpt-5.6-luna"
+                 })
+
+        assert "has a pending replacement" in errors_on(changeset).provider_credential_id
+      end
+
+      assert {:ok, result} = ProviderCredentials.activate_replacement(scope, successor.id)
+      assert result.affected_monitor_count == 0
+
+      assert [selectable] = ProviderCredentials.list_selectable_credentials(scope)
+      assert selectable.id == successor.id
+
+      assert {:ok, setup} =
+               MonitorSetups.update_connection(scope, monitor.id, %{
+                 provider_credential_id: successor.id,
+                 provider: "openai",
+                 requested_model: "gpt-5.6-luna"
+               })
+
+      assert setup.provider_credential_id == successor.id
     end
 
     test "normalizes prompt configuration from form values and rejects invalid bounds", %{

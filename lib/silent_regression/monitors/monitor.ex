@@ -99,6 +99,36 @@ defmodule SilentRegression.Monitors.Monitor do
     |> add_error(:provider_credential_id, "does not belong to this workspace")
   end
 
+  def credential_replacement_changeset(
+        %__MODULE__{workspace_id: workspace_id} = monitor,
+        %ProviderCredential{workspace_id: workspace_id} = credential,
+        at
+      ) do
+    attrs =
+      if monitor.state == :active do
+        %{
+          provider_credential_id: credential.id,
+          state: :paused,
+          state_changed_at: at,
+          next_run_at: nil,
+          pause_reason: :incompatible_configuration
+        }
+      else
+        %{provider_credential_id: credential.id}
+      end
+
+    monitor
+    |> change(attrs)
+    |> validate_schedule()
+    |> add_constraints()
+  end
+
+  def credential_replacement_changeset(%__MODULE__{} = monitor, %ProviderCredential{}, _at) do
+    monitor
+    |> change()
+    |> add_error(:provider_credential_id, "does not belong to this workspace")
+  end
+
   def activate_configuration_changeset(
         %__MODULE__{state: state} = monitor,
         %MonitorVersion{} = version,

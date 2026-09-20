@@ -116,7 +116,7 @@ defmodule SilentRegression.Baselines.Preflight do
       "Select a valid provider credential."
     )
     |> require_credential_provider(resources.credential, resources.monitor_version)
-    |> require_model_access(resources.credential, resources.monitor_version)
+    |> require_model_access(resources.model_access_verified?)
     |> require(
       maximum_call_count <= call_cap,
       "call_cap_exceeded",
@@ -135,8 +135,7 @@ defmodule SilentRegression.Baselines.Preflight do
 
     replacement_state? =
       resources.replacement_baseline? and
-        (monitor.state == :active or
-           (monitor.state == :paused and monitor.pause_reason == :incompatible_configuration))
+        monitor.state in [:active, :paused]
 
     require(
       blockers,
@@ -196,15 +195,7 @@ defmodule SilentRegression.Baselines.Preflight do
     )
   end
 
-  defp require_model_access(blockers, nil, _version), do: blockers
-  defp require_model_access(blockers, _credential, nil), do: blockers
-
-  defp require_model_access(blockers, credential, version) do
-    verified? =
-      credential.status == :valid and credential.last_validation_status == :succeeded and
-        credential.last_requested_model == version.requested_model and
-        credential.last_returned_model == version.requested_model
-
+  defp require_model_access(blockers, verified?) do
     require(
       blockers,
       verified?,
@@ -231,7 +222,7 @@ defmodule SilentRegression.Baselines.Preflight do
   end
 
   defp preview_fingerprint(
-         %{monitor: monitor, monitor_version: version, contract_version: contract},
+         %{monitor: monitor, monitor_version: version, contract_version: contract} = resources,
          cases,
          samples_per_case,
          planned_call_count,
@@ -252,6 +243,7 @@ defmodule SilentRegression.Baselines.Preflight do
       "evaluator_engine_version" => contract.evaluator_engine_version,
       "provider" => Atom.to_string(version.provider),
       "requested_model" => version.requested_model,
+      "provider_credential_id" => field(resources.credential, :id),
       "samples_per_case" => samples_per_case,
       "retry_limit" => @retry_limit,
       "planned_call_count" => planned_call_count,
@@ -269,4 +261,7 @@ defmodule SilentRegression.Baselines.Preflight do
          _max_output_tokens
        ),
        do: nil
+
+  defp field(nil, _field), do: nil
+  defp field(struct, field), do: Map.fetch!(struct, field)
 end

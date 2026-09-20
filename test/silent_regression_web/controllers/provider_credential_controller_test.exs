@@ -103,15 +103,26 @@ defmodule SilentRegressionWeb.ProviderCredentialControllerTest do
         })
 
       assert redirected_to(rotated) == ~p"/app/#{workspace.slug}/credentials"
-      assert Phoenix.Flash.get(rotated.assigns.flash, :info) =~ "rotated"
+      assert Phoenix.Flash.get(rotated.assigns.flash, :info) =~ "Replacement stored"
 
       successor =
         scope
         |> ProviderCredentials.list_credentials()
         |> Enum.find(&(&1.supersedes_id == credential.id))
 
-      revoked =
+      activated =
         rotated
+        |> recycle()
+        |> post(~p"/app/#{workspace.slug}/credentials/#{successor.id}/activate-replacement")
+
+      assert redirected_to(activated) == ~p"/app/#{workspace.slug}/credentials"
+      assert Phoenix.Flash.get(activated.assigns.flash, :info) =~ "activated"
+
+      assert {:ok, superseded} = ProviderCredentials.get_credential(scope, credential.id)
+      assert superseded.status == :superseded
+
+      revoked =
+        activated
         |> recycle()
         |> delete(~p"/app/#{workspace.slug}/credentials/#{successor.id}")
 
@@ -219,6 +230,10 @@ defmodule SilentRegressionWeb.ProviderCredentialControllerTest do
           "provider_credential" => %{"secret" => "sk-member-forbidden-rotation"}
         })
 
+      activate_response =
+        member_conn
+        |> post(~p"/app/#{workspace.slug}/credentials/#{credential.id}/activate-replacement")
+
       revoke_response =
         member_conn
         |> delete(~p"/app/#{workspace.slug}/credentials/#{credential.id}")
@@ -227,6 +242,7 @@ defmodule SilentRegressionWeb.ProviderCredentialControllerTest do
             create_response,
             validate_response,
             rotate_response,
+            activate_response,
             revoke_response
           ] do
         assert response(conn_response, 403) == "Forbidden"

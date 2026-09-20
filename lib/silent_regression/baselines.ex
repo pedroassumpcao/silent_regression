@@ -476,6 +476,7 @@ defmodule SilentRegression.Baselines do
     compatible? =
       match?(%Monitor{}, monitor) and
         monitor.active_version_id == snapshot.monitor_version_id and
+        monitor.provider_credential_id == snapshot.provider_credential_id and
         match?(%MonitorVersion{status: :active}, current_version) and
         match?(%ContractVersion{}, baseline_contract) and
         match?(%ContractVersion{status: :approved}, current_contract) and
@@ -530,7 +531,8 @@ defmodule SilentRegression.Baselines do
        field(resources.contract_version, :evaluator_engine_version)},
       {:provider, snapshot.provider, field(resources.monitor_version, :provider)},
       {:requested_model, snapshot.requested_model,
-       field(resources.monitor_version, :requested_model)}
+       field(resources.monitor_version, :requested_model)},
+      {:provider_credential_id, snapshot.provider_credential_id, field(resources.credential, :id)}
     ]
 
     mismatches =
@@ -555,6 +557,16 @@ defmodule SilentRegression.Baselines do
           contract_version: load_approved_contract(monitor.id, version_id(version)),
           credential: load_credential(workspace_id, monitor.provider_credential_id)
         }
+
+        resources =
+          Map.put(
+            resources,
+            :model_access_verified?,
+            ProviderCredentials.model_access_verified?(
+              resources.credential,
+              field(resources.monitor_version, :requested_model)
+            )
+          )
 
         approved = approved_snapshot(workspace_id, monitor.id)
 

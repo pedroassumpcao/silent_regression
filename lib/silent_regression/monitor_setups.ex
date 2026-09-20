@@ -112,6 +112,7 @@ defmodule SilentRegression.MonitorSetups do
            {:ok, credential_id} <- credential_id(attrs),
            %ProviderCredential{} = credential <-
              selectable_credential(scope.workspace.id, credential_id),
+           :ok <- ensure_credential_selectable(credential),
            :ok <- credential_matches(credential, provider),
            {:ok, setup} <-
              setup
@@ -130,6 +131,9 @@ defmodule SilentRegression.MonitorSetups do
 
         {:error, :credential_provider_mismatch} ->
           invalid_setup(setup, :provider_credential_id, "does not match the selected provider")
+
+        {:error, :credential_replacement_pending} ->
+          invalid_setup(setup, :provider_credential_id, "has a pending replacement")
 
         {:error, %Ecto.Changeset{} = changeset} ->
           {:error, changeset}
@@ -225,7 +229,8 @@ defmodule SilentRegression.MonitorSetups do
              setup <- Repo.preload(setup, :monitor),
              %{ready?: true} = setup_progress <- progress(scope, setup),
              %ProviderCredential{} = credential <-
-               selectable_credential(workspace_id, setup.provider_credential_id),
+               locked_selectable_credential(workspace_id, setup.provider_credential_id),
+             :ok <- ensure_credential_selectable(credential),
              :ok <- credential_matches(credential, setup.provider),
              {:ok, version} <-
                Monitors.create_version(scope, monitor_id, version_attributes(setup)),
@@ -362,8 +367,54 @@ defmodule SilentRegression.MonitorSetups do
     |> where([credential], credential.workspace_id == ^workspace_id)
     |> where([credential], credential.id == ^credential_id)
     |> where([credential], credential.status == :valid)
-    |> select([credential], struct(credential, [:id, :workspace_id, :provider, :status]))
     |> Repo.one()
+  end
+
+  defp locked_selectable_credential(workspace_id, credential_id) do
+    ProviderCredential
+    |> where([credential], credential.workspace_id == ^workspace_id)
+    |> where([credential], credential.id == ^credential_id)
+    |> where([credential], credential.status == :valid)
+    |> lock("FOR SHARE")
+    |> Repo.one()
+  end
+
+  defp ensure_credential_selectable(%ProviderCredential{} = credential) do
+    successor_exists? =
+      Repo.exists?(
+        from successor in ProviderCredential,
+          where: successor.supersedes_id == ^credential.id and successor.status != :revoked
+      )
+
+    predecessor_ready? =
+      case credential.supersedes_id do
+        nil ->
+          true
+
+        predecessor_id ->
+          predecessor_terminal? =
+            Repo.exists?(
+              from predecessor in ProviderCredential,
+                where:
+                  predecessor.id == ^predecessor_id and
+                    predecessor.workspace_id == ^credential.workspace_id and
+                    predecessor.status in [:revoked, :superseded]
+            )
+
+          predecessor_unused? =
+            not Repo.exists?(
+              from monitor in Monitor,
+                where:
+                  monitor.workspace_id == ^credential.workspace_id and
+                    monitor.provider_credential_id == ^predecessor_id
+            )
+
+          predecessor_terminal? and predecessor_unused?
+      end
+
+    if not successor_exists? and predecessor_ready?,
+      do: :ok,
+      else: {:error, :credential_replacement_pending}
   end
 
   defp credential_matches(%ProviderCredential{provider: provider}, provider), do: :ok

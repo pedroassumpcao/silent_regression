@@ -26,6 +26,19 @@ defmodule SilentRegression.Providers.FakeOpenAI do
     {:error, failure(:rate_limited, "fake_rate_limit_request", options)}
   end
 
+  def validate_credential("sk-test-validation-model-mismatch", options) do
+    model = Keyword.get(options, :model)
+
+    {:ok,
+     %CredentialValidation{
+       provider: :openai,
+       requested_model: model,
+       returned_model: "#{model}-unexpected",
+       request_id: "fake_openai_model_mismatch_request",
+       attempts: 1
+     }}
+  end
+
   def validate_credential(_secret, options) do
     model = Keyword.get(options, :model)
 

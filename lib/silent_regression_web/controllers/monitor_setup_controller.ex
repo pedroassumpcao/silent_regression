@@ -163,7 +163,7 @@ defmodule SilentRegressionWeb.MonitorSetupController do
 
   defp render_setup(conn, setup, progress, step) do
     scope = conn.assigns.current_scope
-    credentials = ProviderCredentials.list_credentials(scope)
+    credentials = ProviderCredentials.list_selectable_credentials(scope)
     active_case_count = Enum.count(MonitorSetups.stored_cases(setup), &(&1["status"] == "active"))
 
     conn

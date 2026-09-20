@@ -71,10 +71,14 @@ defmodule SilentRegression.Audit do
     "monitor.scheduled" => ~w(capture_run_id intended_at next_run_at),
     "monitor.schedule_skipped_overlap" => ~w(intended_at next_run_at),
     "monitor.auto_paused" => ~w(reason),
+    "monitor.credential_rebound" =>
+      ~w(predecessor_credential_id successor_credential_id reference_policy from_state to_state),
     "provider_credential.created" => ~w(provider),
     "provider_credential.revoked" => ~w(provider),
     "provider_credential.superseded" => ~w(provider successor_id),
     "provider_credential.rotated" => ~w(provider supersedes_id),
+    "provider_credential.replacement_activated" =>
+      ~w(provider predecessor_id affected_monitor_count requested_model_count reference_replacement_count),
     "provider_credential.validation_succeeded" =>
       ~w(provider attempts requested_model returned_model provider_request_id),
     "provider_credential.validation_failed" =>
