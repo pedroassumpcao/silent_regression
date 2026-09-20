@@ -2,7 +2,7 @@
 
 > **Status:** Tasks 1–15 complete; design-review hardening is in progress and Gates A–D block the first design-partner pilot
 >
-> **Progress:** 15 of 27 tasks complete; Task 16 is next
+> **Progress:** 15 of 27 tasks complete; Task 16 in progress
 >
 > **Last revised:** 2026-09-19
 >
@@ -313,7 +313,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 13 | Structured review and versioned correction loop | 8, 12 | Complete | `56066af`, `124bf89`, `c82203e`, `631b68a`, `6133982`, `a79bcaa` |
 | 14 | Onboarding telemetry, notifications, security, and pilot readiness | 2–13 | Complete | `9e40ee9`, `f45a06e`, `1ab2387`, `57d031d`, `0aacfcd`, `fe3e7e5`, `babfbf6`, `227e778`, `985481b`, `0824532` |
 | 15 | Design-review program and truthful public evidence | 1–14 | Complete | `d49b997` |
-| 16 | Provider-native request artifacts | 15 | Not started | — |
+| 16 | Provider-native request artifacts | 15 | In progress | — |
 | 17 | Case-specific deterministic expectations | 16 | Not started | — |
 | 18 | Contract proof coverage, severity, and bounded rescore | 17 | Not started | — |
 | 19 | Credential successor rebinding | 16 | Not started | — |
@@ -909,7 +909,7 @@ first concrete product overclaim.
 
 ### Task 16 — Provider-native request artifacts
 
-**Status:** Not started
+**Status:** In progress
 
 **Gate:** A — Product truth
 

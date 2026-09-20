@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate A — Product truth
-- Current task: Task 16 — provider-native request artifacts (not started)
+- Current task: Task 16 — provider-native request artifacts (in progress)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -13,7 +13,7 @@
 | Task | Deliverable | Status |
 | --- | --- | --- |
 | 15 | Review program and truthful public evidence | Complete (`d49b997`) |
-| 16 | Provider-native request artifacts | Not started |
+| 16 | Provider-native request artifacts | In progress |
 | 17 | Case-specific expectations | Not started |
 | 18 | Contract proof coverage, severity, and bounded rescore | Not started |
 | 19 | Credential successor rebinding | Not started |
@@ -37,3 +37,16 @@
 - [x] Record completion in the authoritative plan.
 
 Task 15 implementation commit: `d49b997`.
+
+## Task 16 log
+
+- [x] Reconfirm the accepted provider-native request decision and first-pilot boundary.
+- [x] Inspect existing monitor/setup schemas, immutable triggers, capture planning, provider adapters,
+  frontend authoring, and execution evidence.
+- [x] Confirm current OpenAI Responses and Anthropic Messages request structures from official docs.
+- [ ] Finalize and document the provider-native request schema and migration behavior.
+- [ ] Implement additive persistence and frozen `legacy_wrapped_v1` behavior.
+- [ ] Implement strict rendering, exact preview/fingerprinting, and direct product provider transport.
+- [ ] Update setup and review UX.
+- [ ] Add migration, payload, capture-receipt, controller, and frontend tests.
+- [ ] Run all local gates and record focused commits.
