@@ -49,4 +49,16 @@ Task 15 implementation commit: `d49b997`.
 - [x] Implement strict rendering, exact preview/fingerprinting, and direct product provider transport.
 - [x] Update setup and review UX.
 - [x] Add migration, payload, capture-receipt, controller, and frontend tests.
-- [ ] Run all local gates and record focused commits.
+- [x] Run all local gates and record focused commits.
+- [ ] Run separately authorized OpenAI and Anthropic live smoke calls.
+
+Local implementation commits:
+
+- `ffb1675` — version provider request artifacts and additive legacy-preserving schema
+- `7123ea7` — direct provider transport and immutable pre-call receipts
+- `a6b909f` — provider-native setup authoring and exact per-case previews
+- `d26177a` — request receipt identity in run evidence
+
+Local gates passed on 2026-09-19 (America/Chicago): 608 Elixir tests, 46 frontend tests,
+TypeScript checking, and `mix assets.build`. The remaining Task 16 gate is one separately authorized
+live smoke call per provider.

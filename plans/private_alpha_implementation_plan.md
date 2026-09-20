@@ -918,14 +918,24 @@ artifact without silently changing legacy monitors.
 
 **Checklist:**
 
-- [ ] Finalize provider-specific, versioned request schemas for ordered messages/input items and an
+- [x] Finalize provider-specific, versioned request schemas for ordered messages/input items and an
   allowlisted set of request fields.
-- [ ] Add an additive migration that marks current monitor versions as `legacy_wrapped_v1`.
-- [ ] Build provider-native authoring and exact per-case request previews for OpenAI and Anthropic.
-- [ ] Derive compatibility fingerprints from canonical effective requests.
-- [ ] Remove product execution's dependency on spike prompt construction while preserving the spike.
-- [ ] Add setup-to-wire payload tests proving no undisclosed wrapper or empty-context sentence is added.
+- [x] Add an additive migration that marks current monitor versions as `legacy_wrapped_v1`.
+- [x] Build provider-native authoring and exact per-case request previews for OpenAI and Anthropic.
+- [x] Derive compatibility fingerprints from canonical effective requests.
+- [x] Remove product execution's dependency on spike prompt construction while preserving the spike.
+- [x] Add setup-to-wire payload tests proving no undisclosed wrapper or empty-context sentence is added.
 - [ ] Run separately authorized OpenAI and Anthropic smoke tests only after local gates pass.
+
+**Local completion evidence:** `provider_native_v1` now emits strict OpenAI Responses or Anthropic
+Messages artifacts with no implicit wrapper, while migrated versions remain `legacy_wrapped_v1`.
+Every active case receives an exact review preview and effective-request fingerprint. Capture
+planning freezes that fingerprint, execution reproduces and verifies it, and the pre-call attempt
+ledger stores the exact secret-free artifact before direct single-attempt Req transport. Run
+evidence exposes the receipt mode, schema, and fingerprint. The local data migration preserved all
+existing rows and defaults only new setups to native mode. Verification passed with 608 Elixir
+tests, 46 frontend tests, TypeScript checking, and the production asset build. The task remains in
+progress solely for the two separately authorized live smoke calls.
 
 **Acceptance criteria:**
 
