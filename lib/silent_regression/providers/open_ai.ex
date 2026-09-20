@@ -37,13 +37,7 @@ defmodule SilentRegression.Providers.OpenAI do
 
   @impl true
   def complete_once(secret, %CompletionRequest{} = request, options) do
-    CompletionAdapter.complete_once(
-      :openai,
-      SilentRegression.Spike.Providers.OpenAI,
-      secret,
-      request,
-      options
-    )
+    CompletionAdapter.complete_once(:openai, secret, request, options)
   end
 
   defp safe_request(request_options) do

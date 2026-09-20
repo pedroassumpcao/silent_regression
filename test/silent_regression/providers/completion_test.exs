@@ -3,7 +3,7 @@ defmodule SilentRegression.Providers.CompletionTest do
 
   import ExUnit.CaptureLog
 
-  alias SilentRegression.Providers.{Anthropic, CompletionRequest, OpenAI}
+  alias SilentRegression.Providers.{Anthropic, CompletionRequest, OpenAI, RequestArtifact}
 
   @openai_stub Module.concat(__MODULE__, OpenAIStub)
   @anthropic_stub Module.concat(__MODULE__, AnthropicStub)
@@ -25,6 +25,14 @@ defmodule SilentRegression.Providers.CompletionTest do
       assert body["max_output_tokens"] == 256
       refute Map.has_key?(body, "temperature")
       assert body["text"] == %{"format" => %{"type" => "json_object"}}
+
+      assert body["input"] == [
+               %{
+                 "role" => "user",
+                 "content" =>
+                   "Evidence: The Enterprise plan includes SSO.\nQuestion: Which plan includes SSO?"
+               }
+             ]
 
       conn
       |> Plug.Conn.put_resp_header("x-request-id", "request-openai-1")
@@ -152,14 +160,16 @@ defmodule SilentRegression.Providers.CompletionTest do
     refute log =~ @secret
   end
 
-  test "rejects an unsupported model parameter before making an HTTP request" do
-    unsupported = %{
-      request(:openai)
-      | generation_config: %{"max_output_tokens" => 256, "temperature" => 0.0}
+  test "rejects a tampered request artifact before making an HTTP request" do
+    request = request(:openai)
+
+    tampered = %{
+      request
+      | request_artifact: put_in(request.request_artifact, ["body", "temperature"], 0.0)
     }
 
     assert {:error, failure} =
-             OpenAI.complete_once(@secret, unsupported, req_options(@openai_stub))
+             OpenAI.complete_once(@secret, tampered, req_options(@openai_stub))
 
     assert failure.category == :invalid_request
     assert failure.request_id == nil
@@ -167,18 +177,63 @@ defmodule SilentRegression.Providers.CompletionTest do
   end
 
   defp request(provider) do
+    {:ok, built} =
+      RequestArtifact.build(
+        %{
+          provider: provider,
+          requested_model: requested_model(provider),
+          request_mode: :provider_native_v1,
+          request_schema_version: 1,
+          request_template: request_template(provider),
+          system_prompt: "",
+          user_prompt_template: "",
+          response_format: response_format(provider),
+          generation_config: %{"max_output_tokens" => 256}
+        },
+        %{
+          input_variables: %{"question" => "Which plan includes SSO?"},
+          frozen_context: "The Enterprise plan includes SSO."
+        }
+      )
+
     %CompletionRequest{
       case_id: "supported-answer",
       attempt_number: 1,
       requested_model: requested_model(provider),
-      system_prompt: "Use only supplied evidence.",
-      context: "The Enterprise plan includes SSO.",
-      user_prompt: "Which plan includes SSO?",
-      response_format: %{"type" => "json_object"},
-      generation_config: %{"max_output_tokens" => 256},
+      request_mode: built.mode,
+      request_schema_version: built.schema_version,
+      request_artifact: built.artifact,
+      request_fingerprint: built.fingerprint,
       client_request_id: "client-attempt-1"
     }
   end
+
+  defp request_template(:openai) do
+    %{
+      "instructions" => "Use only supplied evidence.",
+      "input" => [
+        %{
+          "role" => "user",
+          "content" => "Evidence: {{frozen_context}}\nQuestion: {{question}}"
+        }
+      ]
+    }
+  end
+
+  defp request_template(:anthropic) do
+    %{
+      "system" => "Use only supplied evidence.",
+      "messages" => [
+        %{
+          "role" => "user",
+          "content" => "Evidence: {{frozen_context}}\nQuestion: {{question}}"
+        }
+      ]
+    }
+  end
+
+  defp response_format(:openai), do: %{"type" => "json_object"}
+  defp response_format(:anthropic), do: %{"type" => "text"}
 
   defp requested_model(:openai), do: "gpt-5.6-luna"
   defp requested_model(:anthropic), do: "claude-haiku-4-5-20251001"

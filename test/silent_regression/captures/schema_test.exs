@@ -12,6 +12,8 @@ defmodule SilentRegression.Captures.SchemaTest do
     ProviderAttempt
   }
 
+  alias SilentRegression.Providers.RequestArtifact
+
   setup do
     scope = workspace_scope_fixture()
     fixture = baseline_ready_monitor_fixture(scope)
@@ -99,12 +101,17 @@ defmodule SilentRegression.Captures.SchemaTest do
     run: run
   } do
     now = DateTime.utc_now()
+    {:ok, built} = RequestArtifact.build(fixture.version, hd(fixture.version.cases))
 
     attempt =
       %ProviderAttempt{}
       |> ProviderAttempt.create_changeset(run, observation, %{
         attempt_number: 1,
         client_request_id: Ecto.UUID.generate(),
+        request_mode: built.mode,
+        request_schema_version: built.schema_version,
+        request_fingerprint: built.fingerprint,
+        request_artifact: built.artifact,
         started_at: now,
         lease_expires_at: DateTime.add(now, 900, :second)
       })

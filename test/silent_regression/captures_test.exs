@@ -15,6 +15,7 @@ defmodule SilentRegression.CapturesTest do
   }
 
   alias SilentRegression.Captures.Workers.ObservationWorker
+  alias SilentRegression.Providers.RequestArtifact
 
   setup do
     scope = workspace_scope_fixture()
@@ -157,6 +158,14 @@ defmodule SilentRegression.CapturesTest do
       assert attempt.attempt_number == 1
       assert attempt.client_request_id
       assert attempt.provider_request_id
+      assert attempt.request_mode == :legacy_wrapped_v1
+      assert attempt.request_schema_version == 1
+      assert attempt.request_fingerprint == observation.request_fingerprint
+
+      assert attempt.request_fingerprint ==
+               SilentRegression.Monitors.Fingerprint.digest(attempt.request_artifact)
+
+      refute Map.has_key?(attempt.request_artifact, "headers")
 
       assert [evaluation] = observation.evaluations
       assert evaluation.status == :pass
@@ -231,12 +240,16 @@ defmodule SilentRegression.CapturesTest do
 
       _attempt =
         %ProviderAttempt{}
-        |> ProviderAttempt.create_changeset(run, observation, %{
-          attempt_number: 1,
-          client_request_id: Ecto.UUID.generate(),
-          started_at: DateTime.add(now, -1_000, :second),
-          lease_expires_at: DateTime.add(now, -1, :second)
-        })
+        |> ProviderAttempt.create_changeset(
+          run,
+          observation,
+          Map.merge(attempt_receipt(fixture), %{
+            attempt_number: 1,
+            client_request_id: Ecto.UUID.generate(),
+            started_at: DateTime.add(now, -1_000, :second),
+            lease_expires_at: DateTime.add(now, -1, :second)
+          })
+        )
         |> Repo.insert!()
 
       assert :ok = perform_job(ObservationWorker, worker_args(run))
@@ -270,12 +283,16 @@ defmodule SilentRegression.CapturesTest do
 
       _attempt =
         %ProviderAttempt{}
-        |> ProviderAttempt.create_changeset(run, observation, %{
-          attempt_number: 1,
-          client_request_id: Ecto.UUID.generate(),
-          started_at: now,
-          lease_expires_at: DateTime.add(now, 60, :second)
-        })
+        |> ProviderAttempt.create_changeset(
+          run,
+          observation,
+          Map.merge(attempt_receipt(fixture), %{
+            attempt_number: 1,
+            client_request_id: Ecto.UUID.generate(),
+            started_at: now,
+            lease_expires_at: DateTime.add(now, 60, :second)
+          })
+        )
         |> Repo.insert!()
 
       assert {:snooze, seconds} = perform_job(ObservationWorker, worker_args(run))
@@ -380,6 +397,17 @@ defmodule SilentRegression.CapturesTest do
     %{
       capture_run_id: run.id,
       observation_id: hd(run.observations).id
+    }
+  end
+
+  defp attempt_receipt(fixture) do
+    {:ok, built} = RequestArtifact.build(fixture.version, hd(fixture.version.cases))
+
+    %{
+      request_mode: built.mode,
+      request_schema_version: built.schema_version,
+      request_fingerprint: built.fingerprint,
+      request_artifact: built.artifact
     }
   end
 

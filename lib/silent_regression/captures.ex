@@ -17,17 +17,16 @@ defmodule SilentRegression.Captures do
     CaptureRuleResult,
     CaptureRun,
     EvaluationPersistence,
-    Prompt,
     ProviderAttempt
   }
 
   alias SilentRegression.Captures.Workers.ObservationWorker
   alias SilentRegression.ContractAuthoring.ContractVersion
-  alias SilentRegression.Monitors.{CaseVersion, Fingerprint, Monitor, MonitorVersion}
+  alias SilentRegression.Monitors.{CaseVersion, Monitor, MonitorVersion}
   alias SilentRegression.PilotPolicies
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Providers
-  alias SilentRegression.Providers.{CompletionRequest, CompletionResult, Failure}
+  alias SilentRegression.Providers.{CompletionRequest, CompletionResult, Failure, RequestArtifact}
   alias SilentRegression.Repo
   alias SilentRegression.Workspaces.{Membership, Workspace}
 
@@ -308,33 +307,30 @@ defmodule SilentRegression.Captures do
     resources.cases
     |> Enum.sort_by(&{&1.position, &1.id})
     |> Enum.reduce_while(:ok, fn case_version, :ok ->
-      Enum.reduce_while(0..(run.samples_per_case - 1), :ok, fn sample_index, :ok ->
-        request_fingerprint =
-          Fingerprint.digest(%{
-            "fingerprint_schema" => "capture-request-v1",
-            "monitor_fingerprint" => run.monitor_fingerprint,
-            "contract_fingerprint" => run.contract_fingerprint,
-            "case_fingerprint" => case_version.fingerprint,
-            "sample_index" => sample_index
-          })
+      case RequestArtifact.build(resources.monitor_version, case_version) do
+        {:ok, built} ->
+          Enum.reduce_while(0..(run.samples_per_case - 1), :ok, fn sample_index, :ok ->
+            result =
+              %CaptureObservation{}
+              |> CaptureObservation.create_changeset(run, case_version, %{
+                sample_index: sample_index,
+                case_fingerprint: case_version.fingerprint,
+                request_fingerprint: built.fingerprint
+              })
+              |> Repo.insert()
 
-        result =
-          %CaptureObservation{}
-          |> CaptureObservation.create_changeset(run, case_version, %{
-            sample_index: sample_index,
-            case_fingerprint: case_version.fingerprint,
-            request_fingerprint: request_fingerprint
-          })
-          |> Repo.insert()
+            case result do
+              {:ok, _observation} -> {:cont, :ok}
+              {:error, reason} -> {:halt, {:error, reason}}
+            end
+          end)
+          |> case do
+            :ok -> {:cont, :ok}
+            {:error, reason} -> {:halt, {:error, reason}}
+          end
 
-        case result do
-          {:ok, _observation} -> {:cont, :ok}
-          {:error, reason} -> {:halt, {:error, reason}}
-        end
-      end)
-      |> case do
-        :ok -> {:cont, :ok}
-        {:error, reason} -> {:halt, {:error, reason}}
+        {:error, reason} ->
+          {:halt, {:error, reason}}
       end
     end)
   end
@@ -506,7 +502,7 @@ defmodule SilentRegression.Captures do
         )
 
       true ->
-        with {:ok, credential, case_version, monitor_version, user_prompt} <-
+        with {:ok, credential, case_version, built} <-
                execution_resources(run, observation) do
           now = DateTime.utc_now()
           attempt_number = observation_attempt_count(observation.id) + 1
@@ -517,6 +513,10 @@ defmodule SilentRegression.Captures do
             |> ProviderAttempt.create_changeset(run, observation, %{
               attempt_number: attempt_number,
               client_request_id: client_request_id,
+              request_mode: built.mode,
+              request_schema_version: built.schema_version,
+              request_fingerprint: built.fingerprint,
+              request_artifact: built.artifact,
               started_at: now,
               lease_expires_at: DateTime.add(now, capture_limit(:attempt_lease_seconds), :second)
             })
@@ -531,11 +531,10 @@ defmodule SilentRegression.Captures do
             case_id: case_version.case_key,
             attempt_number: attempt_number,
             requested_model: run.requested_model,
-            system_prompt: monitor_version.system_prompt,
-            context: case_version.frozen_context,
-            user_prompt: user_prompt,
-            response_format: monitor_version.response_format,
-            generation_config: monitor_version.generation_config,
+            request_mode: built.mode,
+            request_schema_version: built.schema_version,
+            request_artifact: built.artifact,
+            request_fingerprint: built.fingerprint,
             client_request_id: client_request_id
           }
 
@@ -554,7 +553,7 @@ defmodule SilentRegression.Captures do
               run,
               observation,
               :invalid_request,
-              "The case prompt could not be rendered safely."
+              "The provider request artifact could not be reproduced safely."
             )
         end
     end
@@ -585,11 +584,12 @@ defmodule SilentRegression.Captures do
     with %ProviderCredential{} = credential <- credential,
          %CaseVersion{} = case_version <- case_version,
          %MonitorVersion{} = monitor_version <- monitor_version,
-         {:ok, user_prompt} <-
-           Prompt.render(monitor_version.user_prompt_template, case_version.input_variables) do
-      {:ok, credential, case_version, monitor_version, user_prompt}
+         {:ok, built} <- RequestArtifact.build(monitor_version, case_version),
+         true <- built.fingerprint == observation.request_fingerprint do
+      {:ok, credential, case_version, built}
     else
       nil -> {:error, :credential_unavailable}
+      false -> {:error, :request_fingerprint_mismatch}
       {:error, reason} -> {:error, reason}
     end
   end

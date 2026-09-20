@@ -37,13 +37,7 @@ defmodule SilentRegression.Providers.Anthropic do
 
   @impl true
   def complete_once(secret, %CompletionRequest{} = request, options) do
-    CompletionAdapter.complete_once(
-      :anthropic,
-      SilentRegression.Spike.Providers.Anthropic,
-      secret,
-      request,
-      options
-    )
+    CompletionAdapter.complete_once(:anthropic, secret, request, options)
   end
 
   defp request_headers(secret) do

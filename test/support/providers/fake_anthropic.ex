@@ -60,8 +60,10 @@ defmodule SilentRegression.Providers.FakeAnthropic do
   end
 
   defp fake_completion(provider, secret, request) do
+    request_text = Jason.encode!(request.request_artifact)
+
     cond do
-      String.contains?(request.context, "[fake:retry-once]") and request.attempt_number == 1 ->
+      String.contains?(request_text, "[fake:retry-once]") and request.attempt_number == 1 ->
         {:error,
          %Failure{
            category: :rate_limited,
@@ -72,7 +74,7 @@ defmodule SilentRegression.Providers.FakeAnthropic do
            latency_ms: 1
          }}
 
-      String.contains?(request.context, "[fake:provider-failure]") ->
+      String.contains?(request_text, "[fake:provider-failure]") ->
         {:error,
          %Failure{
            category: :provider_unavailable,
@@ -86,17 +88,17 @@ defmodule SilentRegression.Providers.FakeAnthropic do
       true ->
         output_text =
           if secret == "sk-test-output-maybe" or
-               String.contains?(request.context, "[fake:output=maybe]"),
+               String.contains?(request_text, "[fake:output=maybe]"),
              do: "maybe",
              else: "approved"
 
         returned_model =
-          if String.contains?(request.context, "[fake:model-mismatch]"),
+          if String.contains?(request_text, "[fake:model-mismatch]"),
             do: "#{request.requested_model}-unexpected",
             else: request.requested_model
 
         completion_state =
-          if String.contains?(request.context, "[fake:incomplete]"),
+          if String.contains?(request_text, "[fake:incomplete]"),
             do: :incomplete,
             else: :complete
 

@@ -12,7 +12,14 @@ defmodule SilentRegression.PilotSmoke do
   alias SilentRegression.Monitors.ModelCatalog
   alias SilentRegression.ProviderCredentials.ProviderCredential
   alias SilentRegression.Providers
-  alias SilentRegression.Providers.{CompletionRequest, CompletionResult, Failure}
+
+  alias SilentRegression.Providers.{
+    CompletionRequest,
+    CompletionResult,
+    Failure,
+    RequestArtifact
+  }
+
   alias SilentRegression.Repo
   alias SilentRegression.Workspaces.Workspace
 
@@ -36,9 +43,10 @@ defmodule SilentRegression.PilotSmoke do
          {:ok, {^provider, ^model}} <- ModelCatalog.validate(provider, model),
          {:ok, credential_id} <- cast_credential_id(Keyword.get(options, :credential_id)),
          %{id: ^credential_id} = credential <-
-           load_credential_metadata(workspace_slug, provider, credential_id) do
+           load_credential_metadata(workspace_slug, provider, credential_id),
+         {:ok, built} <- smoke_request_artifact(provider, model) do
       plan = %{
-        fingerprint_schema: "provider-smoke-v1",
+        fingerprint_schema: "provider-smoke-v2",
         workspace_slug: workspace_slug,
         provider: provider,
         model: model,
@@ -56,6 +64,10 @@ defmodule SilentRegression.PilotSmoke do
         user_prompt: @user_prompt,
         response_format: @response_format,
         generation_config: @generation_config,
+        request_mode: built.mode,
+        request_schema_version: built.schema_version,
+        request_artifact: built.artifact,
+        request_fingerprint: built.fingerprint,
         contract: @contract
       }
 
@@ -93,12 +105,48 @@ defmodule SilentRegression.PilotSmoke do
       case_id: @case_key,
       attempt_number: 1,
       requested_model: plan.model,
-      system_prompt: @system_prompt,
-      context: @context,
-      user_prompt: @user_prompt,
-      response_format: @response_format,
-      generation_config: @generation_config,
+      request_mode: plan.request_mode,
+      request_schema_version: plan.request_schema_version,
+      request_artifact: plan.request_artifact,
+      request_fingerprint: plan.request_fingerprint,
       client_request_id: "pilot-smoke-#{Ecto.UUID.generate()}"
+    }
+  end
+
+  defp smoke_request_artifact(provider, model) do
+    configuration = %{
+      provider: provider,
+      requested_model: model,
+      request_mode: :provider_native_v1,
+      request_schema_version: RequestArtifact.request_schema_version(),
+      request_template: smoke_template(provider),
+      system_prompt: "",
+      user_prompt_template: "",
+      response_format: @response_format,
+      generation_config: @generation_config
+    }
+
+    RequestArtifact.build(configuration, %{
+      input_variables: %{"question" => @user_prompt},
+      frozen_context: @context
+    })
+  end
+
+  defp smoke_template(:openai) do
+    %{
+      "instructions" => @system_prompt,
+      "input" => [
+        %{"role" => "user", "content" => "{{frozen_context}}\n\n{{question}}"}
+      ]
+    }
+  end
+
+  defp smoke_template(:anthropic) do
+    %{
+      "system" => @system_prompt,
+      "messages" => [
+        %{"role" => "user", "content" => "{{frozen_context}}\n\n{{question}}"}
+      ]
     }
   end
 
@@ -192,6 +240,8 @@ defmodule SilentRegression.PilotSmoke do
         plan.user_prompt,
         plan.response_format,
         plan.generation_config,
+        plan.request_artifact,
+        plan.request_fingerprint,
         plan.contract
       }
 
