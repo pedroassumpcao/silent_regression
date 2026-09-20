@@ -1,8 +1,8 @@
 # Silent Regression Private Alpha — Implementation and Progress Plan
 
-> **Status:** Tasks 1–20 complete; Task 21 is next; Gate A is complete and Gates B–D block the first design-partner pilot
+> **Status:** Tasks 1–20 complete; Task 21 is in progress; Gate A is complete and Gates B–D block the first design-partner pilot
 >
-> **Progress:** 20 of 27 tasks complete; Task 21 is not started
+> **Progress:** 20 of 27 tasks complete; Task 21 is in progress
 >
 > **Last revised:** 2026-09-20
 >
@@ -318,7 +318,7 @@ Behavior-affecting changes never mutate an approved version. They create a new m
 | 18 | Contract proof coverage, severity, and bounded rescore | 17 | Complete | `fd2194d`, `67e20fb`, `9d1cda5` |
 | 19 | Credential successor rebinding | 16 | Complete | `640cb8a`, `b5ae9f5`, `eaf97fd`, `a856b28` |
 | 20 | Authentication-breaker recovery | 19 | Complete | `b2e6d80`, `e639ce6`, `5d42d0a`, `6403357` |
-| 21 | Temporary capacity and coverage state | 20 | Not started | — |
+| 21 | Temporary capacity and coverage state | 20 | In progress | — |
 | 22 | Successor workflow configuration | 17, 19–21 | Not started | — |
 | 23 | Incident-centered alerting | 18, 22 | Not started | — |
 | 24 | Reviewed reference capture language | 16–18, 23 | Not started | — |
@@ -1055,7 +1055,7 @@ schedule automatically. All local gates passed with 638 Elixir tests and 54 fron
 
 ### Task 21 — Temporary capacity and coverage state
 
-**Status:** Not started
+**Status:** In progress
 
 **Gate:** B — Recoverable monitoring
 
@@ -1069,6 +1069,14 @@ monitoring coverage.
 - [ ] Expose last successful check, overdue coverage, and owner notification.
 - [ ] Resume/retry automatically when the temporary boundary clears without bypassing hard caps.
 - [ ] Test exhaustion and recovery across a simulated UTC limit boundary.
+
+**Implementation decision:** Daily workspace run/call exhaustion is a durable waiting condition,
+not a safety pause. A due schedule records its original intended slot, interruption time, exact UTC
+retry boundary, and reason while remaining operationally active; the dispatcher retries that same
+slot through ordinary locked capacity authorization after reset. Per-run overflow remains a
+persistent accurately labeled pause. Operations exposes waiting, last successful execution, and
+overdue coverage, while a deduplicated content-free email notifies owners once per wait episode.
+Legacy capacity pauses remain unchanged because the missing intended slot cannot be inferred.
 
 ### Task 22 — Successor workflow configuration
 

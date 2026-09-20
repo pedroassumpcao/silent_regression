@@ -249,6 +249,37 @@ This is the standard circuit-breaker half-open principle—allow only limited tr
 closing the circuit—adapted to require owner authorization rather than an automatic timeout:
 [Microsoft circuit-breaker pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/circuit-breaker).
 
+#### Task 21 temporary-capacity boundary
+
+Temporary workspace run/call exhaustion is a retryable scheduling condition, not a safety pause:
+
+- capacity is checked only when a new run is actually due or explicitly requested. The periodic
+  eligibility sweep continues to pause persistent credential, reference, authentication-breaker,
+  ownership, and workspace failures, but it no longer stops future coverage merely because today's
+  budget is currently full;
+- a due scheduled monitor that reaches the daily run or call limit stays operationally active and
+  records an explicit wait reason, the original intended slot, when coverage became interrupted,
+  and the next UTC reset boundary. `next_run_at` becomes that retry boundary while the original slot
+  remains the idempotency identity;
+- the ordinary dispatcher retries at or after that boundary and runs through the same locked
+  capacity authorization used by every other capture. Success clears the wait atomically with
+  schedule advancement; another exhausted boundary extends the wait without bypassing a cap;
+- a per-run ceiling is not transient. It remains a persistent pause with its own accurate reason
+  because midnight cannot make an oversized run safe;
+- the Operations surface exposes waiting, retry time, original due time, last successful check, and
+  overdue coverage separately from safety pauses. Run-now and schedule edits do not pretend the
+  waiting monitor is immediately runnable;
+- the first wait episode creates a durable, content-free owner email delivery. Its identity is
+  deduplicated by monitor, original slot, reason, recipient, and channel, and it respects the
+  existing notification preference; and
+- legacy monitors already paused for capacity remain conservatively paused because their lost
+  intended slot cannot be reconstructed honestly. The migration adds nullable state only and does
+  not invent recovery evidence.
+
+This applies delayed retry only to known transient capacity boundaries and retains a finite shared
+retry budget rather than immediately repeating provider work, following the retry classification
+guidance in [Microsoft's transient-fault guidance](https://learn.microsoft.com/en-us/azure/architecture/best-practices/transient-faults).
+
 ### Incident-centered alerts
 
 Observations and evaluations remain immutable. A mutable incident groups the actionable lifecycle

@@ -4,7 +4,7 @@
 
 - Program: in progress
 - Current gate: Gate B — Recoverable monitoring
-- Current task: Task 21 — temporary capacity and coverage state (not started)
+- Current task: Task 21 — temporary capacity and coverage state (in progress)
 - Local-data policy: preserve and migrate; no wipe authorized or required
 - External pilot: blocked until Gates A–D are complete
 
@@ -18,7 +18,7 @@
 | 18 | Contract proof coverage, severity, and bounded rescore | Complete |
 | 19 | Credential successor rebinding | Complete (`b5ae9f5`, `eaf97fd`) |
 | 20 | Authentication breaker recovery | Complete (`e639ce6`, `5d42d0a`, `6403357`) |
-| 21 | Temporary capacity and coverage state | Not started |
+| 21 | Temporary capacity and coverage state | In progress |
 | 22 | Successor workflow configuration | Not started |
 | 23 | Incident-centered alerting | Not started |
 | 24 | Reviewed reference capture language | Not started |
@@ -231,3 +231,29 @@ same-credential repair, a single-case/single-call/zero-retry probe, no-call reje
 recovery record, explicit resume, preserved failures, later retrip, failed-probe retry through a new
 epoch, owner/member authorization, controller state, and purge compatibility. Task 20 is complete;
 Task 21 is next.
+
+## Task 21 log
+
+- [x] Reconfirm the accepted capacity finding and inspect policy accounting, eligibility sweeps,
+  dispatch locking, cadence identity, notification outbox, authenticated Operations state, and
+  legacy pause data.
+- [x] Define explicit wait fields, original-slot preservation, UTC-boundary retry, exact capacity
+  classification, one owner notification, and conservative legacy behavior.
+- [ ] Add the additive capacity-wait and delivery schema.
+- [ ] Implement due-only capacity checks, automatic bounded retry, coverage state, and notification.
+- [ ] Expose waiting, retry, last-success, and overdue state in Operations UI.
+- [ ] Prove run/call exhaustion, no premature stop, boundary recovery, no cap bypass, delivery
+  deduplication, and legacy/purge compatibility.
+- [ ] Run migration audits and all verification gates; record focused commits.
+
+Decisions:
+
+- Daily run/call exhaustion keeps a scheduled monitor active with explicit waiting metadata; it is
+  not stored as a safety pause.
+- The original intended slot remains the scheduled-run identity while `next_run_at` temporarily
+  points at the exact UTC reset boundary.
+- Per-run limit failures remain persistent and receive their own pause reason.
+- The first capacity interruption creates one content-free, preference-aware email delivery for
+  each owner. Repeated dispatcher wakes do not create notification storms.
+- Existing capacity-paused monitors are not auto-reclassified because their missed slot and
+  interruption boundary were never persisted.
