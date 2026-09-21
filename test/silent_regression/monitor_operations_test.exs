@@ -278,9 +278,11 @@ defmodule SilentRegression.MonitorOperationsTest do
       fixture: fixture,
       scope: scope
     } do
-      activated_at = ~U[2026-09-19 12:00:00Z]
-      due_at = ~U[2026-09-20 12:00:00Z]
-      retry_at = ~U[2026-09-21 00:00:00Z]
+      # Captures persist real insertion/completion times. Keep the simulated
+      # dispatch day aligned with those fixtures instead of a historical date.
+      due_at = DateTime.new!(Date.utc_today(), ~T[12:00:00], "Etc/UTC")
+      activated_at = DateTime.add(due_at, -1, :day)
+      retry_at = PilotPolicies.next_reset_at(due_at)
 
       PilotPolicies.update_limits!(scope.workspace.id, %{
         daily_run_limit: 2,
@@ -334,7 +336,7 @@ defmodule SilentRegression.MonitorOperationsTest do
       assert recovered.capacity_intended_at == nil
       assert recovered.coverage_interrupted_at == nil
       assert recovered.last_scheduled_at == due_at
-      assert recovered.next_run_at == ~U[2026-09-21 12:00:00Z]
+      assert recovered.next_run_at == DateTime.add(due_at, 1, :day)
 
       scheduled =
         Repo.one!(
@@ -343,7 +345,7 @@ defmodule SilentRegression.MonitorOperationsTest do
         )
 
       assert scheduled.identity_key ==
-               "scheduled:#{fixture.monitor.id}:2026-09-20T12:00:00Z"
+               "scheduled:#{fixture.monitor.id}:#{DateTime.to_iso8601(due_at)}"
 
       events = Audit.list_workspace_events(scope)
       assert Enum.any?(events, &(&1.action == "monitor.capacity_wait_started"))
