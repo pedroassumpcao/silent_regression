@@ -1,5 +1,9 @@
 # Persisted Monitor Setup Research
 
+> Historical Task 6 research. The founder approved the follow-up [UX assessment](UX_ASSESSMENT.md)
+> on 2026-09-21. Its implementation is tracked in [IMPLEMENTATION.md](IMPLEMENTATION.md) and
+> [PROGRESS.md](PROGRESS.md); completed historical task evidence below is preserved.
+
 ## Overview
 
 Task 6 turns the authenticated product shell and Task 5 monitor domain into a resumable cold-start

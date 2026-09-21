@@ -2,6 +2,9 @@
 
 Date: 2026-09-21. Status: assessment and proposed roadmap; implementation not started.
 
+> Historical assessment state above is preserved. The founder approved this roadmap on 2026-09-21;
+> see [implementation plan](IMPLEMENTATION.md) and [progress/history](PROGRESS.md) for subsequent work.
+
 ## Recommendation
 
 Replace the fragmented setup journey with a guided flow organized around the first useful result:

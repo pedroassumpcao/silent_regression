@@ -4,7 +4,7 @@
 >
 > **Progress:** 26 of 27 tasks complete; Task 27 awaits separately authorized deployment and target-environment drills
 >
-> **Last revised:** 2026-09-20
+> **Last revised:** 2026-09-21
 >
 > **Release target:** Invite-only design-partner alpha
 >
@@ -13,6 +13,16 @@
 This plan narrows the broader [productization plan](productization_plan.md) into a private alpha that can be used with design partners. It does not reopen the completed spike or authorize the deferred semantic-layer work in [semantic_layer_plan.md](semantic_layer_plan.md).
 
 The private alpha is a learning instrument. It must let a real customer complete the full monitoring loop securely, but it must not acquire conventional SaaS machinery merely to look complete.
+
+### Approved monitor-setup UX follow-up (2026-09-21)
+
+The founder's local walkthrough exposed substantial onboarding friction after template selection.
+The [UX assessment](../docs/monitor-setup/UX_ASSESSMENT.md) and its six-stage redesign are approved.
+Track implementation and individual commits in the [guided setup plan](../docs/monitor-setup/IMPLEMENTATION.md)
+and [progress log](../docs/monitor-setup/PROGRESS.md). Stage 1 is in progress. This is additional product
+work, not a retroactive change to the completed Tasks 1–26; independent usability validation is now
+an additional readiness criterion for self-guided partner onboarding. Task 27 deployment and real
+partner invitations remain separate follow-ups. Local data reset is permitted but not presently needed.
 
 ## 1. How to use this document
 
