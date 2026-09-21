@@ -9,6 +9,67 @@ defmodule SilentRegressionWeb.ContractAuthoringControllerTest do
 
   setup :register_and_log_in_workspace
 
+  test "approval requires a current reviewed identity, including fixtures and proof", %{
+    conn: conn,
+    scope: scope,
+    workspace: workspace
+  } do
+    completed = complete_setup_fixture(scope)
+    _draft = draft_fixture(scope, completed.monitor)
+    valid = fixture(scope, completed.monitor)
+
+    _invalid =
+      fixture(scope, completed.monitor, %{
+        name: "Unknown label",
+        output_text: "maybe",
+        expected_status: "fail",
+        expected_failed_rule_ids: ["allowed_label"]
+      })
+
+    path = ~p"/app/#{workspace.slug}/monitors/#{completed.monitor.id}/contract"
+    page = get(conn, path)
+    props = inertia_props(page)
+
+    identity = %{
+      "contract_id" => props.contract.id,
+      "fingerprint" => props.contract.fingerprint,
+      "coverage_fingerprint" => props.coverage.fingerprint
+    }
+
+    for payload <- [
+          %{},
+          %{"approval" => nil},
+          %{"approval" => Map.put(identity, "contract_id", Ecto.UUID.generate())},
+          %{"approval" => Map.put(identity, "fingerprint", "old")},
+          %{"approval" => Map.put(identity, "coverage_fingerprint", "old")}
+        ] do
+      response = post(recycle(page), path <> "/approve", payload)
+      assert redirected_to(response) == path
+      assert Phoenix.Flash.get(response.assigns.flash, :error) =~ "changed since you reviewed"
+    end
+
+    assert {:ok, _changed} =
+             SilentRegression.ContractAuthoring.update_fixture(
+               scope,
+               completed.monitor.id,
+               valid.id,
+               %{
+                 name: "Reviewed elsewhere",
+                 output_text: "rejected",
+                 expected_status: "pass",
+                 expected_failed_rule_ids: []
+               }
+             )
+
+    stale = post(recycle(page), path <> "/approve", %{"approval" => identity})
+    assert Phoenix.Flash.get(stale.assigns.flash, :error) =~ "changed since you reviewed"
+
+    assert {:ok, state} =
+             SilentRegression.ContractAuthoring.get_state(scope, completed.monitor.id)
+
+    assert state.contract_version.status == :draft
+  end
+
   describe "authenticated workspace boundary" do
     test "requires login and returns the same 404 for malformed and cross-workspace IDs", %{
       conn: conn,
@@ -180,7 +241,13 @@ defmodule SilentRegressionWeb.ContractAuthoringControllerTest do
       approved =
         ready_page
         |> recycle()
-        |> post(~p"/app/#{workspace.slug}/monitors/#{monitor_id}/contract/approve")
+        |> post(~p"/app/#{workspace.slug}/monitors/#{monitor_id}/contract/approve", %{
+          "approval" => %{
+            "contract_id" => inertia_props(ready_page).contract.id,
+            "fingerprint" => inertia_props(ready_page).contract.fingerprint,
+            "coverage_fingerprint" => inertia_props(ready_page).coverage.fingerprint
+          }
+        })
 
       sealed_page = approved |> recycle() |> get(path)
       assert inertia_props(sealed_page).contract.status == :approved

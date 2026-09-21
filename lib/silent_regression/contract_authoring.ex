@@ -308,13 +308,18 @@ defmodule SilentRegression.ContractAuthoring do
   def delete_coverage_waiver(%Scope{}, _monitor_id, _rule_id),
     do: {:error, :owner_required}
 
+  # Internal callers may approve the current state; HTTP callers must supply the
+  # exact identity rendered for review, checked while holding the monitor lock.
+  def approve(scope, monitor_id, reviewed_identity \\ nil)
+
   def approve(
         %Scope{
           workspace: %Workspace{id: workspace_id},
           membership: %Membership{role: :owner},
           user: %User{} = user
         },
-        monitor_id
+        monitor_id,
+        reviewed_identity
       ) do
     with {:ok, monitor_id} <- Ecto.UUID.cast(monitor_id) do
       Repo.transaction(fn ->
@@ -324,6 +329,7 @@ defmodule SilentRegression.ContractAuthoring do
              waivers <- load_coverage_waivers(draft.id, lock: true),
              results <- evaluate_fixtures(draft, fixtures),
              coverage <- Coverage.analyze(draft.root, results, waivers),
+             :ok <- verify_reviewed_identity(draft, coverage, reviewed_identity),
              %{ready?: true} <- approval_readiness(draft, fixtures, results, coverage),
              {:ok, draft} <- refresh_fingerprints(draft),
              previous <- load_contract(monitor_id, :approved, lock: true),
@@ -362,7 +368,20 @@ defmodule SilentRegression.ContractAuthoring do
     end
   end
 
-  def approve(%Scope{}, _monitor_id), do: {:error, :owner_required}
+  def approve(%Scope{}, _monitor_id, _reviewed_identity), do: {:error, :owner_required}
+
+  defp verify_reviewed_identity(_draft, _coverage, nil), do: :ok
+
+  defp verify_reviewed_identity(draft, coverage, identity) when is_map(identity) do
+    if identity["contract_id"] == draft.id and identity["fingerprint"] == draft.fingerprint and
+         identity["coverage_fingerprint"] == coverage.fingerprint do
+      :ok
+    else
+      {:error, :stale_review}
+    end
+  end
+
+  defp verify_reviewed_identity(_draft, _coverage, _identity), do: {:error, :stale_review}
 
   def create_revision(
         %Scope{

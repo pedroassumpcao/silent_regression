@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 
 import { ProductShell } from "@/components/product-shell"
+import { DraftEditorsProvider, useDraftEditor, useDraftEditors } from "@/hooks/use-draft-editors"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -230,7 +231,12 @@ const ruleTypes = [
   { value: "length", label: "Length bounds" },
 ] as const
 
-export function ContractAuthoringView({ errors, flash, ...props }: ContractAuthoringProps & Pick<SharedPageProps, "errors" | "flash">) {
+export function ContractAuthoringView(props: ContractAuthoringProps & Pick<SharedPageProps, "errors" | "flash">) {
+  return <DraftEditorsProvider key={props.contract?.id || "new"}><ContractAuthoringContent {...props} /></DraftEditorsProvider>
+}
+
+function ContractAuthoringContent({ errors, flash, ...props }: ContractAuthoringProps & Pick<SharedPageProps, "errors" | "flash">) {
+  const { dirty, rulesDirty } = useDraftEditors()
   const workspace = props.auth.workspace
   if (!workspace) return null
 
@@ -330,6 +336,7 @@ export function ContractAuthoringView({ errors, flash, ...props }: ContractAutho
 
         {!readOnly && (
           <ContractEditor
+            key={`${props.contract?.contractFingerprint || "new"}:${props.contract?.templateKey}:${props.contract?.assistanceMode}`}
             contract={props.contract}
             errors={errors}
             fixturesExist={props.fixtures.length > 0}
@@ -340,25 +347,37 @@ export function ContractAuthoringView({ errors, flash, ...props }: ContractAutho
 
         {props.contract && (
           <>
-            <FixtureSection
-              contract={props.contract}
-              errors={errors}
-              fixtures={props.fixtures}
-              limits={props.limits}
-              path={path}
-              readOnly={readOnly}
-            />
-            {props.coverage && (
-              <CoverageSection
-                canApprove={props.canApprove}
+            {dirty && (
+              <Alert id="contract-unsaved-changes">
+                <Save />
+                <AlertTitle>Unsaved changes — approval is paused</AlertTitle>
+                <AlertDescription>
+                  {rulesDirty ? "Save and validate your rules before evaluating examples or approving. The evidence below belongs to the saved rules." : "Save or cancel your example or waiver edits before changing rules or approving."}
+                </AlertDescription>
+              </Alert>
+            )}
+            <fieldset disabled={rulesDirty} className="min-w-0 space-y-7" aria-label="Saved-rule proof">
+              <FixtureSection
+                key={props.contract.contractFingerprint}
                 contract={props.contract}
-                coverage={props.coverage}
                 errors={errors}
                 fixtures={props.fixtures}
+                limits={props.limits}
                 path={path}
                 readOnly={readOnly}
               />
-            )}
+              {props.coverage && (
+                <CoverageSection
+                  canApprove={props.canApprove}
+                  contract={props.contract}
+                  coverage={props.coverage}
+                  errors={errors}
+                  fixtures={props.fixtures}
+                  path={path}
+                  readOnly={readOnly}
+                />
+              )}
+            </fieldset>
             <ApprovalPanel
               canApprove={props.canApprove}
               contract={props.contract}
@@ -367,6 +386,7 @@ export function ContractAuthoringView({ errors, flash, ...props }: ContractAutho
               readiness={props.readiness}
               rescoreRun={props.rescoreRun}
               rescoreSummary={props.rescoreSummary}
+              coverageFingerprint={props.coverage?.fingerprint || ""}
             />
           </>
         )}
@@ -425,6 +445,9 @@ function ContractEditor({ contract, errors, fixturesExist, path, templates }: {
     },
   })
 
+  useDraftEditor("rules", form.isDirty || form.processing)
+  const { proofDirty, invalidRules } = useDraftEditors()
+
   function chooseTemplate(template: Template) {
     setSelectedTemplate(template)
     form.setData("contract", {
@@ -441,13 +464,14 @@ function ContractEditor({ contract, errors, fixturesExist, path, templates }: {
 
   function submit(event: FormEvent) {
     event.preventDefault()
+    if (proofDirty || invalidRules) return
     form.put(path, { preserveScroll: true })
   }
 
   const rules = form.data.contract.root?.rules || []
 
   return (
-    <section aria-labelledby="contract-definition-heading" className="space-y-6">
+    <fieldset disabled={proofDirty} aria-labelledby="contract-definition-heading" className="min-w-0 space-y-6">
       <div>
         <p className="text-sm font-medium text-primary">Steps 1–2</p>
         <h2 id="contract-definition-heading" className="mt-1 text-2xl font-semibold tracking-tight">Choose a workflow shape, then make every rule yours</h2>
@@ -534,7 +558,7 @@ function ContractEditor({ contract, errors, fixturesExist, path, templates }: {
                 </Select>
                 <p className="text-xs text-muted-foreground">This records private-alpha assistance honestly; it does not change evaluation.</p>
               </div>
-              <Button id="save-contract-draft" type="submit" disabled={form.processing || rules.length === 0}>
+              <Button id="save-contract-draft" type="submit" disabled={form.processing || rules.length === 0 || invalidRules}>
                 {form.processing ? <LoaderCircle className="animate-spin" /> : <Save />}
                 Save and validate rules
               </Button>
@@ -542,7 +566,7 @@ function ContractEditor({ contract, errors, fixturesExist, path, templates }: {
           </Card>
         </form>
       )}
-    </section>
+    </fieldset>
   )
 }
 
@@ -700,6 +724,7 @@ function FixtureSection({ contract, errors, fixtures, limits, path, readOnly }: 
 
 function FixtureForm({ contract, errors, path }: { contract: ContractVersion; errors: SharedPageProps["errors"]; path: string }) {
   const form = useForm({ fixture: { name: "", output_text: "", expected_status: "pass" as "pass" | "fail", expected_failed_rule_ids: [] as string[] } })
+  useDraftEditor("fixture-new", form.isDirty || form.processing)
 
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -740,6 +765,7 @@ function FixtureForm({ contract, errors, path }: { contract: ContractVersion; er
 function FixtureCard({ contract, fixture, path, readOnly }: { contract: ContractVersion; fixture: Fixture; path: string; readOnly: boolean }) {
   const [editing, setEditing] = useState(false)
   const form = useForm({ fixture: { name: fixture.name, output_text: fixture.outputText, expected_status: fixture.expectedStatus, expected_failed_rule_ids: fixture.expectedFailedRuleIds } })
+  useDraftEditor(`fixture-${fixture.id}`, editing && (form.isDirty || form.processing))
   const childResults = fixture.actual.ruleResults.filter(result => result.ruleId !== "contract")
 
   function submit(event: FormEvent) {
@@ -758,7 +784,7 @@ function FixtureCard({ contract, fixture, path, readOnly }: { contract: Contract
           </div>
           <div className="space-y-2"><Label htmlFor={`fixture-${fixture.id}-output`}>Completed model output</Label><Textarea id={`fixture-${fixture.id}-output`} className="min-h-32 font-mono text-xs" value={form.data.fixture.output_text} onChange={event => form.setData("fixture", { ...form.data.fixture, output_text: event.target.value })} /></div>
           {form.data.fixture.expected_status === "fail" && <FailedRulePicker rules={contract.root.rules} selected={form.data.fixture.expected_failed_rule_ids} onChange={selected => form.setData("fixture", { ...form.data.fixture, expected_failed_rule_ids: selected })} />}
-          <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button><Button type="submit" disabled={form.processing}><Save /> Save fixture</Button></div>
+          <div className="flex justify-end gap-2"><Button type="button" variant="ghost" disabled={form.processing} onClick={() => { form.reset(); setEditing(false) }}>Cancel</Button><Button type="submit" disabled={form.processing}><Save /> Save fixture</Button></div>
         </form></CardContent>
       </Card>
     )
@@ -846,6 +872,7 @@ function CoverageRuleCard({ canApprove, contract, fixtureNames, path, readOnly, 
   rule: RuleCoverage
 }) {
   const form = useForm({ coverage_waiver: { rationale: "" } })
+  useDraftEditor(`waiver-${rule.ruleId}`, form.isDirty || form.processing)
   const waiverPath = `${path}/coverage-waivers/${encodeURIComponent(rule.ruleId)}`
 
   function submit(event: FormEvent) {
@@ -916,8 +943,14 @@ function CoverageBranch({ fixtureIds, fixtureNames, label, proven }: { fixtureId
   )
 }
 
-function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness, rescoreRun, rescoreSummary }: { canApprove: boolean; contract: ContractVersion; fixtureCount: number; path: string; readiness: ContractAuthoringProps["readiness"]; rescoreRun: RescoreRun | null; rescoreSummary: RescoreSummary | null }) {
+function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness, rescoreRun, rescoreSummary, coverageFingerprint }: { canApprove: boolean; contract: ContractVersion; fixtureCount: number; path: string; readiness: ContractAuthoringProps["readiness"]; rescoreRun: RescoreRun | null; rescoreSummary: RescoreSummary | null; coverageFingerprint: string }) {
   const form = useForm({})
+  const { dirty } = useDraftEditors()
+  function approve() {
+    if (dirty) return
+    form.transform(() => ({ approval: { contract_id: contract.id, fingerprint: contract.fingerprint, coverage_fingerprint: coverageFingerprint } }))
+    form.post(`${path}/approve`)
+  }
   const approved = contract.status === "approved"
   const pending = contract.status === "pending_rescore"
   const failed = contract.status === "rescore_failed"
@@ -960,7 +993,7 @@ function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness, re
             <div id="contract-rescore-summary" className="rounded-xl border bg-background/80 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div><p className="font-medium">Historical outputs rescored before activation</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Local deterministic evaluation only · 0 provider calls · {formatDate(rescoreSummary.rescoredAt)}</p></div>
-                <Badge variant="outline">{rescoreSummary.interpretationChanged ? "New reviewed reference required" : "Reference semantics unchanged"}</Badge>
+                <Badge variant="outline">{rescoreSummary.interpretationChanged ? "Semantics changed at activation" : "Reference semantics unchanged"}</Badge>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-4">
                 <ProofMetric label="Stored outputs" value={String(rescoreSummary.observationCount)} />
@@ -1009,7 +1042,7 @@ function ApprovalPanel({ canApprove, contract, fixtureCount, path, readiness, re
             ) : pending ? (
               <Badge variant="outline"><LoaderCircle className="animate-spin" /> Rescore in progress</Badge>
             ) : (
-              <Button id="approve-contract" type="button" disabled={!canApprove || !readiness.ready || form.processing} onClick={() => form.post(`${path}/approve`)}>{form.processing ? <LoaderCircle className="animate-spin" /> : <LockKeyhole />} Approve and seal contract</Button>
+              <Button id="approve-contract" type="button" disabled={dirty || !canApprove || !readiness.ready || form.processing} onClick={approve}>{form.processing ? <LoaderCircle className="animate-spin" /> : <LockKeyhole />} Approve and seal contract</Button>
             )}
           </div>
         </CardContent>
@@ -1074,6 +1107,7 @@ function BooleanField({ id, label, checked, onChange }: { id: string; label: str
 function JsonValueField({ id, label, value, requireArray = false, onChange }: { id: string; label: string; value: JsonScalar | JsonScalar[] | undefined; requireArray?: boolean; onChange: (value: JsonScalar | JsonScalar[]) => void }) {
   const [encoded, setEncoded] = useState(JSON.stringify(value))
   const [error, setError] = useState("")
+  useDraftEditor(`rules-invalid:${id}`, error !== "")
   return <div className="space-y-2"><Label htmlFor={id}>{label}</Label><Input id={id} className="font-mono text-xs" value={encoded} onChange={event => { const next = event.target.value; setEncoded(next); try { const decoded = JSON.parse(next) as unknown; const scalar = decoded === null || ["string", "number", "boolean"].includes(typeof decoded); const scalarArray = Array.isArray(decoded) && decoded.every(item => item === null || ["string", "number", "boolean"].includes(typeof item)); if ((requireArray && !scalarArray) || (!requireArray && !scalar)) throw new Error(requireArray ? "Use a JSON array of scalar values" : "Use a JSON string, number, boolean, or null"); setError(""); onChange(decoded as JsonScalar | JsonScalar[]) } catch (reason) { setError(reason instanceof Error ? reason.message : "Enter valid JSON") } }} />{error && <FieldError message={error} />}</div>
 }
 

@@ -1,8 +1,11 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { router } from "@inertiajs/react"
 
 import { ContractAuthoringView, type ContractAuthoringProps } from "@/pages/Monitors/Contract"
+
+afterEach(() => vi.restoreAllMocks())
 
 const auth = {
   user: { id: "owner-id", email: "owner@acme.example" },
@@ -183,6 +186,75 @@ const rescoreRun: NonNullable<ContractAuthoringProps["rescoreRun"]> = {
 }
 
 describe("ContractAuthoringView", () => {
+  it("blocks saved-rule proof and approval while visible rule edits are unsaved", async () => {
+    const user = userEvent.setup()
+    render(<ContractAuthoringView {...baseProps} contract={contract} coverage={coverage} fixtures={fixtures} readiness={{ ready: true, blockers: [] }} errors={{}} flash={{}} />)
+    expect(screen.getByRole("button", { name: "Approve and seal contract" })).toBeEnabled()
+    await user.type(screen.getByLabelText("Allowed labels"), "-changed")
+    expect(screen.getByRole("button", { name: "Approve and seal contract" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Save and evaluate locally" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Delete Known valid" })).toBeDisabled()
+    expect(screen.getByText("Unsaved changes — approval is paused")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Save and validate rules" })).toBeEnabled()
+  })
+
+  it("blocks approval and rule changes while a new example is unsaved", async () => {
+    const user = userEvent.setup()
+    render(<ContractAuthoringView {...baseProps} contract={contract} coverage={coverage} fixtures={fixtures} readiness={{ ready: true, blockers: [] }} errors={{}} flash={{}} />)
+    await user.type(screen.getByLabelText("Fixture name"), "New example")
+    expect(screen.getByRole("button", { name: "Approve and seal contract" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Save and validate rules" })).toBeDisabled()
+    await user.clear(screen.getByLabelText("Fixture name"))
+    expect(screen.getByRole("button", { name: "Approve and seal contract" })).toBeEnabled()
+  })
+
+  it("does not approve a saved JSON value while its visible replacement is invalid", async () => {
+    const user = userEvent.setup()
+    const jsonContract: NonNullable<ContractAuthoringProps["contract"]> = {
+      ...contract,
+      root: { ...contract.root, rules: [{ id: "amount", type: "json_path_equals", path: "/amount", expected: 12, numeric_comparison: "strict" }] },
+    }
+    render(<ContractAuthoringView {...baseProps} contract={jsonContract} coverage={coverage} readiness={{ ready: true, blockers: [] }} errors={{}} flash={{}} />)
+    await user.clear(screen.getByLabelText("Expected JSON value"))
+    expect(screen.getByRole("button", { name: "Approve and seal contract" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Save and validate rules" })).toBeDisabled()
+    await user.type(screen.getByLabelText("Expected JSON value"), "12")
+    expect(screen.getByRole("button", { name: "Approve and seal contract" })).toBeEnabled()
+  })
+
+  it("cancels an edited example without treating discarded text as reviewed proof", async () => {
+    const user = userEvent.setup()
+    render(<ContractAuthoringView {...baseProps} contract={contract} coverage={coverage} fixtures={fixtures} readiness={{ ready: true, blockers: [] }} errors={{}} flash={{}} />)
+    await user.click(screen.getAllByRole("button", { name: "Edit" })[0])
+    await user.type(screen.getByLabelText("Fixture name", { selector: "#fixture-valid-fixture-name" }), " changed")
+    expect(screen.getByRole("button", { name: "Approve and seal contract" })).toBeDisabled()
+    await user.click(screen.getByRole("button", { name: "Cancel" }))
+    expect(screen.getByRole("button", { name: "Approve and seal contract" })).toBeEnabled()
+    await user.click(screen.getAllByRole("button", { name: "Edit" })[0])
+    expect(screen.getByLabelText("Fixture name", { selector: "#fixture-valid-fixture-name" })).toHaveValue("Known valid")
+  })
+
+  it("sends the exact currently reviewed contract and proof identity on approval", async () => {
+    const user = userEvent.setup()
+    const post = vi.spyOn(router, "post").mockImplementation(() => {})
+    render(<ContractAuthoringView {...baseProps} contract={contract} coverage={coverage} fixtures={fixtures} readiness={{ ready: true, blockers: [] }} errors={{}} flash={{}} />)
+    await user.click(screen.getByRole("button", { name: "Approve and seal contract" }))
+    expect(post).toHaveBeenCalledWith("/app/acme-ai/monitors/monitor-id/contract/approve", {
+      approval: { contract_id: contract.id, fingerprint: contract.fingerprint, coverage_fingerprint: coverage.fingerprint },
+    }, expect.any(Object))
+  })
+
+  it("refreshes visible rule fields when a server response brings a different saved revision", () => {
+    const props = { ...baseProps, contract, coverage, fixtures, readiness: { ready: true, blockers: [] }, errors: {}, flash: {} }
+    const { rerender } = render(<ContractAuthoringView {...props} />)
+    rerender(<ContractAuthoringView {...props} contract={{
+      ...contract, contractFingerprint: "e".repeat(64),
+      root: { ...contract.root, rules: [{ id: "allowed_label", type: "classification", allowed_values: ["billing", "technical"] }] },
+    }} />)
+    expect(screen.getByLabelText("Allowed labels")).toHaveValue("billing\ntechnical")
+    expect(screen.queryByDisplayValue("approved\nrejected")).not.toBeInTheDocument()
+  })
+
   it("starts with workflow templates and reveals structured rule fields without raw JSON", async () => {
     const user = userEvent.setup()
     render(<ContractAuthoringView {...baseProps} errors={{}} flash={{}} />)
@@ -263,7 +335,8 @@ describe("ContractAuthoringView", () => {
     )
     expect(screen.getByText("Contract version 1 is sealed")).toBeInTheDocument()
     expect(screen.getByText("Historical outputs rescored before activation")).toBeInTheDocument()
-    expect(screen.getByText("New reviewed reference required")).toBeInTheDocument()
+    expect(screen.getByText("Semantics changed at activation")).toBeInTheDocument()
+    expect(screen.queryByText("New reviewed reference required")).not.toBeInTheDocument()
   })
 
   it("keeps a pending candidate read-only and shows durable rescore progress", () => {

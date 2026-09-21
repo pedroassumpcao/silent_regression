@@ -175,8 +175,12 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
     end
   end
 
-  def approve(conn, %{"monitor_id" => monitor_id}) do
-    case ContractAuthoring.approve(conn.assigns.current_scope, monitor_id) do
+  def approve(conn, %{"monitor_id" => monitor_id} = params) do
+    case ContractAuthoring.approve(
+           conn.assigns.current_scope,
+           monitor_id,
+           Map.get(params, "approval") || %{}
+         ) do
       {:ok, %ContractVersion{status: :pending_rescore}} ->
         conn
         |> put_flash(
@@ -189,6 +193,13 @@ defmodule SilentRegressionWeb.ContractAuthoringController do
         conn
         |> put_flash(:info, "Contract approved and sealed with its exact fixture set.")
         |> redirect(to: contract_path(conn, monitor_id))
+
+      {:error, :stale_review} ->
+        mutation_failed(
+          conn,
+          monitor_id,
+          "The saved checks or proof changed since you reviewed them. Reload, review the current version, and approve again."
+        )
 
       {:error, {:approval_blocked, blockers}} ->
         conn
