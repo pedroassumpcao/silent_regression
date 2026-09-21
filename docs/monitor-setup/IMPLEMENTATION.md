@@ -18,7 +18,7 @@ Keep advanced authoring available. No AI authoring or exploratory execution mode
 
 | Stage | Deliverable | Status |
 | --- | --- | --- |
-| 1 | Honest saving, safe check approval, and accurate progress | In progress |
+| 1 | Honest saving, safe check approval, and accurate progress | Complete |
 | 2 | Clickable routing journey and JSON architecture check | Not started |
 | 3 | Coherent authoring draft, common journey, and routing recipe | Not started |
 | 4 | Integrated first run, result review, and manual completion | Not started |
@@ -34,15 +34,15 @@ Resolve assessment findings U5–U7 and U11–U14's misleading labels; reduce U8
 
 ### Tasks
 
-- [ ] Submit current values on Save and exit; leave only after successful validation/persistence.
-- [ ] Preserve unsaved values on validation failure; show unsaved/saved status and navigation warnings.
-- [ ] Block proof mutations and approval while rules or proof judgments are unsaved.
-- [ ] Require the exact reviewed draft/proof identity at the HTTP approval boundary; reject stale tabs.
-- [ ] Count active manual monitoring as complete, with recurring enablement reported separately.
-- [ ] Correct stale reference/rescore messaging, premature inspection progress, and internal task copy.
-- [ ] Label explicit exits accurately in analytics, not as abandonment.
-- [ ] Diagnose the existing UTC-reset scheduling test failure and restore date-independent verification.
-- [ ] Add regression coverage; run `mix precommit`; record results and focused commits.
+- [x] Submit current values on Save and exit; leave only after successful validation/persistence.
+- [x] Preserve values on validation failure; show unsaved/saved status and link/reload navigation warnings.
+- [x] Block proof mutations while rules are unsaved, and approval while any rules/proof edits are unsaved.
+- [x] Require the exact reviewed draft/proof identity at the HTTP approval boundary; reject stale tabs.
+- [x] Count active manual monitoring as complete, with recurring enablement reported separately.
+- [x] Correct stale reference/rescore messaging, premature inspection progress, and internal task copy.
+- [x] Label explicit exits accurately in analytics, not as abandonment.
+- [x] Diagnose the existing UTC-reset scheduling test failure and restore date-independent verification.
+- [x] Add regression coverage; run `mix precommit`; record results and focused commits.
 
 ### Success criteria and files
 
@@ -52,6 +52,8 @@ cannot be approved. Manual completion reaches the final checklist milestone with
 Tests cover tenant boundaries and existing completed/revision paths. The only Stage 1 migration
 expands the content-free event-name allowlist for manual readiness; no existing data is deleted.
 Arbitrary incomplete draft storage belongs to Stage 3; invalid forms cannot yet be saved/left.
+Inertia's link-navigation guard does not intercept browser back/forward history traversal; robust
+draft recovery across that boundary remains part of Stage 3, not a claim of this immediate patch.
 
 Likely files: Setup/Contract/Baseline/Operations React pages and tests, setup/contract controllers,
 ContractAuthoring, PilotReadiness, ProductAnalytics, scheduling regression tests.

@@ -19,10 +19,17 @@ The private alpha is a learning instrument. It must let a real customer complete
 The founder's local walkthrough exposed substantial onboarding friction after template selection.
 The [UX assessment](../docs/monitor-setup/UX_ASSESSMENT.md) and its six-stage redesign are approved.
 Track implementation and individual commits in the [guided setup plan](../docs/monitor-setup/IMPLEMENTATION.md)
-and [progress log](../docs/monitor-setup/PROGRESS.md). Stage 1 is in progress. This is additional product
+and [progress log](../docs/monitor-setup/PROGRESS.md). Stage 1 is complete; Stage 2 (routing prototype)
+is next. This is additional product
 work, not a retroactive change to the completed Tasks 1–26; independent usability validation is now
 an additional readiness criterion for self-guided partner onboarding. Task 27 deployment and real
 partner invitations remain separate follow-ups. Local data reset is permitted but not presently needed.
+
+Stage 1 commits: `478e6ec` (tracking), `92615d8` (saving), `40c970c` (reviewed approval), `61a3784`
+(manual readiness/progress), and `43697d4` (UTC-reset test). Final `mix precommit` passed 676 backend
+tests with two existing exclusions, 76 frontend tests, TypeScript, dependency audit and asset build.
+The additive event migration is applied locally; no data wipe or provider call was performed.
+Fresh browser walkthrough and independent usability validation remain pending in the redesign track.
 
 ## 1. How to use this document
 
