@@ -202,6 +202,8 @@ describe("BaselineView", () => {
     expect(screen.getByText("The normalized output matches an allowed label.")).toBeInTheDocument()
     expect(screen.getByText("10 in · 1 out")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Approve and seal reviewed reference" })).toBeEnabled()
+    expect(screen.getByText("Ready for your review")).toBeInTheDocument()
+    expect(screen.queryByText("Reviewed and accepted")).not.toBeInTheDocument()
   })
 
   it("shows case-specific evidence separately from a passing shared contract", () => {

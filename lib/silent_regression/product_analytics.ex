@@ -22,6 +22,7 @@ defmodule SilentRegression.ProductAnalytics do
     "demo.step_completed" => ["demo_step", "step_number", "scenario_version"],
     "demo.completed" => ["total_count", "scenario_version"],
     "baseline.approved" => ["approval_mode"],
+    "monitor.activated" => ["cadence", "activation_kind"],
     "schedule.activated" => ["cadence", "activation_kind"],
     "review.recorded" => ["subject_kind", "classification", "action", "superseded"],
     "review.action_started" => ["action"],
@@ -221,15 +222,21 @@ defmodule SilentRegression.ProductAnalytics do
 
     first_activation_at =
       events
+      |> Enum.find(&(&1.name in ["monitor.activated", "schedule.activated"]))
+      |> then(&(&1 && &1.occurred_at))
+
+    first_recurring_at =
+      events
       |> Enum.find(&(&1.name == "schedule.activated"))
       |> then(&(&1 && &1.occurred_at))
 
     %{
       invitation_accepted_at: invitation_accepted_at,
       first_monitor_activated_at: first_activation_at,
+      first_recurring_enabled_at: first_recurring_at,
       seconds_to_first_monitor: elapsed_seconds(invitation_accepted_at, first_activation_at),
       event_counts: Enum.frequencies_by(events, & &1.name),
-      abandonment_by_step: property_frequency(events, "monitor_setup.left", "step"),
+      explicit_exits_by_step: property_frequency(events, "monitor_setup.left", "step"),
       assistance_by_stage: property_frequency(events, "founder.assistance_recorded", "stage")
     }
   end

@@ -24,7 +24,7 @@ defmodule SilentRegression.PilotReadiness do
     {:cases, "Add representative cases"},
     {:contract, "Approve the deterministic contract"},
     {:baseline, "Approve the baseline"},
-    {:schedule, "Activate monitoring"}
+    {:schedule, "Enable manual or scheduled monitoring"}
   ]
 
   def record_drill(attrs, opts \\ []) when is_map(attrs) do
@@ -144,6 +144,7 @@ defmodule SilentRegression.PilotReadiness do
       total_count: length(@steps),
       percent: div(completed_count * 100, length(@steps)),
       complete: completed_count == length(@steps),
+      recurring_enabled: candidate.schedule? and candidate.monitor.cadence in [:daily, :weekly],
       monitor_id: candidate.monitor && candidate.monitor.id,
       monitor_name: candidate.monitor && candidate.monitor.name,
       steps:
@@ -185,15 +186,28 @@ defmodule SilentRegression.PilotReadiness do
   end
 
   defp candidate(monitor, scope) do
-    setup = Repo.get_by(Setup, workspace_id: monitor.workspace_id, monitor_id: monitor.id)
-    workflow? = setup && setup.status == :completed
+    setups =
+      from setup in Setup,
+        where: setup.workspace_id == ^monitor.workspace_id and setup.monitor_id == ^monitor.id,
+        order_by: [desc: setup.inserted_at, desc: setup.id],
+        limit: 1
+
+    setups =
+      if monitor.active_version_id do
+        where(setups, [setup], setup.completed_monitor_version_id == ^monitor.active_version_id)
+      else
+        setups
+      end
+
+    setup = Repo.one(setups)
+    workflow? = not is_nil(setup) and setup.status == :completed
     version_id = setup && setup.completed_monitor_version_id
     cases? = workflow? and active_case?(version_id)
     contract? = cases? and approved_contract?(monitor.id)
     baseline? = contract? and Baselines.compatible_approved?(scope, monitor.id)
 
     schedule? =
-      baseline? and monitor.state == :active and monitor.cadence in [:daily, :weekly]
+      baseline? and monitor.state == :active and monitor.cadence in [:manual, :daily, :weekly]
 
     flags = [workflow?, cases?, contract?, baseline?, schedule?]
 

@@ -545,7 +545,9 @@ export function OperationsView({
         <Card id="last-run-card">
           <CardHeader>
             <CardTitle>Latest managed run</CardTitle>
-            <CardDescription>Run evidence and alert review arrive in Task 12. This operational summary is already durable.</CardDescription>
+            <CardDescription>
+              Inspect outputs, check results, and review alerts in {lastRun ? <Link className="underline underline-offset-4" href={`/app/${workspace.slug}/monitors/${monitor.id}/runs/${lastRun.id}`}>this run&apos;s evidence</Link> : <Link className="underline underline-offset-4" href={resultsPath}>Results</Link>}.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {lastRun ? (

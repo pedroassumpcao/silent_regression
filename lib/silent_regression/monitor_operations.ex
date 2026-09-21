@@ -311,15 +311,18 @@ defmodule SilentRegression.MonitorOperations do
   def authorize_authentication_recovery(%Scope{}, _monitor_id, _options),
     do: {:error, :owner_required}
 
-  defp record_schedule_activation!(scope, %Monitor{cadence: cadence} = monitor, activation_kind)
-       when cadence in [:daily, :weekly] do
-    ProductAnalytics.record!(scope, "schedule.activated", monitor.id, %{
+  defp record_schedule_activation!(scope, %Monitor{cadence: cadence} = monitor, activation_kind) do
+    properties = %{
       "activation_kind" => activation_kind,
       "cadence" => Atom.to_string(cadence)
-    })
-  end
+    }
 
-  defp record_schedule_activation!(_scope, %Monitor{}, _activation_kind), do: :ok
+    ProductAnalytics.record!(scope, "monitor.activated", monitor.id, properties)
+
+    if cadence in [:daily, :weekly] do
+      ProductAnalytics.record!(scope, "schedule.activated", monitor.id, properties)
+    end
+  end
 
   @doc false
   def sweep_ineligible(at \\ DateTime.utc_now(), limit \\ nil) do

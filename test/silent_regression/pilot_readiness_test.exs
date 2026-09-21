@@ -6,6 +6,7 @@ defmodule SilentRegression.PilotReadinessTest do
   import SilentRegression.WorkspacesFixtures
 
   alias SilentRegression.MonitorOperations
+  alias SilentRegression.MonitorSetups
   alias SilentRegression.OperationalHealth
   alias SilentRegression.PilotReadiness
   alias SilentRegression.ProductAnalytics
@@ -20,6 +21,26 @@ defmodule SilentRegression.PilotReadinessTest do
     invitations_enabled: false,
     drill_validity_days: 90
   ]
+
+  test "manual readiness is complete, recurrence optional, and successor drafts do not hide it" do
+    scope = workspace_scope_fixture()
+    fixture = operational_monitor_fixture(scope)
+
+    assert %{complete: true, percent: 100, recurring_enabled: false} =
+             PilotReadiness.onboarding(scope)
+
+    assert {:ok, _draft} = MonitorSetups.start_successor(scope, fixture.monitor.id)
+    assert %{complete: true, recurring_enabled: false} = PilotReadiness.onboarding(scope)
+
+    funnel = ProductAnalytics.activation_funnel(scope)
+    assert %DateTime{} = funnel.first_monitor_activated_at
+    assert funnel.first_recurring_enabled_at == nil
+    assert funnel.event_counts["monitor.activated"] == 1
+    refute Map.has_key?(funnel, :abandonment_by_step)
+
+    assert {:ok, _setup} = MonitorSetups.leave(scope, fixture.monitor.id, "purpose")
+    assert ProductAnalytics.activation_funnel(scope).explicit_exits_by_step == %{"purpose" => 1}
+  end
 
   test "derives the six activation stages and regresses when monitoring is paused" do
     scope = workspace_scope_fixture()
@@ -50,7 +71,7 @@ defmodule SilentRegression.PilotReadinessTest do
     assert {:ok, _monitor} =
              MonitorOperations.configure(scope, fixture.monitor.id, %{cadence: :daily})
 
-    assert %{completed_count: 6, percent: 100, complete: true} =
+    assert %{completed_count: 6, percent: 100, complete: true, recurring_enabled: true} =
              PilotReadiness.onboarding(scope)
 
     assert {:ok, _monitor} = MonitorOperations.pause(scope, fixture.monitor.id)

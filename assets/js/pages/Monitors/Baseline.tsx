@@ -295,7 +295,7 @@ function WorkflowSteps({ approved, hasSnapshot, polling, replacement }: { approv
   const steps = [
     { label: "Preview", complete: hasSnapshot && !replacement, detail: replacement ? "Review replacement" : hasSnapshot ? "Authorized" : "Review limits" },
     { label: "Capture", complete: hasSnapshot && !polling && !replacement, detail: replacement ? "Not started" : polling ? "In progress" : hasSnapshot ? "Terminal" : "Not started" },
-    { label: "Inspect", complete: hasSnapshot && !polling && !replacement, detail: replacement ? "Historical only" : hasSnapshot && !polling ? "Evidence ready" : "Waiting" },
+    { label: "Review outputs", complete: approved, detail: replacement ? "Historical only" : approved ? "Reviewed and accepted" : hasSnapshot && !polling ? "Ready for your review" : "Waiting" },
     { label: "Approve", complete: approved, detail: replacement ? "Replacement required" : approved ? "Sealed" : "Owner decision" },
   ]
 
