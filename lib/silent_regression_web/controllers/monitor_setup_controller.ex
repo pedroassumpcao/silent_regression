@@ -65,7 +65,7 @@ defmodule SilentRegressionWeb.MonitorSetupController do
          progress <- MonitorSetups.progress(scope, setup),
          :ok <- ensure_step_available(setup, progress, step) do
       result = update_step(scope, monitor_id, step, params)
-      handle_update_result(conn, monitor_id, step, result)
+      handle_update_result(conn, monitor_id, step, result, Map.get(params, "intent"))
     else
       {:redirect, next_step} -> redirect(conn, to: setup_path(conn, monitor_id, next_step))
       {:error, :not_found} -> send_resp(conn, :not_found, "Not found")
@@ -88,9 +88,12 @@ defmodule SilentRegressionWeb.MonitorSetupController do
           conn
           |> put_flash(
             :info,
-            "Workflow setup complete. Define and prove its deterministic contract next."
+            "Configuration locked. Define and prove the checks before your first run."
           )
-          |> redirect(to: setup_path(conn, monitor.id, :review))
+          |> redirect(
+            to:
+              ~p"/app/#{conn.assigns.current_scope.workspace.slug}/monitors/#{monitor.id}/contract"
+          )
         end
 
       {:error, :not_found} ->
@@ -117,7 +120,7 @@ defmodule SilentRegressionWeb.MonitorSetupController do
     case MonitorSetups.leave(conn.assigns.current_scope, monitor_id, step) do
       {:ok, _setup} ->
         conn
-        |> put_flash(:info, "Setup saved. You can resume it at any time.")
+        |> put_flash(:info, "Your previously saved configuration is available to resume.")
         |> redirect(to: monitors_path(conn))
 
       {:error, :not_found} ->
@@ -152,20 +155,40 @@ defmodule SilentRegressionWeb.MonitorSetupController do
 
   defp update_step(_scope, _monitor_id, "review", _params), do: {:error, :invalid_step}
 
-  defp handle_update_result(conn, monitor_id, step, {:ok, _setup}) do
+  defp handle_update_result(conn, monitor_id, step, {:ok, _setup}, "exit") do
+    {:ok, _setup} = MonitorSetups.leave(conn.assigns.current_scope, monitor_id, step)
+
+    conn
+    |> put_flash(:info, "Your changes were saved. You can resume this configuration at any time.")
+    |> redirect(to: monitors_path(conn))
+  end
+
+  defp handle_update_result(conn, monitor_id, step, {:ok, _setup}, _intent) do
     conn
     |> put_flash(:info, "Setup step saved.")
     |> redirect(to: setup_path(conn, monitor_id, next_step(step)))
   end
 
-  defp handle_update_result(conn, monitor_id, step, {:error, %Ecto.Changeset{} = changeset}) do
+  defp handle_update_result(
+         conn,
+         monitor_id,
+         step,
+         {:error, %Ecto.Changeset{} = changeset},
+         _intent
+       ) do
     conn
+    |> clear_flash()
+    |> put_flash(
+      :error,
+      "Changes were not saved. Fix the highlighted fields before continuing or leaving."
+    )
     |> assign_errors(%{changeset | action: :update})
     |> redirect(to: setup_path(conn, monitor_id, step))
   end
 
-  defp handle_update_result(conn, monitor_id, step, {:error, _reason}) do
+  defp handle_update_result(conn, monitor_id, step, {:error, _reason}, _intent) do
     conn
+    |> clear_flash()
     |> put_flash(:error, "This setup step could not be saved.")
     |> redirect(to: setup_path(conn, monitor_id, step))
   end

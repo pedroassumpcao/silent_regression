@@ -363,12 +363,15 @@ defmodule SilentRegression.Monitors.Monitor do
 
   defp validate_metadata(changeset) do
     changeset
-    |> update_change(:name, &String.trim/1)
-    |> update_change(:description, &String.trim/1)
+    |> update_change(:name, &trim_optional/1)
+    |> update_change(:description, &trim_optional/1)
     |> validate_required([:name, :state, :state_changed_at, :workspace_id])
     |> validate_length(:name, min: 1, max: 160)
     |> validate_length(:description, max: 2_000)
   end
+
+  defp trim_optional(nil), do: nil
+  defp trim_optional(value), do: String.trim(value)
 
   defp validate_schedule(changeset) do
     cadence = get_field(changeset, :cadence)

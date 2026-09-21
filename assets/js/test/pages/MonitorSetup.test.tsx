@@ -1,8 +1,11 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { router } from "@inertiajs/react"
 
 import { MonitorSetupView, type MonitorSetupProps } from "@/pages/Monitors/Setup"
+
+afterEach(() => vi.restoreAllMocks())
 
 const auth = {
   user: { id: "user-id", email: "owner@acme.example" },
@@ -152,14 +155,78 @@ const baseProps: MonitorSetupProps = {
 }
 
 describe("MonitorSetupView", () => {
+  it("submits edited purpose values before exiting and reports unsaved state", async () => {
+    const user = userEvent.setup()
+    const patch = vi.spyOn(router, "patch").mockImplementation(() => {})
+    render(<MonitorSetupView {...baseProps} errors={{}} flash={{}} step="purpose" />)
+    await user.clear(screen.getByLabelText("Name"))
+    await user.type(screen.getByLabelText("Name"), "New routing guard")
+    expect(screen.getByRole("status")).toHaveTextContent("Unsaved changes")
+    await user.click(screen.getByRole("button", { name: "Save and exit" }))
+    expect(patch).toHaveBeenCalledWith(
+      "/app/acme-ai/monitors/monitor-id/setup/purpose?intent=exit",
+      expect.objectContaining({ monitor: expect.objectContaining({ name: "New routing guard" }) }),
+      expect.any(Object),
+    )
+  })
+
+  it.each(["connection", "prompt", "cases"] as const)("submits the current %s form on exit", async step => {
+    const user = userEvent.setup()
+    const patch = vi.spyOn(router, "patch").mockImplementation(() => {})
+    render(<MonitorSetupView {...baseProps} errors={{}} flash={{}} step={step} />)
+    await user.click(screen.getByRole("button", { name: "Save and exit" }))
+    expect(patch).toHaveBeenCalledWith(
+      `/app/acme-ai/monitors/monitor-id/setup/${step}?intent=exit`,
+      expect.objectContaining({ [step]: expect.anything() }), expect.any(Object),
+    )
+  })
+
+  it("submits import text, retaining incomplete text after a validation response", async () => {
+    const user = userEvent.setup()
+    const patch = vi.spyOn(router, "patch").mockImplementation((_url, _data, options) => {
+      options?.onError?.({ cases: "Import is incomplete" })
+    })
+    const { rerender } = render(<MonitorSetupView {...baseProps} errors={{}} flash={{}} step="cases" />)
+    await user.click(screen.getByRole("button", { name: "JSON import" }))
+    const input = screen.getByLabelText("Case JSON")
+    await user.click(input)
+    await user.paste('{"schema_version":2,')
+    await user.click(screen.getByRole("button", { name: "Save and exit" }))
+    expect(patch).toHaveBeenCalledWith(
+      "/app/acme-ai/monitors/monitor-id/setup/cases?intent=exit",
+      { case_import: '{"schema_version":2,' }, expect.any(Object),
+    )
+    rerender(<MonitorSetupView {...baseProps} errors={{ cases: "Import is incomplete" }} flash={{}} step="cases" />)
+    expect(input).toHaveValue('{"schema_version":2,')
+    expect(screen.getByText("Import is incomplete")).toBeInTheDocument()
+    expect(screen.getByRole("status")).toHaveTextContent("Unsaved changes")
+  })
+
+  it("warns before link navigation or closing with unsaved values and allows saving", async () => {
+    const user = userEvent.setup()
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
+    render(<MonitorSetupView {...baseProps} errors={{}} flash={{}} step="purpose" />)
+    await user.type(screen.getByLabelText("Name"), " changed")
+    const leave = new CustomEvent("inertia:before", { cancelable: true, detail: { visit: { method: "get" } } })
+    document.dispatchEvent(leave)
+    expect(leave.defaultPrevented).toBe(true)
+    expect(confirm).toHaveBeenCalledOnce()
+    const unload = new Event("beforeunload", { cancelable: true })
+    window.dispatchEvent(unload)
+    expect(unload.defaultPrevented).toBe(true)
+    const save = new CustomEvent("inertia:before", { cancelable: true, detail: { visit: { method: "patch" } } })
+    document.dispatchEvent(save)
+    expect(save.defaultPrevented).toBe(false)
+  })
+
   it("states the exact zero-call boundary before setup is locked", () => {
     render(<MonitorSetupView {...baseProps} errors={{}} flash={{}} />)
 
-    expect(screen.getByRole("heading", { level: 1, name: "Review and finish" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { level: 1, name: "Review configuration" })).toBeInTheDocument()
     expect(screen.getByText("Setup and completion:")).toBeInTheDocument()
     expect(screen.getByText(/one-sample reviewed reference would plan 1 provider call/i)).toBeInTheDocument()
     expect(screen.getByText(/maximum reserved calls including retries/i)).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /finish and lock setup/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /lock configuration and continue to checks/i })).toBeInTheDocument()
     expect(screen.getAllByText(/0 calls during setup/i).length).toBeGreaterThan(0)
     expect(screen.getByRole("heading", { name: "Exact provider-visible requests" })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: "Case-specific expected outcomes" })).toBeInTheDocument()

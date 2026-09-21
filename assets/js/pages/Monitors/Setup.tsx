@@ -20,6 +20,7 @@ import {
 } from "lucide-react"
 
 import { ProductShell } from "@/components/product-shell"
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -147,7 +148,7 @@ const steps: Array<{ id: Step; label: string; shortLabel: string }> = [
   { id: "connection", label: "Provider and model", shortLabel: "Connection" },
   { id: "prompt", label: "Provider request", shortLabel: "Request" },
   { id: "cases", label: "Representative cases", shortLabel: "Cases" },
-  { id: "review", label: "Review and finish", shortLabel: "Review" },
+  { id: "review", label: "Review configuration", shortLabel: "Review" },
 ]
 
 export function MonitorSetupView({
@@ -187,7 +188,7 @@ export function MonitorSetupView({
                 }
               >
                 {props.setup.status === "completed" ? <CheckCircle2 /> : <Save />}
-                {props.setup.status === "completed" ? "Setup complete" : "Draft saved automatically per step"}
+                {props.setup.status === "completed" ? "Configuration locked" : "Save each step to keep your changes"}
               </Badge>
             </div>
 
@@ -352,7 +353,7 @@ function PurposeStep({ basePath, errors, setup }: StepProps) {
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    form.patch(`${basePath}/purpose`)
+    form.patch(stepSubmissionPath(basePath, "purpose", event))
   }
 
   return (
@@ -388,7 +389,7 @@ function PurposeStep({ basePath, errors, setup }: StepProps) {
           />
           {errors.description && <FieldError message={errors.description} />}
         </div>
-        <FormActions basePath={basePath} processing={form.processing} step="purpose" />
+        <FormActions dirty={form.isDirty} processing={form.processing} step="purpose" />
       </form>
     </StepLayout>
   )
@@ -431,7 +432,7 @@ function ConnectionStep({
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    form.patch(`${basePath}/connection`)
+    form.patch(stepSubmissionPath(basePath, "connection", event))
   }
 
   return (
@@ -515,7 +516,7 @@ function ConnectionStep({
         </div>
 
         <FormActions
-          basePath={basePath}
+          dirty={form.isDirty}
           disabled={
             validCredentials.length === 0 ||
             form.data.connection.provider_credential_id === ""
@@ -582,7 +583,7 @@ function PromptStep({
         prompt: { ...data.prompt, response_format: responseFormat },
       }
     })
-    form.patch(`${basePath}/prompt`)
+    form.patch(stepSubmissionPath(basePath, "prompt", event))
   }
 
   return (
@@ -804,7 +805,7 @@ function PromptStep({
         )}
         {errors.generationConfig && <FieldError message={errors.generationConfig} />}
 
-        <FormActions basePath={basePath} processing={form.processing} step="prompt" />
+        <FormActions dirty={form.isDirty} processing={form.processing} step="prompt" />
       </form>
     </StepLayout>
   )
@@ -815,14 +816,23 @@ function CasesStep({ basePath, errors, limits, setup }: StepProps & { limits: Li
   const form = useForm({ cases: setup.cases.length > 0 ? setup.cases.map(caseForForm) : [emptyCase()] })
   const importForm = useForm({ case_import: "" })
 
+  function switchMode(next: "manual" | "import") {
+    if (next === mode) return
+    const current = mode === "manual" ? form : importForm
+    if (current.isDirty && !window.confirm("Switch entry methods and discard unsaved changes in this editor?")) return
+    if (mode === "manual") form.reset()
+    else importForm.reset()
+    setMode(next)
+  }
+
   function submitManual(event: FormEvent) {
     event.preventDefault()
-    form.patch(`${basePath}/cases`)
+    form.patch(stepSubmissionPath(basePath, "cases", event))
   }
 
   function submitImport(event: FormEvent) {
     event.preventDefault()
-    importForm.patch(`${basePath}/cases`)
+    importForm.patch(stepSubmissionPath(basePath, "cases", event))
   }
 
   function updateCase(index: number, field: keyof ReturnType<typeof emptyCase>, value: string) {
@@ -858,10 +868,10 @@ function CasesStep({ basePath, errors, limits, setup }: StepProps & { limits: Li
       title="Add representative cases"
     >
       <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Case entry method">
-        <Button type="button" variant={mode === "manual" ? "default" : "outline"} onClick={() => setMode("manual")}>
+        <Button type="button" variant={mode === "manual" ? "default" : "outline"} onClick={() => switchMode("manual")}>
           <Braces /> Manual entry
         </Button>
-        <Button type="button" variant={mode === "import" ? "default" : "outline"} onClick={() => setMode("import")}>
+        <Button type="button" variant={mode === "import" ? "default" : "outline"} onClick={() => switchMode("import")}>
           <FileJson2 /> JSON import
         </Button>
       </div>
@@ -995,7 +1005,7 @@ function CasesStep({ basePath, errors, limits, setup }: StepProps & { limits: Li
           </Button>
 
           <FormActions
-            basePath={basePath}
+            dirty={form.isDirty}
             disabled={activeCount < 1 || activeCount > limits.maxActiveCases}
             processing={form.processing}
             step="cases"
@@ -1025,7 +1035,7 @@ function CasesStep({ basePath, errors, limits, setup }: StepProps & { limits: Li
             />
             {errors.cases && <FieldError message={errors.cases} />}
           </div>
-          <FormActions basePath={basePath} processing={importForm.processing} step="cases" submitLabel="Import and continue" />
+          <FormActions dirty={importForm.isDirty} processing={importForm.processing} step="cases" submitLabel="Import and continue" />
         </form>
       )}
     </StepLayout>
@@ -1186,7 +1196,7 @@ function ReviewStep({
                 <SaveAndExit basePath={basePath} step="review" />
                 <Button id="complete-monitor-setup" type="submit" disabled={form.processing}>
                   {form.processing ? <LoaderCircle className="animate-spin" /> : <LockKeyhole />}
-                  {setup.isSuccessor ? "Lock successor candidate" : "Finish and lock setup"}
+                  {setup.isSuccessor ? "Lock successor candidate" : "Lock configuration and continue to checks"}
                 </Button>
               </div>
             </form>
@@ -1244,26 +1254,41 @@ function StepLayout({
   )
 }
 
+function stepSubmissionPath(basePath: string, step: Step, event: FormEvent) {
+  const submitter = (event.nativeEvent as SubmitEvent).submitter
+  const exit = submitter instanceof HTMLButtonElement && submitter.value === "exit"
+  return `${basePath}/${step}${exit ? "?intent=exit" : ""}`
+}
+
 function FormActions({
-  basePath,
+  dirty,
   disabled = false,
   processing,
   step,
   submitLabel = "Save and continue",
 }: {
-  basePath: string
+  dirty: boolean
   disabled?: boolean
   processing: boolean
   step: Step
   submitLabel?: string
 }) {
+  useUnsavedChanges(dirty)
   return (
-    <div className="flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
-      <SaveAndExit basePath={basePath} step={step} />
-      <Button id={`save-${step}-step`} type="submit" disabled={disabled || processing}>
-        {processing ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}
-        {submitLabel}
-      </Button>
+    <div className="space-y-3 border-t pt-6">
+      <p role="status" className="text-sm text-muted-foreground">
+        {processing ? "Saving…" : dirty ? "Unsaved changes" : "No unsaved changes"}
+        {" · Save validates this step. If anything needs attention, you will stay here to fix it."}
+      </p>
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Button id={`save-and-exit-${step}`} type="submit" name="intent" value="exit" variant="ghost" disabled={processing}>
+          <Save /> Save and exit
+        </Button>
+        <Button id={`save-${step}-step`} type="submit" disabled={disabled || processing}>
+          {processing ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}
+          {submitLabel}
+        </Button>
+      </div>
     </div>
   )
 }
@@ -1282,7 +1307,7 @@ function SaveAndExit({ basePath, step }: { basePath: string; step: Step }) {
       }}
     >
       {leaving ? <LoaderCircle className="animate-spin" /> : <Save />}
-      Save and exit
+      Back to monitors
     </Button>
   )
 }

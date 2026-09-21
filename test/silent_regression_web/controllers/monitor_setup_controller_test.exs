@@ -44,6 +44,36 @@ defmodule SilentRegressionWeb.MonitorSetupControllerTest do
   end
 
   describe "cold-start flow" do
+    test "save-and-exit persists current form values and does not leave on invalid input", %{
+      conn: conn,
+      scope: scope,
+      workspace: workspace
+    } do
+      %{monitor: monitor} = setup_fixture(scope)
+      path = ~p"/app/#{workspace.slug}/monitors/#{monitor.id}/setup/purpose"
+
+      saved =
+        patch(conn, path <> "?intent=exit", %{"monitor" => %{"name" => "Changed before exit"}})
+
+      assert redirected_to(saved) == ~p"/app/#{workspace.slug}/monitors"
+      assert {:ok, setup} = MonitorSetups.get(scope, monitor.id)
+      assert setup.monitor.name == "Changed before exit"
+      assert Phoenix.Flash.get(saved.assigns.flash, :info) =~ "Your changes were saved"
+
+      invalid = patch(recycle(saved), path <> "?intent=exit", %{"monitor" => %{"name" => ""}})
+      assert redirected_to(invalid) == path
+      refute Phoenix.Flash.get(invalid.assigns.flash, :info)
+      errors = get(recycle(invalid), path)
+      assert inertia_props(errors).errors.name == "can't be blank"
+      assert {:ok, unchanged} = MonitorSetups.get(scope, monitor.id)
+      assert unchanged.monitor.name == "Changed before exit"
+
+      assert [%{properties: %{"step" => "purpose"}}] =
+               scope
+               |> SilentRegression.ProductAnalytics.list_events()
+               |> Enum.filter(&(&1.name == "monitor_setup.left"))
+    end
+
     test "renders the creation page and returns server validation errors", %{
       conn: conn,
       workspace: workspace
@@ -212,7 +242,7 @@ defmodule SilentRegressionWeb.MonitorSetupControllerTest do
         |> post(~p"/app/#{workspace.slug}/monitors/#{monitor_id}/setup/complete")
 
       assert redirected_to(completed) ==
-               ~p"/app/#{workspace.slug}/monitors/#{monitor_id}/setup/review"
+               ~p"/app/#{workspace.slug}/monitors/#{monitor_id}/contract"
 
       assert {:ok, setup} = MonitorSetups.get(scope, monitor_id)
       assert setup.status == :completed
@@ -264,12 +294,15 @@ defmodule SilentRegressionWeb.MonitorSetupControllerTest do
         })
 
       imported =
-        patch(conn, ~p"/app/#{workspace.slug}/monitors/#{monitor.id}/setup/cases", %{
+        patch(conn, ~p"/app/#{workspace.slug}/monitors/#{monitor.id}/setup/cases?intent=exit", %{
           "case_import" => encoded
         })
 
       assert redirected_to(imported) ==
-               ~p"/app/#{workspace.slug}/monitors/#{monitor.id}/setup/review"
+               ~p"/app/#{workspace.slug}/monitors"
+
+      assert {:ok, saved_setup} = MonitorSetups.get(scope, monitor.id)
+      assert [%{"case_key" => "supported-answer"}] = saved_setup.cases["items"]
 
       left =
         imported
