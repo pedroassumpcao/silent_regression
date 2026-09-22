@@ -294,6 +294,7 @@
 
 ### Stage 6 preparation
 
+- Preparation commit: `f9b0c40` — study protocol, isolated sandbox and six safety/lifecycle tests.
 - Study/finding status: [usability/README.md](usability/README.md), [FINDINGS.md](usability/FINDINGS.md).
 - Test-only runner: `test/support/start_usability.exs`; no new application routes/auth exceptions,
   migrations, dependencies or production UI changes. Technical verification is not stage completion.

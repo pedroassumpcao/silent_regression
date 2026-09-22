@@ -8,7 +8,7 @@ Self-guided usability gate remains open. The founder and automated/browser rehea
 | Evidence | Build/protocol | Kind | What it establishes | What it does not establish |
 | --- | --- | --- | --- | --- |
 | Stage 5 precommit and fake browser smoke | `5c9cf17`; pre-study | Technical verification | Implemented recipes and tested paths work under fixtures | Independent usability, live provider behavior or customer fit |
-| Stage 6 kit verification | 2026-09-22 UTC; protocol v1; commit recorded in progress | Technical rehearsal | 732 backend / 119 frontend tests passed (2 existing exclusions); routing save/resume → two fake results → on-demand finish browser rehearsal; console clear; runner restart preserves data | No participant observation, real timing, live-provider access, credential onboarding or customer-fit evidence |
+| Stage 6 kit verification | `f9b0c40`; 2026-09-22 UTC; protocol v1 | Technical rehearsal | 732 backend / 119 frontend tests passed (2 existing exclusions); routing save/resume → two fake results → on-demand finish browser rehearsal; console clear; runner restart preserves data | No participant observation, real timing, live-provider access, credential onboarding or customer-fit evidence |
 
 ## Independent session summary
 

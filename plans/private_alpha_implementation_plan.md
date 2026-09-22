@@ -72,6 +72,7 @@ dependency, live provider call, deployment or real partner invitation is part of
 Final preparation checks passed: 732 backend tests (2 existing exclusions), 119 frontend tests,
 TypeScript, audit, formatting and assets. Routing save/resume and on-demand finish were rehearsed
 in the browser with fixed fake outputs; no independent participant results have been recorded.
+Stage 6 preparation commit: `f9b0c40`; the stage remains in progress pending observed user sessions.
 
 ## 1. How to use this document
 
