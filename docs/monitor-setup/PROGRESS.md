@@ -213,6 +213,7 @@
 
 ### Stage 4
 
+- Implementation commit: `320dbcb` — guided first capture, reviewed results and on-demand completion.
 - New context/controller tests cover one-capture completion, duplicate authorization/finish, no implicit
   schedule, later schedule/pause preservation, stale proof/result identities, changed semantic rules,
   wrong valid labels, provider failure/incomplete outputs, transactional rollback, owner/recent-auth and

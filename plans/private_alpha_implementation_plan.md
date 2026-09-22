@@ -51,6 +51,7 @@ for recovery and metric definitions. Final checks: 708 backend tests (2 exclusio
 TypeScript, audit, formatting and assets. A dedicated fake-provider browser/database verified the loop;
 no external provider call, real-key usage or development-data wipe occurred. The additive review-event
 migration is applied locally. Stage 5's remaining recipes are next; deployment/partner onboarding remain deferred.
+Stage 4 implementation commit: `320dbcb`.
 
 ## 1. How to use this document
 
