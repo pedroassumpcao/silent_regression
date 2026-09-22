@@ -71,7 +71,8 @@ Make the entire first-value journey tangible before committing to new persistenc
 - [x] Include wrong allowed label, wrong expectation, provider failure, and member-to-owner handoff.
 - [x] Check a structured JSON workflow against the same layout and draft concepts.
 - [x] Record initial founder feedback and move simulation selection into a distinct Step 0.
-- [ ] Confirm the revised interaction with the founder; record an unfamiliar-user test when available.
+- [x] Confirm revised navigation with the founder; clarify practice-only vs real and on-demand vs scheduled.
+- [ ] Record an unfamiliar-user test when available (tracked in Stage 6; not a blocker to Stage 3 development).
 
 ### Success criteria and files
 
@@ -84,7 +85,9 @@ Likely files: prototype UI/routes or local prototype artifact, this folder's des
 Delivered: authenticated `/app/:workspace_slug/setup-preview`, isolated local simulation and tests.
 See [prototype boundaries, walkthrough, JSON mapping and usability script](PROTOTYPE.md). Technical
 verification is complete. Initial founder feedback led to Step 0 and an explicit, cancellable restart;
-confirmation of that revision and available unfamiliar-user research remain pending.
+the founder accepted the revised navigation and authorized continuation. Completion now says
+"Finish setup," explicitly explaining on-demand execution and that the practice preview never becomes
+a real monitor. Independent unfamiliar-user research remains pending in Stage 6.
 
 ## Stage 3 — Common journey and routing recipe
 

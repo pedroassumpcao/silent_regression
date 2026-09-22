@@ -105,7 +105,7 @@ export function SetupPreviewView({ storageKey, workspaceSlug, workspaceName }: {
   const member = draft.scenario === "member" && !draft.handedOff
   const displayStep = selecting ? -1 : draft.step
   const replacing = draft.step >= 0
-  const title = selecting ? "Choose the simulation you want to explore" : paused ? "Your preview is saved in this tab" : draft.finished ? "Ready for manual checks — simulated" : [
+  const title = selecting ? "Choose the simulation you want to explore" : paused ? "Your preview is saved in this tab" : draft.finished ? "Practice walkthrough complete" : [
     "Connect the request you want to protect", "What should each input produce?", "Do these checks catch the mistakes you care about?",
     member ? "An owner needs to approve this run" : "Review the first run before authorizing it", "Understand the result, then finish",
   ][draft.step]
@@ -122,7 +122,7 @@ export function SetupPreviewView({ storageKey, workspaceSlug, workspaceName }: {
       <main className="mx-auto max-w-6xl space-y-6 px-5 py-7 sm:px-8 sm:py-10">
         <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm leading-6">
           <FlaskConical className="mt-1 size-5 shrink-0 text-primary" />
-          <p><strong>Simulation only · 0 provider calls.</strong> No monitor, credential, approval, notification, or schedule is created. Use fictional data. Saves stay in this browser tab, not your workspace.</p>
+          <p><strong>Practice preview · 0 provider calls.</strong> Learn and review the proposed flow with fictional data. This simulation does not create or become a real monitor. Saves stay in this browser tab, not your workspace.</p>
         </div>
 
         {!selecting && <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
@@ -137,7 +137,7 @@ export function SetupPreviewView({ storageKey, workspaceSlug, workspaceName }: {
         </ol></nav>
 
         <section className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-widest text-primary">{selecting ? "Step 0 · Choose simulation" : paused ? "Paused" : draft.finished ? "First-value journey complete" : `Step ${draft.step + 1} of 5 · ${draft.recipe === "routing" ? "Routing" : "Structured JSON"}`}</p>
+          <p className="text-xs font-medium uppercase tracking-widest text-primary">{selecting ? "Step 0 · Choose simulation" : paused ? "Paused" : draft.finished ? "Simulation complete · no real monitor created" : `Step ${draft.step + 1} of 5 · ${draft.recipe === "routing" ? "Routing" : "Structured JSON"}`}</p>
           <h1 ref={heading} tabIndex={-1} className="max-w-3xl text-3xl font-semibold leading-tight tracking-tight outline-none sm:text-4xl">{title}</h1>
           <p role="status" className="text-sm text-muted-foreground">{selecting ? replacing ? "Your current simulation stays intact until you start its replacement." : "Choose a scenario first, then follow the five setup steps. Nothing has started yet." : `${dirty ? "Unsaved preview changes" : initial.restored && saved === JSON.stringify(initial.draft) ? "Restored from this tab" : "Saved in this tab only"}. Tab-session preview only; another device cannot resume it.`}</p>
         </section>
@@ -162,9 +162,9 @@ export function SetupPreviewView({ storageKey, workspaceSlug, workspaceName }: {
         </Panel> : paused ? <Panel title="Pick up where you left off" description={`Next: ${steps[draft.step]}. This is not a real monitor draft.`}>
           <Button onClick={() => setPaused(false)}>Resume preview <ArrowRight /></Button>
           <p className="mt-4 text-sm"><Link className="underline underline-offset-4" href={`/app/${workspaceSlug}/monitors`}>Leave preview and open real monitors</Link></p>
-        </Panel> : draft.finished ? <Panel title="You have a reviewed first result" description="The proposed finish line is an understood result plus manual readiness, not a mandatory schedule.">
-          <dl className="grid gap-4 sm:grid-cols-3"><Summary label="Inputs checked" value="2 of 2 passing" /><Summary label="Reference" value="Reviewed (simulated)" /><Summary label="Schedule" value="Off · manual only" /></dl>
-          <p className="my-5 text-sm text-muted-foreground">A real implementation will record reference approval and manual activation separately. Nothing was approved or activated here.</p>
+        </Panel> : draft.finished ? <Panel title="You practiced reviewing a first result" description="This walkthrough is complete. Its fictional inputs, checks and results are not copied into a real monitor.">
+          <dl className="grid gap-4 sm:grid-cols-3"><Summary label="Inputs checked" value="2 of 2 passing (simulated)" /><Summary label="Reference" value="Reviewed (simulated)" /><Summary label="Schedule" value="Off · on-demand only (simulated)" /></dl>
+          <p className="my-5 text-sm text-muted-foreground">For a real monitor, you will configure your own request and examples, authorize provider calls, and review the actual results. Finishing that setup makes it ready for on-demand checks; it does not enable a schedule. Nothing was approved or activated here.</p>
           <Button onClick={() => persist({ ...draft, step: 3, finished: false })}>Review another simulated run <ArrowRight /></Button>
           <details className="mt-5 border-t pt-4 text-sm"><summary className="cursor-pointer font-medium">Optional: schedule checks later</summary><p className="mt-3 text-muted-foreground">The real product supports daily or weekly checks, with a separate owner authorization and call budget. This preview leaves scheduling off.</p></details>
         </Panel> : <>
@@ -206,7 +206,7 @@ export function SetupPreviewView({ storageKey, workspaceSlug, workspaceName }: {
 
           {draft.step === 4 && attempt && <Panel title={attempt.failed ? "The provider did not return a usable result" : passing ? "Both inputs matched their expected behavior" : "An allowed output was wrong for its input"} description={`Simulated attempt ${attempt.number}. Inspect the input, expected answer, actual output, and reason before deciding what to do.`}>
             {attempt.failed ? <div className="rounded-xl border border-destructive/25 bg-destructive/5 p-4 text-sm leading-6"><p className="font-medium">Provider unavailable (simulated)</p><p>No quality judgment or reference can be made from this attempt. Keep the reviewed checks, resolve the provider issue, and explicitly authorize a new attempt. The next mock attempt simulates recovery.</p></div> : <div className="space-y-4">{attempt.evidence.map(row => <article key={row.input} aria-label={`Result for ${row.input}`} className="rounded-xl border p-4"><EvidenceRow evidence={row} /></article>)}</div>}
-            {passing && <div className="mt-5"><Choice checked={reviewed} onChange={() => setReviewed(value => !value)}>I reviewed both outputs and want this result as the reference for manual checks.</Choice></div>}
+            {passing && <div className="mt-5 space-y-3"><Choice checked={reviewed} onChange={() => setReviewed(value => !value)}>I reviewed both outputs and want this result as the reference in this simulation.</Choice><p className="text-sm leading-6 text-muted-foreground">Finish setup completes this practice walkthrough only. In a real monitor, on-demand means checks run when you select Run now, using your provider and potentially incurring cost. Scheduled checks are optional and need separate authorization.</p></div>}
             {!passing && !attempt.failed && <fieldset className="mt-5 space-y-3 rounded-lg bg-muted/40 p-4"><legend className="px-1 text-sm font-medium">What needs to change?</legend>
               <Choice type="radio" name="recovery" checked={recovery === "output"} onChange={() => setRecovery("output")}>The output is wrong. Keep my expectations.</Choice>
               <Choice type="radio" name="recovery" checked={recovery === "expectation"} onChange={() => setRecovery("expectation")}>My expectation is wrong. Edit it and review the proof again.</Choice>
@@ -222,7 +222,7 @@ export function SetupPreviewView({ storageKey, workspaceSlug, workspaceName }: {
             {draft.step < 2 && <Button id="preview-primary" onClick={advance}>{draft.step === 0 ? "Continue to examples" : "Continue to checks"} <ArrowRight /></Button>}
             {draft.step === 2 && (proofAgrees(draft) ? <Button id="preview-primary" disabled={draft.judgments.length !== 4} onClick={advance}>Confirm checks and continue <ArrowRight /></Button> : <Button id="preview-primary" onClick={() => navigate(1)}>Correct expected answers <ArrowLeft /></Button>)}
             {draft.step === 3 && (member ? <Button id="preview-primary" onClick={() => persist({ ...draft, handedOff: true })}>Preview owner review <ArrowRight /></Button> : <Button id="preview-primary" disabled={!authorized} onClick={run}>Run simulation · 0 calls <ArrowRight /></Button>)}
-            {draft.step === 4 && (passing ? <Button id="preview-primary" disabled={!reviewed} onClick={() => { if (reviewed && canFinish(draft)) persist({ ...draft, finished: true }) }}>Finish in manual mode <Check /></Button> : <Button id="preview-primary" onClick={() => {
+            {draft.step === 4 && (passing ? <Button id="preview-primary" disabled={!reviewed} onClick={() => { if (reviewed && canFinish(draft)) persist({ ...draft, finished: true }) }}>Finish setup <Check /></Button> : <Button id="preview-primary" onClick={() => {
               if (!attempt?.failed && recovery === "expectation") persist({ ...draft, step: 1, proof: null, judgments: [], finished: false, handedOff: false })
               else persist({ ...draft, step: 3, outputRecovered: draft.outputRecovered || draft.scenario === "wrong_output", finished: false })
             }}>{attempt?.failed ? "Review retry authorization" : recovery === "expectation" ? "Correct expected answers" : "Review retry after upstream fix"} <ArrowRight /></Button>)}

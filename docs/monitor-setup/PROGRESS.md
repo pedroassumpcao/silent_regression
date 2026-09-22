@@ -1,6 +1,6 @@
 # Guided monitor setup — progress
 
-## Status: Stage 2 implemented — founder feedback revision ready for review
+## Status: Stage 2 founder feedback addressed — Stage 3 starting
 
 - Research/history: [original setup research](RESEARCH.md), [UX assessment](UX_ASSESSMENT.md)
 - Approved scope and acceptance criteria: [implementation plan](IMPLEMENTATION.md)
@@ -11,8 +11,8 @@
 | Stage | Status | Completed / pending |
 | --- | --- | --- |
 | 1. Honest saving and readiness | Complete | Saving, approval guards, manual readiness, copy, analytics and regressions verified |
-| 2. Routing journey prototype | Implemented; review in progress | Initial feedback implemented: explicit Step 0 and safe restart; revised interaction confirmation and unfamiliar-user feedback pending |
-| 3. Common draft and routing recipe | Not started | Draft model, typed editors, combined proof pending |
+| 2. Routing journey prototype | Implemented; founder direction accepted | Step 0, safe restart and practice/on-demand distinction addressed; independent research tracked in Stage 6 |
+| 3. Common draft and routing recipe | In progress | Draft model, typed editors, combined proof pending |
 | 4. First run and manual completion | Not started | Coordinated authorization/review and value metrics pending |
 | 5. Other recipes and guidance | Not started | JSON, sources, text and walkthrough pending |
 | 6. Independent usability validation | Not started | Test script, external participants and findings pending |
@@ -36,6 +36,17 @@
   approval and separate recent-authentication/provider-spend boundaries remain unchanged.
 
 ## Session log
+
+### 2026-09-21 — Practice and execution terminology; Stage 3 authorized
+
+- Founder accepted Step 0 but interpreted "manual mode" as simulated execution and wondered whether
+  this preview prepares a real monitor. These are separate axes: practice vs real, on-demand vs scheduled.
+- Changed completion to "Finish setup," clarified Run now can make paid provider calls in a real
+  monitor, and explicitly stated that preview data never transfers into a real monitor. Final state
+  says "Practice walkthrough complete," not real operational readiness.
+- Founder authorized the clarification and continuation through the planned stages. Stage 3 begins
+  with additive durable drafts; no data wipe, provider call or schedule activation is authorized here.
+- Independent usability evidence remains outstanding, not implied by founder approval or automated tests.
 
 ### 2026-09-21 — Founder feedback: scenario selection belongs in Step 0
 

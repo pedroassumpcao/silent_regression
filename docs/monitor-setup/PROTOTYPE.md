@@ -66,7 +66,7 @@ button to that journey while testing this separate design.
 4. **Run once:** inspect 2 inputs × 1 sample, 2 planned calls and a proposed 4-call maximum (one retry
    per input). Metadata validation would be separate. The real cost is unknown until a real provider
    is chosen; the preview always costs $0. Explicitly authorize the simulation, then run it.
-5. **Review & finish:** inspect both expected/actual/reason rows. Confirm review, then finish in manual
+5. **Review & finish:** inspect both expected/actual/reason rows. Confirm review, then choose **Finish setup**. In the real flow this means on-demand
    mode. Scheduling stays off. Another run must go through fresh authorization. In production, checks
    approval, capture authorization, reference approval and manual activation retain separate audits.
 
