@@ -217,7 +217,8 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
           </Alert>
         )}
 
-        {!result.provenance.compatible && (
+        {summary.kind === "baseline" && <Alert><AlertTitle>Reference capture</AlertTitle><AlertDescription>This is initial or replacement reference evidence, not a comparison against an earlier reference. Review its outputs and checks before approving it.</AlertDescription></Alert>}
+        {summary.kind !== "baseline" && !result.provenance.compatible && (
           <Alert id="provenance-mismatch" variant="destructive">
             <Fingerprint />
             <AlertTitle>Reviewed-reference provenance does not match this run</AlertTitle>
@@ -239,7 +240,7 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
           <CardHeader className="gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2"><MessageSquare className="size-5 text-primary" /> Human review evidence</CardTitle>
-              <CardDescription className="mt-2 max-w-3xl leading-6">These are attributable design-partner judgments, not model-accuracy statistics. Revised judgments remain visible as append-only history.</CardDescription>
+              <CardDescription className="mt-2 max-w-3xl leading-6">These are structured per-observation judgments, separate from confirming setup result review and approving a reference. They are not model-accuracy statistics. Revised judgments remain visible as append-only history.</CardDescription>
             </div>
             <Badge variant="outline">{result.reviewSummary.currentCount} current judgment{result.reviewSummary.currentCount === 1 ? "" : "s"}</Badge>
           </CardHeader>
@@ -307,7 +308,7 @@ export function RunView({ auth, canResolve, flash = {}, monitor, releaseStage, r
           </CardContent>
         </Card>
 
-        <ProvenanceCard baseline={result.provenance.baseline} current={result.provenance.current} compatible={result.provenance.compatible} mismatches={result.provenance.mismatches} />
+        {summary.kind !== "baseline" && <ProvenanceCard baseline={result.provenance.baseline} current={result.provenance.current} compatible={result.provenance.compatible} mismatches={result.provenance.mismatches} />}
 
         <Card id="run-configuration">
           <CardHeader><CardTitle className="flex items-center gap-2"><Braces className="size-5 text-primary" /> Frozen configuration</CardTitle><CardDescription>Configuration v{result.configuration.monitorVersion} used for this run. Long values are safely bounded only in the browser preview.</CardDescription></CardHeader>

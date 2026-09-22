@@ -108,7 +108,7 @@ export function ResultsView({
         )}
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Result summary">
-          <Metric label="Monitoring runs" value={runs.length} detail="Latest 25 manual and scheduled runs" />
+          <Metric label="Captures and runs" value={runs.length} detail="Latest 25 reference, manual and scheduled runs" />
           <Metric label="Unresolved alerts" value={unresolved.length} detail={critical > 0 ? `${critical} critical` : "No critical alerts"} tone={unresolved.length > 0 ? "warning" : "success"} />
           <Metric label="Latest outcome" value={latest ? latest.status.replaceAll("_", " ") : "No runs"} detail={latest ? formatUtc(latest.completedAt || latest.insertedAt) : "Run the active monitor to begin"} />
           <Metric label="Pinned reviewed reference" value={currentBaseline ? "Available" : "Unavailable"} detail={currentBaseline ? `${currentBaseline.provider} · ${currentBaseline.requestedModel}` : "Operational comparisons are blocked"} tone={currentBaseline ? "success" : "danger"} />
@@ -129,7 +129,7 @@ export function ResultsView({
                 <ShieldCheck className="mt-0.5 size-5 text-success" />
                 <div>
                   <p className="font-medium">No unresolved alerts</p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">Completed runs have no open or acknowledged action items.</p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">Monitoring runs have no open or acknowledged action items. Reference captures do not generate alerts; inspect their checks before approval.</p>
                 </div>
               </CardContent>
             </Card>
@@ -166,7 +166,7 @@ export function ResultsView({
               <span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary"><History className="size-5" /></span>
               <div>
                 <CardTitle>Run history</CardTitle>
-                <CardDescription>Explicit calls, completion, deterministic outcomes, and alert counts.</CardDescription>
+                <CardDescription>Initial and replacement reference captures plus later monitoring runs. Reference captures are evidence for review, not comparisons against an earlier reference.</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -197,7 +197,7 @@ export function ResultsView({
                       {runs.map(run => (
                         <TableRow key={run.id}>
                           <TableCell>
-                            <p className="font-medium capitalize">{run.kind}</p>
+                            <p className="font-medium capitalize">{run.kind === "baseline" ? "Reference capture" : run.kind}</p>
                             <p className="mt-1 text-xs text-muted-foreground">{formatUtc(run.completedAt || run.insertedAt)}</p>
                           </TableCell>
                           <TableCell><RunStatusBadge status={run.status} /></TableCell>
@@ -218,7 +218,7 @@ export function ResultsView({
                     <div key={run.id} className="rounded-xl border p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-medium capitalize">{run.kind} run</p>
+                          <p className="font-medium capitalize">{run.kind === "baseline" ? "Reference capture" : `${run.kind} run`}</p>
                           <p className="mt-1 text-xs text-muted-foreground">{formatUtc(run.completedAt || run.insertedAt)}</p>
                         </div>
                         <RunStatusBadge status={run.status} />

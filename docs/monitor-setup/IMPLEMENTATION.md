@@ -21,7 +21,7 @@ Keep advanced authoring available. No AI authoring or exploratory execution mode
 | 1 | Honest saving, safe check approval, and accurate progress | Complete |
 | 2 | Clickable routing journey and JSON architecture check | Founder feedback addressed; external research pending Stage 6 |
 | 3 | Coherent authoring draft, common journey, and routing recipe | Complete |
-| 4 | Integrated first run, result review, and manual completion | Not started |
+| 4 | Integrated first run, result review, and manual completion | Complete |
 | 5 | JSON, sources, and text recipes plus contextual guidance | Not started |
 | 6 | Independent usability validation and final corrections | Not started |
 
@@ -109,8 +109,8 @@ Replace scattered editors with a coherent mutable authoring draft without weaken
 
 Delivered: [saved routing setup guide and verification](GUIDED_SETUP.md). The handoff creates a
 shared-contract **draft**, not an approved contract: owner approval and provider-spend authorization
-remain separate existing safeguards. Sealed authoring/review provenance is immutable. Stage 4 will
-coordinate those safeguards in the unified journey; do not mark the full real first-run UX complete yet.
+remain separate safeguards. Sealed authoring/review provenance is immutable. Stage 4 now coordinates
+those safeguards on the guided first-run page without collapsing their separate consent/audit boundaries.
 
 ### Success criteria and files
 
@@ -129,13 +129,20 @@ Make an understood result, not a locked configuration, the finish line.
 
 ### Tasks
 
-- [ ] Coordinate owner check approval and explicit bounded baseline authorization, retaining separate audits.
-- [ ] Reuse baseline execution and idempotency; resume the same attempt after refresh or double-click.
-- [ ] Lead results with input → expected → actual → reason; disclose artifacts/usage/provenance on demand.
-- [ ] Route wrong checks, wrong outputs, provider failures and member handoff to actionable recovery.
-- [ ] Coordinate reference approval with manual activation; retain advanced exceptional acceptance.
-- [ ] Show the initial capture in history; make Run again primary and Schedule checks optional.
-- [ ] Separate first capture, result review, manual readiness, later runs, and recurring-enablement metrics.
+- [x] Coordinate owner check approval and explicit bounded baseline authorization, retaining separate audits.
+- [x] Reuse baseline execution and idempotency; resume the same attempt after refresh or double-click.
+- [x] Lead results with input → expected → actual → reason; disclose artifacts/usage/provenance on demand.
+- [x] Route wrong checks, wrong outputs, provider failures and member handoff to actionable recovery.
+- [x] Coordinate reference approval with manual activation; retain advanced exceptional acceptance.
+- [x] Show the initial capture in history; make Run again primary and Schedule checks optional.
+- [x] Separate first capture, result review, manual readiness, later runs, and recurring-enablement metrics.
+
+Delivered: [guided walkthrough, recovery choices and measurement definitions](GUIDED_SETUP.md).
+The first run uses one sample per input and the existing bounded retry/call ceilings. Run again opens
+the established operations authorization screen. Request/case corrections can create an explicitly
+separate unreviewed guided draft; advanced successor versioning remains available for in-place changes.
+The additive migration only expands the event allowlist; existing data is preserved. Fake-provider
+browser verification is not live-provider evidence or independent usability validation.
 
 ### Success criteria and files
 

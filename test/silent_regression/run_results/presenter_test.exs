@@ -105,7 +105,8 @@ defmodule SilentRegression.RunResults.PresenterTest do
     scope: scope
   } do
     assert {:ok, overview} = RunResults.get_monitor_overview(scope, fixture.monitor.id)
-    assert [%{run: history_run}] = overview.runs
+    assert Enum.any?(overview.runs, &(&1.run.kind == :baseline))
+    %{run: history_run} = Enum.find(overview.runs, &(&1.run.kind == :manual))
     assert history_run.id == run.id
     assert overview.current_baseline.id == run.baseline_snapshot_id
     assert {:ok, 0} = RunResults.unresolved_alert_count(scope, fixture.monitor.id)

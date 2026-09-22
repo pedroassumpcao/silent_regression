@@ -22,6 +22,7 @@ defmodule SilentRegression.ProductAnalytics do
     "demo.step_completed" => ["demo_step", "step_number", "scenario_version"],
     "demo.completed" => ["total_count", "scenario_version"],
     "baseline.approved" => ["approval_mode"],
+    "guided_setup.results_reviewed" => ["snapshot_id", "review_fingerprint"],
     "monitor.activated" => ["cadence", "activation_kind"],
     "schedule.activated" => ["cadence", "activation_kind"],
     "review.recorded" => ["subject_kind", "classification", "action", "superseded"],
@@ -230,8 +231,23 @@ defmodule SilentRegression.ProductAnalytics do
       |> Enum.find(&(&1.name == "schedule.activated"))
       |> then(&(&1 && &1.occurred_at))
 
+    captures =
+      Repo.all(
+        from run in SilentRegression.Captures.CaptureRun,
+          where: run.workspace_id == ^workspace_id and not is_nil(run.completed_at),
+          order_by: [asc: run.completed_at],
+          select: %{kind: run.kind, at: run.completed_at}
+      )
+
+    first_capture = Enum.find(captures, &(&1.kind == :baseline))
+    first_later_run = Enum.find(captures, &(&1.kind in [:manual, :scheduled]))
+    first_review = Enum.find(events, &(&1.name == "guided_setup.results_reviewed"))
+
     %{
       invitation_accepted_at: invitation_accepted_at,
+      first_capture_completed_at: first_capture && first_capture.at,
+      first_guided_result_reviewed_at: first_review && first_review.occurred_at,
+      first_later_run_completed_at: first_later_run && first_later_run.at,
       first_monitor_activated_at: first_activation_at,
       first_recurring_enabled_at: first_recurring_at,
       seconds_to_first_monitor: elapsed_seconds(invitation_accepted_at, first_activation_at),
@@ -256,6 +272,12 @@ defmodule SilentRegression.ProductAnalytics do
   defp validate_property_values(properties) do
     valid? =
       Enum.all?(properties, fn
+        {"snapshot_id", value} ->
+          match?({:ok, _}, Ecto.UUID.cast(value))
+
+        {"review_fingerprint", value} ->
+          is_binary(value) and Regex.match?(~r/^[0-9a-f]{64}$/, value)
+
         {"step", value} ->
           value in @steps
 

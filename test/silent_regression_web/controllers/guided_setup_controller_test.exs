@@ -80,7 +80,7 @@ defmodule SilentRegressionWeb.GuidedSetupControllerTest do
     {:ok, sealed} = GuidedSetups.get(scope, draft.id)
 
     assert redirected_to(response) ==
-             "/app/#{scope.workspace.slug}/monitors/#{sealed.monitor_id}/contract"
+             "/app/#{scope.workspace.slug}/monitors/#{sealed.monitor_id}/first-run"
 
     assert Repo.aggregate(SilentRegression.Captures.CaptureRun, :count) == 0
   end

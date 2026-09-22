@@ -21,7 +21,9 @@ defmodule SilentRegressionWeb.GuidedSetupController do
     with {:ok, draft} <- GuidedSetups.get(scope, id),
          %{} = state <- GuidedSetups.state(scope, draft) do
       if draft.sealed_at do
-        redirect(conn, to: ~p"/app/#{scope.workspace.slug}/monitors/#{draft.monitor_id}/contract")
+        redirect(conn,
+          to: ~p"/app/#{scope.workspace.slug}/monitors/#{draft.monitor_id}/first-run"
+        )
       else
         requested = Map.get(params, "step", Atom.to_string(state.stage))
 
@@ -118,7 +120,7 @@ defmodule SilentRegressionWeb.GuidedSetupController do
         )
         |> redirect(
           to:
-            ~p"/app/#{conn.assigns.current_scope.workspace.slug}/monitors/#{draft.monitor_id}/contract"
+            ~p"/app/#{conn.assigns.current_scope.workspace.slug}/monitors/#{draft.monitor_id}/first-run"
         )
 
       error ->

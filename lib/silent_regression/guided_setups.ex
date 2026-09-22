@@ -47,6 +47,18 @@ defmodule SilentRegression.GuidedSetups do
 
   def get(%Scope{}, _), do: {:error, :not_found}
 
+  def guided_monitor?(
+        %Scope{workspace: %Workspace{id: workspace_id}, membership: %Membership{}},
+        monitor_id
+      ) do
+    Repo.exists?(
+      from draft in Draft,
+        where: draft.workspace_id == ^workspace_id and draft.monitor_id == ^monitor_id
+    )
+  end
+
+  def guided_monitor?(%Scope{}, _monitor_id), do: false
+
   def save(scope, id, revision, raw) do
     with :ok <- Routing.validate_raw(raw) do
       mutate(scope, id, revision, fn draft ->

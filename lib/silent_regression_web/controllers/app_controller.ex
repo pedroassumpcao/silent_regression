@@ -55,7 +55,8 @@ defmodule SilentRegressionWeb.AppController do
       progress_percent: progress.percent,
       next_step: progress.next_step,
       updated_at: setup.updated_at,
-      ready_to_activate: Baselines.compatible_approved?(scope, setup.monitor.id)
+      ready_to_activate: Baselines.compatible_approved?(scope, setup.monitor.id),
+      guided_setup: GuidedSetups.guided_monitor?(scope, setup.monitor.id)
     }
   end
 end

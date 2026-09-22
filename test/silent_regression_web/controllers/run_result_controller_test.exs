@@ -31,7 +31,8 @@ defmodule SilentRegressionWeb.RunResultControllerTest do
     assert html_response(results_page, 200)
     assert inertia_component(results_page) == "Monitors/Results"
     assert inertia_props(results_page).monitor.id == fixture.monitor.id
-    assert [presented_run] = inertia_props(results_page).runs
+    assert Enum.any?(inertia_props(results_page).runs, &(&1.kind == :baseline))
+    presented_run = Enum.find(inertia_props(results_page).runs, &(&1.id == run.id))
     assert presented_run.id == run.id
     assert presented_run.criticalAlertCount == 1
     assert presented_run.contractEvaluationCounts["fail"] == 1

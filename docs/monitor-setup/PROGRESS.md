@@ -1,6 +1,6 @@
 # Guided monitor setup — progress
 
-## Status: Stage 3 complete — Stage 4 next
+## Status: Stage 4 complete — Stage 5 next
 
 - Research/history: [original setup research](RESEARCH.md), [UX assessment](UX_ASSESSMENT.md)
 - Approved scope and acceptance criteria: [implementation plan](IMPLEMENTATION.md)
@@ -13,11 +13,20 @@
 | 1. Honest saving and readiness | Complete | Saving, approval guards, manual readiness, copy, analytics and regressions verified |
 | 2. Routing journey prototype | Implemented; founder direction accepted | Step 0, safe restart and practice/on-demand distinction addressed; independent research tracked in Stage 6 |
 | 3. Common draft and routing recipe | Complete | Bounded workspace drafts, typed routing editors, combined reviewed proof and atomic handoff verified |
-| 4. First run and manual completion | Not started | Coordinated authorization/review and value metrics pending |
+| 4. First run and manual completion | Complete | Guided owner approval, bounded capture, fingerprint-bound review and atomic on-demand completion verified |
 | 5. Other recipes and guidance | Not started | JSON, sources, text and walkthrough pending |
 | 6. Independent usability validation | Not started | Test script, external participants and findings pending |
 
 ## Architectural decisions
+
+- 2026-09-22: Stage 4 reuses sealed guided drafts, contracts, baseline snapshots and capture jobs;
+  no parallel execution state machine or capture table. The same page advances through explicit
+  check approval, exact-model verification (when needed), bounded authorization, results and finish.
+  Final reference approval and on-demand activation are atomic, with their separate existing audits.
+  Result review is an explicit, fingerprint-bound event, never a page-view inference. Initial captures
+  are included in history; retries reject only the displayed pending snapshot and require new consent.
+  Existing advanced exceptional acceptance and versioned corrections remain available. No live calls
+  are authorized by implementation/testing; no local reset is necessary.
 
 - 2026-09-21: Stage 3 uses a separate `guided_setup_drafts` table. Incomplete inputs do not become
   executable monitor versions. Drafts are workspace-scoped, bounded to 240 KB of raw input, versioned
@@ -53,6 +62,35 @@
   approval and separate recent-authentication/provider-spend boundaries remain unchanged.
 
 ## Session log
+
+### 2026-09-21 local / 2026-09-22 UTC — Stage 4 completed
+
+- Replaced the routing handoff to separate pages with an integrated first-run page. Owner approval,
+  exact-model verification (when necessary), and bounded completion authorization remain distinct
+  decisions, with one primary next action. Polling/refresh resumes existing captures without writes.
+- Added exact terminal-result identity guards to review, reject/retry and finish. Finish reuses normal
+  reference approval plus manual activation in one transaction, retaining separate audit records.
+  Credential/configuration failures roll everything back. Duplicate finish preserves a later schedule
+  or pause; no redundant run occurs and recurring monitoring is not required.
+- Added input/expected/actual/reason evidence, independent shared/case outcomes, usage/artifact details,
+  clear owner handoff, explicit retry preparation and correction drafts with proof reset. Corrections
+  explicitly create a separate monitor; existing advanced versioning and exceptional approval remain.
+- Dashboard/checklist resume guided first-run review instead of claiming sealed configuration is a
+  finished monitor. History includes reference captures and explains why they have no comparison alerts.
+- Added content-free `guided_setup.results_reviewed`, deduplicated under locks; funnel timestamps now
+  separate capture completion, explicit review, readiness, later monitoring and recurring enablement.
+  Setup confirmation is not silently converted into per-observation correctness ground truth.
+- `mix precommit`: **708 backend tests passed, 2 existing exclusions; 111 frontend tests passed**;
+  TypeScript, formatting, Hex audit, assets and `git diff --check` passed. An old single-history-row
+  assertion was updated to include reference evidence; no unrelated application behavior was changed.
+- Browser verified fake-only check approval → metadata verification → capture → refresh → two results →
+  finish → one reference capture in history; 2 actual fake-adapter calls, 0 external calls. Checked 390px
+  overflow and heading focus. No warnings/errors were captured during this browser smoke.
+- Browser used port 4002 and a dedicated `silent_regression_test_guided_stage4` database with only fake
+  adapters/capture workers. No scheduler/notification queues, existing monitor changes or real-key usage.
+  The temporary server is stopped after verification. Test-only evidence remains in that separate DB.
+- Applied the additive review-event constraint migration in development/test; no wipe or dependency
+  upgrade. Stage 5 recipes are next; independent unfamiliar-user validation remains Stage 6.
 
 ### 2026-09-21 — Stage 3 completed
 
@@ -172,6 +210,17 @@
   evidence or a completed browser smoke; use an isolated session during Stage 2.
 
 ## Verification and commits
+
+### Stage 4
+
+- New context/controller tests cover one-capture completion, duplicate authorization/finish, no implicit
+  schedule, later schedule/pause preservation, stale proof/result identities, changed semantic rules,
+  wrong valid labels, provider failure/incomplete outputs, transactional rollback, owner/recent-auth and
+  tenant boundaries, correction drafts and first-capture history.
+- Seven frontend regressions cover bound consent, metadata/completion separation, result-first evidence,
+  changed-identity confirmation reset, failed-result recovery, member handoff, polling and optional schedule.
+- Build/onboarding/shadcn guidance kept one next action and reused installed primitives. Analytics
+  guidance kept explicit review separate from system completion, with no customer content in event props.
 
 ### Stage 3
 

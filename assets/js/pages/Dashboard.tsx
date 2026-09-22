@@ -35,6 +35,7 @@ export type MonitorSummary = {
   nextStep: "purpose" | "connection" | "prompt" | "cases" | "review"
   updatedAt: string
   readyToActivate?: boolean
+  guidedSetup?: boolean
 }
 
 export type ActivationChecklist = {
@@ -278,14 +279,15 @@ function MonitorCard({ monitor, workspaceSlug }: { monitor: MonitorSummary; work
   const complete = monitor.setupStatus === "completed"
   const baselinePending = monitor.state === "baseline_pending"
   const operational = monitor.state === "active" || monitor.state === "paused" || monitor.readyToActivate
-  const resultsAvailable = monitor.state === "active" || monitor.state === "paused"
+  const guidedPending = monitor.guidedSetup && monitor.state !== "active" && monitor.state !== "paused"
+  const resultsAvailable = monitor.state === "active" || monitor.state === "paused" || baselinePending
   const resultsPath = `/app/${workspaceSlug}/monitors/${monitor.id}/results`
   const nextPath = complete
-    ? `/app/${workspaceSlug}/monitors/${monitor.id}/${operational ? "operations" : baselinePending ? "baseline" : "contract"}`
+    ? `/app/${workspaceSlug}/monitors/${monitor.id}/${guidedPending ? "first-run" : operational ? "operations" : baselinePending ? "baseline" : "contract"}`
     : `/app/${workspaceSlug}/monitors/${monitor.id}/setup`
   const operationalLabel = monitor.state === "active" ? "Active monitoring" : monitor.state === "paused" ? "Monitoring paused" : "Ready to activate"
-  const completeDetail = operational ? operationalLabel : baselinePending ? "Reviewed reference capture and approval" : "Ready for contract authoring"
-  const completeAction = operational ? monitor.state === "baseline_pending" ? "Activate monitor" : "Manage monitor" : baselinePending ? "Review reference" : "Define contract"
+  const completeDetail = guidedPending ? "Continue to your first reviewed result" : operational ? operationalLabel : baselinePending ? "Reviewed reference capture and approval" : "Ready for contract authoring"
+  const completeAction = guidedPending ? "Continue setup" : operational ? monitor.state === "baseline_pending" ? "Activate monitor" : "Manage monitor" : baselinePending ? "Review reference" : "Define contract"
 
   return (
     <Card id={`monitor-${monitor.id}`} className="group transition-shadow hover:shadow-md">
@@ -302,12 +304,12 @@ function MonitorCard({ monitor, workspaceSlug }: { monitor: MonitorSummary; work
             className={complete ? "bg-success/10 text-success" : "text-primary"}
           >
             {complete ? <CheckCircle2 /> : <Clock3 />}
-            {complete ? "Setup complete" : "Draft"}
+            {complete ? guidedPending ? "First run pending" : "Setup complete" : "Draft"}
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div>
+        {guidedPending ? <p className="text-sm text-muted-foreground">Configuration saved. Review your first capture and finish setup to enable on-demand checks.</p> : <div>
           <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
             <span>
               {monitor.completedSteps} of {monitor.totalSteps} setup steps complete
@@ -315,7 +317,7 @@ function MonitorCard({ monitor, workspaceSlug }: { monitor: MonitorSummary; work
             <span>{monitor.progressPercent}%</span>
           </div>
           <Progress value={monitor.progressPercent} aria-label={`${monitor.name} setup progress`} />
-        </div>
+        </div>}
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
           <span className="flex items-center gap-2 text-xs text-muted-foreground">

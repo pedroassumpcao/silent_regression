@@ -121,6 +121,15 @@ defmodule SilentRegressionWeb.Router do
     post "/monitors/:monitor_id/contract/approve", ContractAuthoringController, :approve
     post "/monitors/:monitor_id/contract/revise", ContractAuthoringController, :revise
     get "/monitors/:monitor_id/baseline", BaselineController, :show
+    get "/monitors/:monitor_id/first-run", GuidedFirstRunController, :show
+
+    post "/monitors/:monitor_id/first-run/approve-checks",
+         GuidedFirstRunController,
+         :approve_checks
+
+    post "/monitors/:monitor_id/first-run/review", GuidedFirstRunController, :review
+    post "/monitors/:monitor_id/first-run/reject", GuidedFirstRunController, :reject
+    post "/monitors/:monitor_id/first-run/correct", GuidedFirstRunController, :correct
     post "/monitors/:monitor_id/baseline/approve", BaselineController, :approve
     post "/monitors/:monitor_id/baseline/reject", BaselineController, :reject
     get "/monitors/:monitor_id/operations", MonitorOperationsController, :show
@@ -147,6 +156,13 @@ defmodule SilentRegressionWeb.Router do
 
   scope "/app/:workspace_slug", SilentRegressionWeb do
     pipe_through [:browser, :authenticated, :workspace_scope, :recent_authentication]
+
+    post "/monitors/:monitor_id/first-run/validate-model",
+         GuidedFirstRunController,
+         :validate_model
+
+    post "/monitors/:monitor_id/first-run/authorize", GuidedFirstRunController, :authorize
+    post "/monitors/:monitor_id/first-run/finish", GuidedFirstRunController, :finish
 
     post "/monitors/:monitor_id/successor/validate-model",
          MonitorSuccessorController,

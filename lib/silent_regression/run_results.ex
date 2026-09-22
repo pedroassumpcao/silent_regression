@@ -233,7 +233,7 @@ defmodule SilentRegression.RunResults do
     |> where(
       [run],
       run.workspace_id == ^workspace_id and run.monitor_id == ^monitor_id and
-        run.kind in [:manual, :scheduled]
+        run.kind in [:baseline, :manual, :scheduled]
     )
     |> order_by([run], desc: run.inserted_at, desc: run.id)
     |> limit(@history_limit)

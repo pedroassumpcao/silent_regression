@@ -130,7 +130,7 @@ export function GuidedSetupView({ auth, step, draft, journey, models, credential
 
         {step === "review" && <Panel title="Ready for first-run review" description="Your request, cases and human-reviewed proof are ready to be saved as a fixed configuration. No provider call or schedule is authorized by this action.">
           <dl className="grid gap-4 sm:grid-cols-3"><div><dt className="text-xs text-muted-foreground">Monitor</dt><dd className="font-medium">{raw.name}</dd></div><div><dt className="text-xs text-muted-foreground">Inputs</dt><dd>{raw.cases.length}</dd></div><div><dt className="text-xs text-muted-foreground">Proof judgments</dt><dd>{draft.reviewedIds.length} confirmed</dd></div></dl>
-          <p className="text-sm leading-6">Next, {auth.membership?.role === "owner" ? "you will" : "an owner must"} approve the exact checks and authorize a bounded first capture on the existing review screens. After actual results are reviewed, finish setup for on-demand checks. Scheduling stays optional and off.</p>
+          <p className="text-sm leading-6">Next, {auth.membership?.role === "owner" ? "you will" : "an owner must"} approve the exact checks and authorize a bounded first capture in this guided flow. Review actual input → expected → actual results, then finish setup for on-demand checks. Scheduling stays optional and off.</p>
           <p className="text-sm text-muted-foreground">Need to change your request or expectations? Go back now. After this handoff the configuration is fixed; later behavior changes use a new version.</p>
         </Panel>}
 

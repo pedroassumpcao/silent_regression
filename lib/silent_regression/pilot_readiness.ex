@@ -139,6 +139,10 @@ defmodule SilentRegression.PilotReadiness do
 
     completed_count = Enum.count(@steps, fn {key, _label} -> Map.fetch!(completed, key) end)
 
+    guided? =
+      candidate.monitor &&
+        SilentRegression.GuidedSetups.guided_monitor?(scope, candidate.monitor.id)
+
     %{
       completed_count: completed_count,
       total_count: length(@steps),
@@ -153,7 +157,11 @@ defmodule SilentRegression.PilotReadiness do
             key: key,
             label: label,
             complete: Map.fetch!(completed, key),
-            href: step_href(key, slug, candidate.monitor)
+            href:
+              if(guided? && key in [:contract, :baseline, :schedule] && !candidate.schedule?,
+                do: "/app/#{slug}/monitors/#{candidate.monitor.id}/first-run",
+                else: step_href(key, slug, candidate.monitor)
+              )
           }
         end)
     }
