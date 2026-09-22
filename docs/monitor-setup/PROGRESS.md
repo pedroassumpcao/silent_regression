@@ -1,6 +1,6 @@
 # Guided monitor setup — progress
 
-## Status: Stage 1 complete — Stage 2 next
+## Status: Stage 2 implemented — founder review pending
 
 - Research/history: [original setup research](RESEARCH.md), [UX assessment](UX_ASSESSMENT.md)
 - Approved scope and acceptance criteria: [implementation plan](IMPLEMENTATION.md)
@@ -11,7 +11,7 @@
 | Stage | Status | Completed / pending |
 | --- | --- | --- |
 | 1. Honest saving and readiness | Complete | Saving, approval guards, manual readiness, copy, analytics and regressions verified |
-| 2. Routing journey prototype | Not started | Prototype and feedback pending |
+| 2. Routing journey prototype | Implemented; review pending | Five-stage prototype, JSON comparison, recovery paths and technical checks complete; human feedback pending |
 | 3. Common draft and routing recipe | Not started | Draft model, typed editors, combined proof pending |
 | 4. First run and manual completion | Not started | Coordinated authorization/review and value metrics pending |
 | 5. Other recipes and guidance | Not started | JSON, sources, text and walkthrough pending |
@@ -36,6 +36,38 @@
   approval and separate recent-authentication/provider-spend boundaries remain unchanged.
 
 ## Session log
+
+### 2026-09-21 — Stage 2 implementation and technical verification complete
+
+- Added the read-only authenticated-workspace `setup-preview` route and separate React prototype.
+  Production setup screens, domain engines, credentials, real permissions and records are unchanged.
+- Built the routing journey and JSON decision-field comparison using existing shadcn components;
+  one primary CTA per stage, contextual guidance, heading focus and responsive progress/evidence.
+- Both positive and negative proof examples show shared and case results independently. Explicit
+  reviewer confirmation is required. Expectation changes clear proof/finish state; fixed proposed
+  judgments cannot silently be rewritten by the simulation to agree with a mistaken expectation.
+- Wrong output, wrong expectation, provider failure and member-to-owner simulation have distinct
+  recovery paths. Each retry requires fresh authorization; bounded tab history retains failed evidence.
+- Save/return includes incomplete text and partial proof judgments, handles denied storage honestly,
+  namespaces storage by user/workspace and checks restored shape/review identity. This is deliberately
+  tab-local prototype storage, not the server-backed draft architecture planned for Stage 3.
+- Added [PROTOTYPE.md](PROTOTYPE.md): entry URL, review instructions, scenario matrix, architecture
+  comparison, non-enum JSON stress case, production boundaries and an unfamiliar-user interview script.
+- Browser walkthrough completed in an isolated in-app tab for routing and JSON failure/retry, with
+  blank-input reload recovery and desktop/mobile checks. One earlier sign-in/navigation observer error
+  did not recur; full caveat recorded in PROTOTYPE.md. This is not independent usability evidence.
+- No schema change/reset, live provider call, real monitor mutation or external communication.
+  Normal local development-mailbox login created only its usual session/audit records.
+- Founder review is next. Stage 3 is not started; unfamiliar-user feedback remains pending availability.
+
+### 2026-09-21 — Stage 2 started
+
+- Founder requested Stage 2. Building a separate authenticated-workspace preview, not replacing the
+  production setup or implementing the Stage 3 draft schema early.
+- Prototype uses mock inputs/results and tab-local storage only. No credentials, provider calls,
+  monitor mutations, database reset, or permission changes are needed.
+- Apply onboarding guidance (one next action and first understood result), existing shadcn primitives,
+  and explicit progress/focus handling. Independent usability evidence remains outstanding.
 
 ### 2026-09-21 — Scope approved and implementation started
 
@@ -76,6 +108,18 @@
 
 ## Verification and commits
 
+### Stage 2
+
+- `mix precommit`: dependency advisory audit clean; **679 backend tests passed, 2 existing private-
+  artifact exclusions**; TypeScript passed; **94 frontend tests across 16 files**; assets built.
+  `git diff --check` passed. New coverage adds 3 controller tests and 18 model/component tests.
+- Browser details and human-research boundaries: [PROTOTYPE.md](PROTOTYPE.md).
+- Implementation commit: `7184381` — isolated prototype, shared routing/JSON journey, recovery and tests.
+- Files: `SetupPreviewController`, authenticated preview GET, `SetupPreview.tsx`, isolated
+  `setup-preview.ts` model, corresponding tests, this track's documents and parent-plan status.
+
+### Stage 1
+
 - Final `mix precommit`: dependency advisory audit clean; **676 backend tests passed, 2 existing
   private-artifact exclusions**; TypeScript passed; **76 frontend tests passed across 14 files**;
   production assets built. `git diff --check` passed.
@@ -108,5 +152,7 @@
 - Human usability validation remains separate from correctness tests and requires unfamiliar users.
 - Browser back/forward cannot be cancelled by Inertia's before-visit hook; Stage 3 must recover bounded
   drafts rather than relying only on warnings. Invalid partial authoring remains in memory for now.
-- The complex template/rule/case UI is intentionally still present: Stage 1 is a trust/correctness
-  patch, not completion of the guided redesign. Stage 2 is the zero-call routing prototype and JSON check.
+- The complex production template/rule/case UI is intentionally still present. Stage 2 is a separate
+  zero-call prototype ready for feedback, not delivery of Stage 3's production authoring architecture.
+- Tab-local storage and local result simulation are disposable prototype boundaries, not reusable
+  persistence/evaluation authority. Keep the production server-side guards and immutable audit history.

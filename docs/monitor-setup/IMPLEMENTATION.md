@@ -19,7 +19,7 @@ Keep advanced authoring available. No AI authoring or exploratory execution mode
 | Stage | Deliverable | Status |
 | --- | --- | --- |
 | 1 | Honest saving, safe check approval, and accurate progress | Complete |
-| 2 | Clickable routing journey and JSON architecture check | Not started |
+| 2 | Clickable routing journey and JSON architecture check | Implemented; founder review pending |
 | 3 | Coherent authoring draft, common journey, and routing recipe | Not started |
 | 4 | Integrated first run, result review, and manual completion | Not started |
 | 5 | JSON, sources, and text recipes plus contextual guidance | Not started |
@@ -66,10 +66,10 @@ Make the entire first-value journey tangible before committing to new persistenc
 
 ### Tasks
 
-- [ ] Build a zero-provider-call clickable prototype using the real allow/deny workflow.
-- [ ] Show one primary action per stage, inline guidance, expected/actual output, and save/return paths.
-- [ ] Include wrong allowed label, wrong expectation, provider failure, and member-to-owner handoff.
-- [ ] Check a structured JSON workflow against the same layout and draft concepts.
+- [x] Build a zero-provider-call clickable prototype using the real allow/deny workflow.
+- [x] Show one primary action per stage, inline guidance, expected/actual output, and save/return paths.
+- [x] Include wrong allowed label, wrong expectation, provider failure, and member-to-owner handoff.
+- [x] Check a structured JSON workflow against the same layout and draft concepts.
 - [ ] Record founder feedback and an unfamiliar-user comprehension test when available.
 
 ### Success criteria and files
@@ -79,6 +79,10 @@ authorization. Separate simulated data from real monitor execution. Record any u
 research honestly; do not claim independent usability from automated tests.
 
 Likely files: prototype UI/routes or local prototype artifact, this folder's design notes/test script.
+
+Delivered: authenticated `/app/:workspace_slug/setup-preview`, isolated local simulation and tests.
+See [prototype boundaries, walkthrough, JSON mapping and usability script](PROTOTYPE.md). Technical
+verification is complete; founder feedback and available unfamiliar-user research are not yet recorded.
 
 ## Stage 3 — Common journey and routing recipe
 
