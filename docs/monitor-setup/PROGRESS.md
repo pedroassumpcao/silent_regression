@@ -255,6 +255,7 @@
 
 ### Stage 5
 
+- Implementation commit: `5c9cf17` — guided JSON, source and text recipes with reviewed proof and first-run reuse.
 - Guide: [all recipes, local walkthrough, recovery and limits](GUIDED_SETUP.md).
 - Build/onboarding/shadcn skills kept the phase tracked, one next action and installed primitives;
   no component/dependency replacement. The JSON editor is deliberately not a general schema importer:

@@ -61,6 +61,7 @@ The additive recipe constraint migration is applied locally; no reset or live ca
 726 backend tests (2 exclusions), 119 frontend tests, TypeScript, audit, format, assets and diff checks.
 Fake-only browser evidence covers JSON completion, source/text proof and mobile layout. Stage 6's
 independent unfamiliar-user validation is next, not replaced by automated tests or founder approval.
+Stage 5 implementation commit: `5c9cf17`.
 
 ## 1. How to use this document
 
