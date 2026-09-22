@@ -1,7 +1,13 @@
 # Stage 6 — findings and decision log
 
-Status: **not evaluated**. Independent sessions: **0**. No completion/time/comprehension results yet.
-Self-guided usability gate remains open. The founder and automated/browser rehearsals are not participants.
+Status: **deferred to closed design-partner onboarding**. Independent sessions: **0**. No
+completion/time/comprehension results yet. Self-guided usability gate remains open. The founder and
+automated/browser rehearsals are not participants.
+
+Founder decision, 2026-09-22: proceed toward separately authorized deployment and concierge-assisted
+closed onboarding, then reopen this study against the build partners actually use. Structured notes
+with consent are sufficient; recording is optional. This decision is not a Stage 6 pass and does not
+establish independent completion.
 
 ## Evidence ledger
 
@@ -41,4 +47,6 @@ No observed unfamiliar-user findings yet. Hypotheses are not findings.
 - [ ] Own-workflow expectation-authoring/fit evidence and live-call limitations recorded separately.
 - [ ] Progress/parent plan updated without changing deployment, invitations or Gate D status.
 
-Decision: **pending observations**. Preparing the kit alone does not complete Stage 6.
+Decision: **deferred; pending observations during closed design-partner onboarding**. Preparing the
+kit or relying on founder walkthroughs does not complete Stage 6. The product may proceed in an
+explicitly assisted mode, but it must not claim self-guided setup until the gate is evaluated.

@@ -4,7 +4,7 @@
 >
 > **Progress:** 26 of 27 tasks complete; Task 27 awaits separately authorized deployment and target-environment drills
 >
-> **Last revised:** 2026-09-21
+> **Last revised:** 2026-09-22
 >
 > **Release target:** Invite-only design-partner alpha
 >
@@ -60,10 +60,12 @@ examples and recovery guidance are in the [all-recipes walkthrough](../docs/moni
 The additive recipe constraint migration is applied locally; no reset or live calls. Final verification:
 726 backend tests (2 exclusions), 119 frontend tests, TypeScript, audit, format, assets and diff checks.
 Fake-only browser evidence covers JSON completion, source/text proof and mobile layout. Stage 6's
-independent unfamiliar-user validation is next, not replaced by automated tests or founder approval.
+independent unfamiliar-user validation is prepared and deferred, not replaced by automated tests or
+founder approval.
 Stage 5 implementation commit: `5c9cf17`.
 
-Stage 6 is in progress. The [usability kit](../docs/monitor-setup/usability/README.md) provides a
+Stage 6 is prepared and deferred until closed design-partner onboarding. The
+[usability kit](../docs/monitor-setup/usability/README.md) provides a
 guarded local-only fake-provider sandbox of the current saved journey, participant task cards,
 facilitator/scoring protocol, private session template and findings ledger. Technical rehearsal
 does not count as independent usability evidence: unfamiliar-user sessions, comprehension scoring,
@@ -72,7 +74,11 @@ dependency, live provider call, deployment or real partner invitation is part of
 Final preparation checks passed: 732 backend tests (2 existing exclusions), 119 frontend tests,
 TypeScript, audit, formatting and assets. Routing save/resume and on-demand finish were rehearsed
 in the browser with fixed fake outputs; no independent participant results have been recorded.
-Stage 6 preparation commit: `f9b0c40`; the stage remains in progress pending observed user sessions.
+Stage 6 preparation commit: `f9b0c40`. On 2026-09-22 the founder deferred formal sessions because
+participants cannot currently be arranged. This does not block Task 27 deployment work or an explicitly
+concierge-assisted first onboarding, but it keeps the self-guided readiness claim open. Reopen the study
+on the deployed build as closed design partners onboard; structured notes are sufficient and recordings
+are optional with consent. Deployment, invitations and live calls still require their existing approvals.
 
 ## 1. How to use this document
 
@@ -1380,6 +1386,7 @@ The product is ready for the first external design partner only when:
 
 | Date | Decision | Rationale | Affected tasks |
 | --- | --- | --- | --- |
+| 2026-09-22 | Defer independent setup research until closed design-partner onboarding and start in concierge-assisted mode | Unfamiliar participants cannot currently be arranged; founder walkthroughs and technical checks support continued iteration but do not validate self-guided setup. Partner onboarding can produce consented structured observations without requiring recordings | Setup Stage 6, 27 |
 | 2026-09-13 | Build a deterministic-only private alpha alongside design-partner recruitment | The spike validated a narrow technical wedge but not self-service adoption or market demand | All |
 | 2026-09-13 | Omit Stripe and plan selection | A free subscription validates no payment behavior and adds unrelated state and failure modes | 2, 3, 14 |
 | 2026-09-13 | Use invite-only workspace access | Customer prompts, outputs, and credentials require identity and tenant isolation while the product remains controlled | 3 onward |

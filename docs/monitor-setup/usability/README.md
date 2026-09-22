@@ -1,7 +1,22 @@
 # Stage 6 — independent usability study
 
-Protocol v1, 2026-09-22. Status: preparation; **zero unfamiliar-user sessions recorded**.
+Protocol v1, 2026-09-22. Status: **deferred until closed design-partner onboarding**;
+**zero unfamiliar-user sessions recorded**.
 Owner/facilitator: Pedro. This is a formative study, not a conversion experiment or a pilot launch.
+
+## Deferral and restart point
+
+The founder cannot currently recruit or arrange standalone sessions. Founder walkthroughs and
+technical verification will guide the next product/deployment work, but neither counts as independent
+usability evidence. This protocol resumes once the invite-only application is deployed and closed
+design partners begin onboarding. Their normal onboarding sessions may supply the observations; a
+separate usability lab or recorded video is not required. Capture structured notes with consent,
+record assistance honestly, and record audio/video only when separately useful and consented.
+
+The first design-partner sessions may be concierge-assisted. That is an explicit product mode, not a
+failed self-service claim. Keep the self-guided readiness gate open until eligible unfamiliar users
+complete the pinned flow and the remaining checklist is assessed. This deferral neither blocks
+deployment preparation nor authorizes deployment, invitations, provider calls or customer-data use.
 
 ## What we need to learn
 
@@ -24,10 +39,11 @@ with understanding. Scope remains the approved [Stage 6](../IMPLEMENTATION.md#st
 
 ## Participants and sessions
 
-Start with five technical people unfamiliar with the product: engineers or technical product/QA
-owners who have configured LLM calls and can supply known answers. Do not require evaluation-tool
-expertise. Record prior exposure to the product or walkthrough. Founder, implementation-agent and
-previously coached attempts are rehearsals, not part of the five first-time observations.
+When the study resumes, start with five technical people unfamiliar with the product: engineers or
+technical product/QA owners who have configured LLM calls and can supply known answers. Do not require
+evaluation-tool expertise. Record prior exposure to the product or walkthrough. Founder,
+implementation-agent and previously coached attempts are rehearsals, not part of the five first-time
+observations.
 
 Plan 35–45 minutes each: consent/background, supplied routing task, comprehension/recovery, and one
 optional recipe matched to their experience. All five do routing first for a comparable first-time
@@ -35,7 +51,8 @@ signal; later recipes are learned-use evidence, not another cold-start score. Ac
 to inspect JSON, sources and text at least once; state any recipe not observed. Accessibility needs
 and the participant's usual input methods should be accommodated, not treated as failure.
 
-No recruitment messages or invitations are sent by this kit. The founder arranges participants.
+No recruitment messages or invitations are sent by this kit. The founder arranges participants when
+the closed design-partner phase begins.
 In-person testing can use this local machine; remote screen control must be arranged deliberately.
 Do not publish a tunnel or expose the sandbox to the network. A participant watching you click is an
 assisted walkthrough, not an independent completion attempt.

@@ -1,6 +1,6 @@
 # Guided monitor setup — progress
 
-## Status: Stage 6 in progress — study kit prepared; participants pending
+## Status: Stage 6 deferred — resume during closed design-partner onboarding
 
 - Research/history: [original setup research](RESEARCH.md), [UX assessment](UX_ASSESSMENT.md)
 - Approved scope and acceptance criteria: [implementation plan](IMPLEMENTATION.md)
@@ -15,10 +15,16 @@
 | 3. Common draft and routing recipe | Complete | Bounded workspace drafts, typed routing editors, combined reviewed proof and atomic handoff verified |
 | 4. First run and manual completion | Complete | Guided owner approval, bounded capture, fingerprint-bound review and atomic on-demand completion verified |
 | 5. Other recipes and guidance | Complete | JSON/source/text editors, bounded reviewed proof, first-run reuse and walkthrough verified |
-| 6. Independent usability validation | In progress | Fake-provider sandbox and study kit prepared; unfamiliar-user sessions, findings and evidence-led corrections pending |
+| 6. Independent usability validation | Deferred | Kit retained; unfamiliar-user observations resume with closed design partners, while self-guided readiness remains unproven |
 
 ## Architectural decisions
 
+- 2026-09-22: Defer formal Stage 6 unfamiliar-user sessions until the invite-only application is
+  deployed and closed design partners begin onboarding. Founder walkthroughs and technical evidence
+  are sufficient to continue deployment preparation and concierge-assisted onboarding, but are not
+  independent usability evidence. Stage 6 does not block those activities; it still gates any claim
+  of self-guided setup. Reopen the protocol on a pinned build, capture structured observations during
+  onboarding, and treat recording as optional and consent-based rather than a participation requirement.
 - 2026-09-22: Stage 6 uses test-only support modules and a guarded manual runner, not production
   demo toggles or new routes. The current saved journey and evaluators run in a separate local DB;
   fixed responses never read declared expectations. Synthetic account/credential preparation is
@@ -81,6 +87,20 @@
 
 ## Session log
 
+### 2026-09-22 — Independent research deferred to the closed design-partner phase
+
+- The founder cannot currently recruit or arrange unfamiliar-user sessions, so no participant result
+  is fabricated and the four-of-five learning threshold is not evaluated.
+- Continue toward the separately authorized deployment and first closed design-partner onboarding.
+  Initial setup may be founder-assisted; record where assistance was needed instead of presenting it
+  as independent completion.
+- Reuse the prepared protocol and sandbox when practical, but normal design-partner onboarding can
+  supply the observations. Sanitized structured notes are enough; recordings are optional with consent.
+- The current UI remains supported by founder walkthroughs, browser rehearsal and regression tests.
+  Those checks justify continued iteration, not a self-guided-usability claim.
+- Stage 6 remains incomplete and will reopen against a recorded build/cohort. This deferral does not
+  authorize deployment, invitations or provider calls and does not alter Gate D.
+
 ### 2026-09-22 — Stage 6 study kit prepared; observations pending
 
 - Prepared a repeatable study against the current saved journey, not substituting the historical
@@ -141,8 +161,9 @@
   TypeScript, audit, formatting, asset build and `git diff --check` passed. Tests include all new recipes
   through one-capture completion, tenant/stale-review guards, routing identity compatibility, correction
   copies, source/literal counterexamples and maximum 20-case/4-field review persistence.
-- Stage 6's unfamiliar-user script/observations remain next. Deployment and real invitations/onboarding
-  are still deferred; paid provider calls need separate authorization.
+- At Stage 5 completion, Stage 6's unfamiliar-user script/observations were next. The current status
+  above records their later deferral. Deployment, real invitations/onboarding and paid provider calls
+  still require their separate authorizations.
 
 ### 2026-09-21 local / 2026-09-22 UTC — Stage 4 completed
 

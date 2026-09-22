@@ -15,7 +15,8 @@ capture can incur provider charges. Scheduling is optional.
 
 For no-live-call usability sessions against the current saved flow, use the
 [Stage 6 study kit and isolated sandbox](docs/monitor-setup/usability/README.md).
-Human research remains pending; technical rehearsals do not establish independent completion.
+Formal unfamiliar-user research is deferred until closed design-partner onboarding. Technical and
+founder rehearsals do not establish independent completion or self-guided readiness.
 
 Ready to run in production? Please [check our deployment guides](https://phoenix.hexdocs.pm/deployment.html).
 

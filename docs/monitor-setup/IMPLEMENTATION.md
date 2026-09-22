@@ -23,7 +23,7 @@ Keep advanced authoring available. No AI authoring or exploratory execution mode
 | 3 | Coherent authoring draft, common journey, and routing recipe | Complete |
 | 4 | Integrated first run, result review, and manual completion | Complete |
 | 5 | JSON, sources, and text recipes plus contextual guidance | Complete |
-| 6 | Independent usability validation and final corrections | In progress — study kit prepared; participants pending |
+| 6 | Independent usability validation and final corrections | Deferred — resume during closed design-partner onboarding |
 
 ## Stage 1 — Correct misleading behavior
 
@@ -204,6 +204,14 @@ uses the actual saved flow and production evaluators with fixed fake provider re
 data and no schedule/notification workers. Technical rehearsal is not human evidence. The study
 and self-guided readiness gate remain open; no deployment, invitation or paid-call approval is implied.
 
+Deferred decision (2026-09-22): the founder cannot currently recruit or arrange unfamiliar-user
+sessions. Continue toward deployment and the initial concierge-assisted, invite-only design-partner
+phase using founder walkthroughs and technical verification, without treating either as independent
+usability evidence. Reopen this stage when design partners begin onboarding against a pinned build;
+structured observation notes are sufficient and recording is optional with consent. This deferral does
+not block deployment or assisted onboarding, but it does block any claim that setup is self-guided or
+independently validated. The remaining observation, correction and retest tasks stay unchecked.
+
 ## Post-implementation and decisions
 
 - [x] Keep the alpha plan and local walkthrough linked to current progress.
@@ -211,6 +219,8 @@ and self-guided readiness gate remain open; no deployment, invitation or paid-ca
 - [x] Check bounded drafts, render cost, authorization/idempotency and immutable-history behavior.
 - Data reset is authorized by the founder but not planned; prefer additive changes and preserve evidence.
 - Deployment, real invitations/onboarding, and paid provider calls remain separate follow-ups.
+- Stage 6 research resumes during closed design-partner onboarding and is not a prerequisite for an
+  explicitly founder-assisted first session; it remains required before claiming self-guided readiness.
 
 References: [Inertia forms](https://inertiajs.com/docs/v2/forms),
 [Inertia events](https://inertiajs.com/docs/v2/events),
