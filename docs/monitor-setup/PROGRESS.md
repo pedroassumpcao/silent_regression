@@ -1,6 +1,6 @@
 # Guided monitor setup — progress
 
-## Status: Stage 5 complete — Stage 6 next
+## Status: Stage 6 in progress — study kit prepared; participants pending
 
 - Research/history: [original setup research](RESEARCH.md), [UX assessment](UX_ASSESSMENT.md)
 - Approved scope and acceptance criteria: [implementation plan](IMPLEMENTATION.md)
@@ -15,9 +15,19 @@
 | 3. Common draft and routing recipe | Complete | Bounded workspace drafts, typed routing editors, combined reviewed proof and atomic handoff verified |
 | 4. First run and manual completion | Complete | Guided owner approval, bounded capture, fingerprint-bound review and atomic on-demand completion verified |
 | 5. Other recipes and guidance | Complete | JSON/source/text editors, bounded reviewed proof, first-run reuse and walkthrough verified |
-| 6. Independent usability validation | Not started | Test script, external participants and findings pending |
+| 6. Independent usability validation | In progress | Fake-provider sandbox and study kit prepared; unfamiliar-user sessions, findings and evidence-led corrections pending |
 
 ## Architectural decisions
+
+- 2026-09-22: Stage 6 uses test-only support modules and a guarded manual runner, not production
+  demo toggles or new routes. The current saved journey and evaluators run in a separate local DB;
+  fixed responses never read declared expectations. Synthetic account/credential preparation is
+  excluded from onboarding claims. Preserve session records on restart and create a new pseudonymous
+  workspace for each first-time participant; no destructive reset command is provided.
+- 2026-09-22: Freeze protocol/build per cohort; record assistance and active/wait time separately.
+  A five-person formative learning threshold is not a conversion claim. The founder and agent
+  rehearsals are excluded, and participant consent/raw research remain outside Git. Stage 6 cannot
+  complete from kit preparation or technical verification alone.
 
 - 2026-09-22: Stage 5 selects an immutable recipe at Step 0; changing recipes starts a separate
   draft. Keep Routing v1 input/fingerprint semantics intact. Extend the existing bounded draft table
@@ -70,6 +80,35 @@
   approval and separate recent-authentication/provider-spend boundaries remain unchanged.
 
 ## Session log
+
+### 2026-09-22 — Stage 6 study kit prepared; observations pending
+
+- Prepared a repeatable study against the current saved journey, not substituting the historical
+  client-only prototype or automated tests for independent usability evidence.
+- Test-only sandbox uses a separate local database, loopback listener, synthetic accounts/data,
+  fake providers and no scheduler/notification workers. No development-data reset or live calls.
+- Participant availability has been requested. Study materials separate facilitator answers from
+  participant tasks, unaided from assisted outcomes, and active work from waits.
+- Completion remains pending real unfamiliar-user observations, comprehension checks and any
+  evidence-led corrections/retest. No invitations, deployment or real-call authorization is implied.
+- Added [study protocol](usability/README.md), neutral [participant cards](usability/TASK_CARDS.md),
+  facilitator-only answer rubric, private session template and explicitly empty findings ledger.
+  Own-workflow testing requires separate provider/data authorization and is scored separately.
+- Runner requires test environment, exact `_usability` partition/local DB, fake adapters and test
+  mailer before creation/migration; binds 127.0.0.1:4010, enables only capture workers. The printed
+  login is synthetic. Same participant ID resumes data; no existing data reset or dev changes.
+- Six focused tests pass: unsafe configuration rejection, pseudonym bounds, empty/idempotent/isolated
+  seeding, fixed input-dependent outputs, two-call on-demand completion, wrong-route/provider-failure
+  result guards and correction drafts retaining history. No production code or evaluator changed.
+- Browser rehearsal: empty Step 0 → request → incomplete example save/exit → refresh/resume → six
+  explicit synthetic judgments → owner approval → 2 planned/4 maximum fake-call authorization →
+  refresh → allow/deny pass/pass results → Finish with scheduling off. No console warnings/errors.
+  The temporary tab/server were closed/stopped; runner restart succeeded and retained the rehearsal
+  workspace. Synthetic evidence remains in `silent_regression_test_usability`, separate from dev.
+- Final `mix precommit`: **732 backend tests passed, 2 existing exclusions; 119 frontend tests passed**.
+  TypeScript, dependency audit, formatting, asset build and `git diff --check` passed. The manual runner
+  lives under test support so ordinary ExUnit discovery neither executes it nor emits an unmatched-file
+  warning. Independent participant count remains 0; no unfamiliar-user conclusion has been inferred.
 
 ### 2026-09-21 local / 2026-09-22 UTC — Stage 5 completed
 
@@ -252,6 +291,12 @@
   evidence or a completed browser smoke; use an isolated session during Stage 2.
 
 ## Verification and commits
+
+### Stage 6 preparation
+
+- Study/finding status: [usability/README.md](usability/README.md), [FINDINGS.md](usability/FINDINGS.md).
+- Test-only runner: `test/support/start_usability.exs`; no new application routes/auth exceptions,
+  migrations, dependencies or production UI changes. Technical verification is not stage completion.
 
 ### Stage 5
 

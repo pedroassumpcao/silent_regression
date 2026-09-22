@@ -15,6 +15,10 @@ initial and replacement reference captures; they are not mislabeled as compariso
 
 ## Local walkthrough
 
+For an unfamiliar-user session without live calls, use the separate
+[Stage 6 study kit](usability/README.md). It runs this saved journey against fake providers in its
+own test database; do not substitute the historical practice preview for current-product evidence.
+
 1. Restart your existing Phoenix server (`mix phx.server`) after this change. The migration has already
    been applied locally; no data wipe is necessary. Restart is needed for raw-draft request-log filtering.
 2. Open Monitors → Create monitor → select an output shape in **Step 0** → **Start saved setup**.

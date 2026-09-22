@@ -23,7 +23,7 @@ Keep advanced authoring available. No AI authoring or exploratory execution mode
 | 3 | Coherent authoring draft, common journey, and routing recipe | Complete |
 | 4 | Integrated first run, result review, and manual completion | Complete |
 | 5 | JSON, sources, and text recipes plus contextual guidance | Complete |
-| 6 | Independent usability validation and final corrections | Not started |
+| 6 | Independent usability validation and final corrections | In progress — study kit prepared; participants pending |
 
 ## Stage 1 — Correct misleading behavior
 
@@ -186,7 +186,7 @@ Verify the redesign solves the observed comprehension problem, beyond code corre
 
 ### Tasks
 
-- [ ] Prepare a repeatable no-live-call usability script plus separately authorized real-workflow variant.
+- [x] Prepare a repeatable no-live-call usability script plus separately authorized real-workflow variant.
 - [ ] Observe unfamiliar technical users; record assistance, backtracking, active time and wait time separately.
 - [ ] Check understanding of correct rejection vs wrong route, call ceiling, save/resume and optional scheduling.
 - [ ] Fix observed blockers; document evidence and remaining gaps before self-guided pilot onboarding.
@@ -197,6 +197,12 @@ Use the assessment's tentative four-of-five supplied-flow target as a learning t
 conversion claim. External-user participation is a real pending dependency, not an automated-test result.
 
 Likely files: usability script/findings, focused corrections and regression tests, progress log.
+
+Prepared: [study kit and guarded local sandbox](usability/README.md), participant-only cards,
+facilitator rubric, private session-record template and empty findings/decision ledger. The sandbox
+uses the actual saved flow and production evaluators with fixed fake provider responses, isolated
+data and no schedule/notification workers. Technical rehearsal is not human evidence. The study
+and self-guided readiness gate remain open; no deployment, invitation or paid-call approval is implied.
 
 ## Post-implementation and decisions
 

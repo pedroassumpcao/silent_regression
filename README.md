@@ -13,6 +13,10 @@ For the current private-alpha monitor flow, follow the
 and literal text checks. The separate practice preview makes no provider calls; authorizing a real
 capture can incur provider charges. Scheduling is optional.
 
+For no-live-call usability sessions against the current saved flow, use the
+[Stage 6 study kit and isolated sandbox](docs/monitor-setup/usability/README.md).
+Human research remains pending; technical rehearsals do not establish independent completion.
+
 Ready to run in production? Please [check our deployment guides](https://phoenix.hexdocs.pm/deployment.html).
 
 ## Learn more

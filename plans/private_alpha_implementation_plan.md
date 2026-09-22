@@ -63,6 +63,16 @@ Fake-only browser evidence covers JSON completion, source/text proof and mobile 
 independent unfamiliar-user validation is next, not replaced by automated tests or founder approval.
 Stage 5 implementation commit: `5c9cf17`.
 
+Stage 6 is in progress. The [usability kit](../docs/monitor-setup/usability/README.md) provides a
+guarded local-only fake-provider sandbox of the current saved journey, participant task cards,
+facilitator/scoring protocol, private session template and findings ledger. Technical rehearsal
+does not count as independent usability evidence: unfamiliar-user sessions, comprehension scoring,
+findings and any required corrections/retest remain pending. No new production route, schema,
+dependency, live provider call, deployment or real partner invitation is part of this preparation.
+Final preparation checks passed: 732 backend tests (2 existing exclusions), 119 frontend tests,
+TypeScript, audit, formatting and assets. Routing save/resume and on-demand finish were rehearsed
+in the browser with fixed fake outputs; no independent participant results have been recorded.
+
 ## 1. How to use this document
 
 Before beginning a task, Codex must read this document and the current progress notes for that task. Work on one numbered task at a time unless the user explicitly approves parallel work.
