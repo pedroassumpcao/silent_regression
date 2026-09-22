@@ -17,6 +17,7 @@ export type PreviewDraft = {
   attempts: Attempt[]
   finished: boolean
   handedOff: boolean
+  outputRecovered?: boolean
 }
 
 export const steps = ["Connect request", "Add examples", "Confirm checks", "Run once", "Review & finish"]
@@ -31,10 +32,10 @@ export const labels = ["approved", "rejected"]
 
 export function newDraft(recipe: Recipe = "routing", scenario: Scenario = "passing"): PreviewDraft {
   return {
-    version: 1, recipe, scenario, step: 0,
+    version: 1, recipe, scenario, step: -1,
     name: recipe === "routing" ? "Approval routing guard" : "Decision JSON guard",
     examples: [{ input: "allow", expected: scenario === "wrong_expectation" ? "rejected" : "approved" }, { input: "deny", expected: "rejected" }],
-    proof: null, judgments: [], attempts: [], finished: false, handedOff: false,
+    proof: null, judgments: [], attempts: [], finished: false, handedOff: false, outputRecovered: false,
   }
 }
 
@@ -96,7 +97,7 @@ export function runSimulation(draft: PreviewDraft): PreviewDraft {
   const attempt: Attempt = {
     revision: revisionFor(draft), number: (draft.attempts.at(-1)?.number ?? 0) + 1, failed,
     evidence: failed ? [] : draft.examples.map(example => evaluateExample(draft.recipe, example,
-      outputFor(draft.recipe, draft.scenario === "wrong_output" && example.input === "allow" ? "rejected" : example.input === "allow" ? "approved" : "rejected"))),
+      outputFor(draft.recipe, draft.scenario === "wrong_output" && !draft.outputRecovered && example.input === "allow" ? "rejected" : example.input === "allow" ? "approved" : "rejected"))),
   }
   return { ...draft, step: 4, finished: false, attempts: [...draft.attempts, attempt].slice(-5) }
 }
@@ -120,9 +121,10 @@ export function readDraft(raw: string | null): PreviewDraft | null {
   try {
     const d = JSON.parse(raw) as PreviewDraft
     if (d.version !== 1 || !["routing", "json"].includes(d.recipe) || !scenarios.some(s => s.value === d.scenario)
-      || !Number.isInteger(d.step) || d.step < 0 || d.step > 4 || typeof d.name !== "string" || d.name.length > 120
+      || !Number.isInteger(d.step) || d.step < -1 || d.step > 4 || typeof d.name !== "string" || d.name.length > 120
       || !Array.isArray(d.examples) || d.examples.length !== 2 || d.examples.some((e, i) => e?.input !== (i === 0 ? "allow" : "deny") || typeof e.expected !== "string" || e.expected.length > 80)
       || !(d.proof === null || typeof d.proof === "string") || typeof d.finished !== "boolean" || typeof d.handedOff !== "boolean"
+      || !(d.outputRecovered === undefined || typeof d.outputRecovered === "boolean")
       || !Array.isArray(d.judgments) || d.judgments.length > 4 || new Set(d.judgments).size !== d.judgments.length || d.judgments.some(i => ![0, 1, 2, 3].includes(i))
       || !Array.isArray(d.attempts) || d.attempts.length > 5 || d.attempts.some(a => typeof a?.revision !== "string" || !Number.isInteger(a.number) || typeof a.failed !== "boolean" || !Array.isArray(a.evidence)
         || a.evidence.length > 2 || a.evidence.some(e => !e || ![e.input, e.expected, e.actual, e.reason].every(v => typeof v === "string") || !["pass", "fail"].includes(e.shared) || !["pass", "fail"].includes(e.specific)))) return null

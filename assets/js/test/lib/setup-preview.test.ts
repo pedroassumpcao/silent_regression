@@ -35,7 +35,8 @@ describe("isolated setup simulation", () => {
   it("cannot finish failures and retains old expected/actual evidence after correction", () => {
     const failed = runSimulation(ready("routing", "wrong_output"))
     expect(canFinish(failed)).toBe(false)
-    const retried = runSimulation({ ...failed, step: 3, scenario: "passing" })
+    const retried = runSimulation({ ...failed, step: 3, outputRecovered: true })
+    expect(retried.scenario).toBe("wrong_output")
     expect(canFinish(retried)).toBe(true)
     expect(retried.attempts[0].evidence[0].actual).toBe("rejected")
     expect(retried.attempts[1].evidence[0].actual).toBe("approved")
@@ -65,6 +66,7 @@ describe("isolated setup simulation", () => {
   it("restores bounded drafts, ignores corruption and reopens stale proof for review", () => {
     const draft = ready()
     expect(readDraft(JSON.stringify(draft))).toEqual(draft)
+    expect(readDraft(JSON.stringify(newDraft()))?.step).toBe(-1)
     expect(readDraft("{")).toBeNull()
     expect(readDraft("x".repeat(40_001))).toBeNull()
     expect(readDraft(JSON.stringify({ ...draft, step: 12 }))).toBeNull()

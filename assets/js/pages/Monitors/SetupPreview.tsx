@@ -32,6 +32,8 @@ export function SetupPreviewView({ storageKey, workspaceSlug, workspaceName }: {
     } catch { return { draft: newDraft(), restored: false, warning: "Tab storage is unavailable. This preview cannot save until browser storage is enabled." } }
   })
   const [draft, setDraft] = useState(initial.draft)
+  const [selecting, setSelecting] = useState(initial.draft.step === -1)
+  const [selection, setSelection] = useState({ recipe: initial.draft.recipe, scenario: initial.draft.scenario })
   const [saved, setSaved] = useState(initial.restored ? JSON.stringify(initial.draft) : "")
   const [paused, setPaused] = useState(false)
   const [error, setError] = useState(initial.warning)
@@ -40,14 +42,14 @@ export function SetupPreviewView({ storageKey, workspaceSlug, workspaceName }: {
   const [recovery, setRecovery] = useState<"output" | "expectation">("output")
   const heading = useRef<HTMLHeadingElement>(null)
   const currentRevision = revisionFor(draft)
-  const dirty = JSON.stringify(draft) !== saved
+  const dirty = draft.step >= 0 && JSON.stringify(draft) !== saved
   useUnsavedChanges(dirty)
 
   useEffect(() => {
     setAuthorized(false)
     setReviewed(false)
     heading.current?.focus()
-  }, [draft.step, draft.recipe, draft.scenario, draft.finished, draft.handedOff, paused])
+  }, [draft.step, draft.recipe, draft.scenario, draft.finished, draft.handedOff, paused, selecting])
 
   useEffect(() => { setAuthorized(false); setReviewed(false) }, [currentRevision])
 
@@ -68,9 +70,17 @@ export function SetupPreviewView({ storageKey, workspaceSlug, workspaceName }: {
     persist({ ...draft, step, finished: false })
   }
 
-  function restart(recipe: Recipe, scenario: Scenario) {
-    if ((dirty || draft.step > 0 || draft.attempts.length > 0) && !window.confirm("Replace this simulation and its tab-local history? Real monitors are unaffected.")) return
-    if (persist(newDraft(recipe, scenario))) setPaused(false)
+  function chooseSimulation() {
+    setSelection({ recipe: draft.recipe, scenario: draft.scenario })
+    setError("")
+    setSelecting(true)
+  }
+
+  function startSimulation() {
+    if (persist({ ...newDraft(selection.recipe, selection.scenario), step: 0 })) {
+      setPaused(false)
+      setSelecting(false)
+    }
   }
 
   function advance() {
@@ -93,14 +103,16 @@ export function SetupPreviewView({ storageKey, workspaceSlug, workspaceName }: {
   const attempt = draft.attempts.at(-1)
   const passing = canFinish(draft)
   const member = draft.scenario === "member" && !draft.handedOff
-  const title = paused ? "Your preview is saved in this tab" : draft.finished ? "Ready for manual checks — simulated" : [
+  const displayStep = selecting ? -1 : draft.step
+  const replacing = draft.step >= 0
+  const title = selecting ? "Choose the simulation you want to explore" : paused ? "Your preview is saved in this tab" : draft.finished ? "Ready for manual checks — simulated" : [
     "Connect the request you want to protect", "What should each input produce?", "Do these checks catch the mistakes you care about?",
     member ? "An owner needs to approve this run" : "Review the first run before authorizing it", "Understand the result, then finish",
   ][draft.step]
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Head title={`${draft.finished ? "Complete" : `Step ${draft.step + 1} of 5`}: setup design preview`} />
+      <Head title={`${selecting ? "Step 0: Choose simulation" : draft.finished ? "Complete" : `Step ${draft.step + 1} of 5`}: setup design preview`} />
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-8">
           <div className="flex items-center gap-3"><ShieldCheck className="size-6 text-primary" /><span className="font-semibold tracking-tight">Silent Regression</span><Badge variant="secondary">Design preview</Badge></div>
@@ -113,34 +125,41 @@ export function SetupPreviewView({ storageKey, workspaceSlug, workspaceName }: {
           <p><strong>Simulation only · 0 provider calls.</strong> No monitor, credential, approval, notification, or schedule is created. Use fictional data. Saves stay in this browser tab, not your workspace.</p>
         </div>
 
-        <details className="rounded-xl border bg-card p-4 text-sm">
-          <summary className="cursor-pointer font-medium">Preview controls — change the test scenario</summary>
-          <div className="mt-5 grid gap-5 md:grid-cols-2">
-            <fieldset className="space-y-2"><legend className="mb-2 font-medium">Output shape</legend>
-              {([['routing', 'Classification / routing'], ['json', 'Structured JSON']] as const).map(([value, label]) => <Choice key={value} type="radio" name="recipe" checked={draft.recipe === value} onChange={() => restart(value, draft.scenario)}>{label}</Choice>)}
-            </fieldset>
-            <fieldset className="space-y-2"><legend className="mb-2 font-medium">Simulated outcome / role</legend>
-              {scenarios.map(scenario => <Choice key={scenario.value} type="radio" name="scenario" checked={draft.scenario === scenario.value} onChange={() => restart(draft.recipe, scenario.value)}>{scenario.label}</Choice>)}
-            </fieldset>
-          </div>
-          <p className="mt-4 text-muted-foreground">These reviewer controls replace the local simulation. They do not change your actual workspace role. The initial simulation follows the owner path.</p>
-        </details>
+        {!selecting && <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <p><span className="font-medium">{draft.recipe === "routing" ? "Routing" : "Structured JSON"}</span><span className="text-muted-foreground"> · {scenarios.find(scenario => scenario.value === draft.scenario)?.label}</span></p>
+          <Button variant="outline" onClick={chooseSimulation}>Start a different simulation</Button>
+        </div>}
 
-        <nav aria-label="Setup progress"><ol className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          {steps.map((label, index) => <li key={label} aria-current={!paused && !draft.finished && draft.step === index ? "step" : undefined} className={cn("flex items-center gap-2 rounded-lg px-3 py-3 text-xs sm:text-sm", index === draft.step ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground")}>
-            <span className={cn("flex size-6 shrink-0 items-center justify-center rounded-full border", index < draft.step || draft.finished ? "border-primary/20 bg-primary/10 text-primary" : "border-current/20")}>{index < draft.step || draft.finished ? <Check className="size-3.5" aria-label="Completed" /> : index + 1}</span>{label}
+        <nav aria-label="Setup progress"><ol className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          {["Choose simulation", ...steps].map((label, index) => <li key={label} aria-current={(selecting || (!paused && !draft.finished)) && displayStep + 1 === index ? "step" : undefined} className={cn("flex items-center gap-2 rounded-lg px-3 py-3 text-xs sm:text-sm", index === displayStep + 1 ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground")}>
+            <span className={cn("flex size-6 shrink-0 items-center justify-center rounded-full border", index < displayStep + 1 || (!selecting && draft.finished) ? "border-primary/20 bg-primary/10 text-primary" : "border-current/20")}>{index < displayStep + 1 || (!selecting && draft.finished) ? <Check className="size-3.5" aria-label="Completed" /> : index}</span>{label}
           </li>)}
         </ol></nav>
 
         <section className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-widest text-primary">{paused ? "Paused" : draft.finished ? "First-value journey complete" : `Step ${draft.step + 1} of 5 · ${draft.recipe === "routing" ? "Routing" : "Structured JSON"}`}</p>
+          <p className="text-xs font-medium uppercase tracking-widest text-primary">{selecting ? "Step 0 · Choose simulation" : paused ? "Paused" : draft.finished ? "First-value journey complete" : `Step ${draft.step + 1} of 5 · ${draft.recipe === "routing" ? "Routing" : "Structured JSON"}`}</p>
           <h1 ref={heading} tabIndex={-1} className="max-w-3xl text-3xl font-semibold leading-tight tracking-tight outline-none sm:text-4xl">{title}</h1>
-          <p role="status" className="text-sm text-muted-foreground">{dirty ? "Unsaved preview changes" : initial.restored && saved === JSON.stringify(initial.draft) ? "Restored from this tab" : "Saved in this tab only"}. Tab-session preview only; another device cannot resume it.</p>
+          <p role="status" className="text-sm text-muted-foreground">{selecting ? replacing ? "Your current simulation stays intact until you start its replacement." : "Choose a scenario first, then follow the five setup steps. Nothing has started yet." : `${dirty ? "Unsaved preview changes" : initial.restored && saved === JSON.stringify(initial.draft) ? "Restored from this tab" : "Saved in this tab only"}. Tab-session preview only; another device cannot resume it.`}</p>
         </section>
 
         {error && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>}
 
-        {paused ? <Panel title="Pick up where you left off" description={`Next: ${steps[draft.step]}. This is not a real monitor draft.`}>
+        {selecting ? <Panel title="Set the scene before you begin" description="Choose the output shape and the situation you want to walk through. These choices control fictional results for this design review—not the outcome of a real monitor.">
+          <div className="grid gap-6 md:grid-cols-2">
+            <fieldset className="space-y-3"><legend className="mb-3 font-medium">Output shape</legend>
+              {([['routing', 'Classification / routing'], ['json', 'Structured JSON']] as const).map(([value, label]) => <Choice key={value} type="radio" name="recipe" checked={selection.recipe === value} onChange={() => setSelection({ ...selection, recipe: value as Recipe })}>{label}</Choice>)}
+            </fieldset>
+            <fieldset className="space-y-3"><legend className="mb-3 font-medium">Scenario to explore</legend>
+              {scenarios.map(scenario => <Choice key={scenario.value} type="radio" name="scenario" checked={selection.scenario === scenario.value} onChange={() => setSelection({ ...selection, scenario: scenario.value as Scenario })}>{scenario.label}</Choice>)}
+            </fieldset>
+          </div>
+          <p className="mt-5 text-sm leading-6 text-muted-foreground">Start with Passing outputs to learn the journey. Other scenarios let you explore a failure or owner handoff. Your real workspace role never changes.</p>
+          {replacing && <div className="mt-5 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm leading-6"><p className="font-medium">Starting over resets this preview</p><p>The new simulation starts at Step 1. It replaces the current name, expected answers, proof review, progress, and mock attempt history in this tab. Real monitors are unaffected. Cancel below to keep your current work.</p></div>}
+          <div className="mt-6 flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+            {replacing ? <Button variant="outline" onClick={() => { setError(""); setSelecting(false) }}>Keep current simulation</Button> : <p className="text-xs text-muted-foreground">Prototype only · no provider calls</p>}
+            <Button id="preview-primary" onClick={startSimulation}>{replacing ? "Start new simulation" : "Start simulation"} <ArrowRight /></Button>
+          </div>
+        </Panel> : paused ? <Panel title="Pick up where you left off" description={`Next: ${steps[draft.step]}. This is not a real monitor draft.`}>
           <Button onClick={() => setPaused(false)}>Resume preview <ArrowRight /></Button>
           <p className="mt-4 text-sm"><Link className="underline underline-offset-4" href={`/app/${workspaceSlug}/monitors`}>Leave preview and open real monitors</Link></p>
         </Panel> : draft.finished ? <Panel title="You have a reviewed first result" description="The proposed finish line is an understood result plus manual readiness, not a mandatory schedule.">
@@ -205,13 +224,13 @@ export function SetupPreviewView({ storageKey, workspaceSlug, workspaceName }: {
             {draft.step === 3 && (member ? <Button id="preview-primary" onClick={() => persist({ ...draft, handedOff: true })}>Preview owner review <ArrowRight /></Button> : <Button id="preview-primary" disabled={!authorized} onClick={run}>Run simulation · 0 calls <ArrowRight /></Button>)}
             {draft.step === 4 && (passing ? <Button id="preview-primary" disabled={!reviewed} onClick={() => { if (reviewed && canFinish(draft)) persist({ ...draft, finished: true }) }}>Finish in manual mode <Check /></Button> : <Button id="preview-primary" onClick={() => {
               if (!attempt?.failed && recovery === "expectation") persist({ ...draft, step: 1, proof: null, judgments: [], finished: false, handedOff: false })
-              else persist({ ...draft, step: 3, scenario: draft.scenario === "wrong_output" ? "passing" : draft.scenario, finished: false })
+              else persist({ ...draft, step: 3, outputRecovered: draft.outputRecovered || draft.scenario === "wrong_output", finished: false })
             }}>{attempt?.failed ? "Review retry authorization" : recovery === "expectation" ? "Correct expected answers" : "Review retry after upstream fix"} <ArrowRight /></Button>)}
           </footer>
           {draft.step === 2 && proofAgrees(draft) && <p className="text-right text-xs text-muted-foreground">Confirm all four judgments to continue ({draft.judgments.length}/4).</p>}
         </>}
 
-        {!paused && draft.attempts.length > 0 && <details className="rounded-xl border p-4 text-sm"><summary className="cursor-pointer font-medium">Simulation history · {draft.attempts.length} retained attempts</summary><p className="mt-3 text-xs text-muted-foreground">Last five attempts only, kept in this tab. Real immutable history is unchanged.</p><div className="mt-4 space-y-4">{draft.attempts.map(item => <div key={item.number} className="rounded-lg bg-muted/40 p-3"><p className="font-medium">Attempt {item.number} · {item.failed ? "provider failure" : item.evidence.every(row => row.shared === "pass" && row.specific === "pass") ? "checks passed" : "checks failed"}</p>{item.evidence.map(row => <p key={row.input} className="mt-2 break-all font-mono text-xs">{row.input}: expected {row.expected} → actual {row.actual}</p>)}</div>)}</div></details>}
+        {!selecting && !paused && draft.attempts.length > 0 && <details className="rounded-xl border p-4 text-sm"><summary className="cursor-pointer font-medium">Simulation history · {draft.attempts.length} retained attempts</summary><p className="mt-3 text-xs text-muted-foreground">Last five attempts only, kept in this tab. Real immutable history is unchanged.</p><div className="mt-4 space-y-4">{draft.attempts.map(item => <div key={item.number} className="rounded-lg bg-muted/40 p-3"><p className="font-medium">Attempt {item.number} · {item.failed ? "provider failure" : item.evidence.every(row => row.shared === "pass" && row.specific === "pass") ? "checks passed" : "checks failed"}</p>{item.evidence.map(row => <p key={row.input} className="mt-2 break-all font-mono text-xs">{row.input}: expected {row.expected} → actual {row.actual}</p>)}</div>)}</div></details>}
       </main>
     </div>
   )

@@ -18,6 +18,7 @@ function show(recipe: Recipe = "routing", scenario: Scenario = "passing") {
 }
 
 async function toChecks() {
+  await click("Start simulation")
   await click("Continue to examples")
   await click("Continue to checks")
 }
@@ -60,6 +61,7 @@ describe("SetupPreviewView", () => {
 
   it("saves incomplete inputs and partial judgments, resumes, and invalidates review on edits", async () => {
     let view = show()
+    await click("Start simulation")
     await click("Continue to examples")
     fireEvent.change(screen.getByLabelText("Expected label for allow"), { target: { value: "" } })
     await click("Continue to checks")
@@ -83,6 +85,7 @@ describe("SetupPreviewView", () => {
 
   it("retains edits and does not claim saved when browser storage fails", async () => {
     show()
+    await click("Start simulation")
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("storage disabled") })
     fireEvent.change(screen.getByLabelText("Monitor name"), { target: { value: "My edited name" } })
     await click("Save and exit preview")
@@ -133,6 +136,7 @@ describe("SetupPreviewView", () => {
     await authorize()
     const draft = readDraft(sessionStorage.getItem(props.storageKey))!
     expect(draft.examples[0].expected).toBe("approved")
+    expect(draft.scenario).toBe("wrong_output")
     expect(draft.attempts[0].evidence[0].specific).toBe("fail")
     expect(draft.attempts[1].evidence[0].specific).toBe("pass")
   })
@@ -149,15 +153,81 @@ describe("SetupPreviewView", () => {
     expect(screen.getByRole("button", { name: "Confirm checks and continue" })).toBeDisabled()
   })
 
-  it("does not restore a different user/workspace preview and asks before replacing progress", async () => {
+  it("does not restore a different user/workspace preview", async () => {
     const view = show()
     await toChecks()
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
-    await userEvent.click(screen.getByRole("radio", { name: "Structured JSON", hidden: true }))
-    expect(confirm).toHaveBeenCalled()
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Do these checks")
     view.unmount()
     render(<SetupPreviewView {...props} storageKey="different-workspace-user" />)
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Choose the simulation")
+  })
+
+  it("offers Step 0 before setup and commits both choices only when starting", async () => {
+    render(<SetupPreviewView {...props} />)
+    expect(screen.getByText("Step 0 · Choose simulation")).toBeInTheDocument()
+    expect(within(screen.getByRole("navigation")).getAllByRole("listitem")).toHaveLength(6)
+    expect(screen.queryByLabelText("Monitor name")).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole("radio", { name: "Structured JSON" }))
+    await userEvent.click(screen.getByRole("radio", { name: "Wrong expectation" }))
+    expect(sessionStorage.getItem(props.storageKey)).toBeNull()
+    await click("Start simulation")
+    const saved = readDraft(sessionStorage.getItem(props.storageKey))!
+    expect(saved).toMatchObject({ step: 0, recipe: "json", scenario: "wrong_expectation" })
+    expect(screen.getByLabelText("Monitor name")).toHaveValue("Decision JSON guard")
+    expect(screen.queryByRole("radio", { name: "Structured JSON" })).not.toBeInTheDocument()
+  })
+
+  it("canceling Step 0 preserves unsaved authoring text and prior progress", async () => {
+    show()
+    await click("Start simulation")
+    fireEvent.change(screen.getByLabelText("Monitor name"), { target: { value: "My custom draft" } })
+    const saved = sessionStorage.getItem(props.storageKey)
+    await click("Start a different simulation")
+    await userEvent.click(screen.getByRole("radio", { name: "Structured JSON" }))
+    expect(screen.getByText("Starting over resets this preview")).toBeInTheDocument()
+    expect(sessionStorage.getItem(props.storageKey)).toBe(saved)
+    await click("Keep current simulation")
+    expect(screen.getByLabelText("Monitor name")).toHaveValue("My custom draft")
+    expect(screen.getByRole("heading", { level: 1 })).toHaveFocus()
+  })
+
+  it("replaces progress, review and attempts only after explicit restart confirmation", async () => {
+    show("routing", "wrong_output")
+    await toRun()
+    await authorize()
+    const saved = sessionStorage.getItem(props.storageKey)
+    await click("Start a different simulation")
+    await userEvent.click(screen.getByRole("radio", { name: "Structured JSON" }))
+    await userEvent.click(screen.getByRole("radio", { name: "Member → owner handoff" }))
+    expect(sessionStorage.getItem(props.storageKey)).toBe(saved)
+    await click("Keep current simulation")
+    expect(screen.getByText("An allowed output was wrong for its input")).toBeInTheDocument()
+    await click("Start a different simulation")
+    await userEvent.click(screen.getByRole("radio", { name: "Structured JSON" }))
+    await userEvent.click(screen.getByRole("radio", { name: "Member → owner handoff" }))
+    await click("Start new simulation")
+    expect(readDraft(sessionStorage.getItem(props.storageKey))).toMatchObject({ step: 0, recipe: "json", scenario: "member", attempts: [], judgments: [], proof: null, handedOff: false, outputRecovered: false })
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Connect the request")
+  })
+
+  it("a failed replacement save cannot overwrite the existing draft or trap the user", async () => {
+    show()
+    await toChecks()
+    const saved = sessionStorage.getItem(props.storageKey)
+    await click("Start a different simulation")
+    await userEvent.click(screen.getByRole("radio", { name: "Structured JSON" }))
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("storage disabled") })
+    await click("Start new simulation")
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not save")
+    expect(sessionStorage.getItem(props.storageKey)).toBe(saved)
+    await click("Keep current simulation")
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Do these checks")
+  })
+
+  it("restores pre-Step-0 saved journeys without resetting them", () => {
+    const { outputRecovered: _oldMissing, ...legacyDraft } = newDraft()
+    sessionStorage.setItem(props.storageKey, JSON.stringify({ ...legacyDraft, step: 1, name: "Existing draft" }))
+    render(<SetupPreviewView {...props} />)
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("What should each input")
+    expect(screen.queryByRole("button", { name: "Start simulation" })).not.toBeInTheDocument()
   })
 })

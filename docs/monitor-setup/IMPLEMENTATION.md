@@ -19,7 +19,7 @@ Keep advanced authoring available. No AI authoring or exploratory execution mode
 | Stage | Deliverable | Status |
 | --- | --- | --- |
 | 1 | Honest saving, safe check approval, and accurate progress | Complete |
-| 2 | Clickable routing journey and JSON architecture check | Implemented; founder review pending |
+| 2 | Clickable routing journey and JSON architecture check | Implemented; founder review in progress |
 | 3 | Coherent authoring draft, common journey, and routing recipe | Not started |
 | 4 | Integrated first run, result review, and manual completion | Not started |
 | 5 | JSON, sources, and text recipes plus contextual guidance | Not started |
@@ -70,7 +70,8 @@ Make the entire first-value journey tangible before committing to new persistenc
 - [x] Show one primary action per stage, inline guidance, expected/actual output, and save/return paths.
 - [x] Include wrong allowed label, wrong expectation, provider failure, and member-to-owner handoff.
 - [x] Check a structured JSON workflow against the same layout and draft concepts.
-- [ ] Record founder feedback and an unfamiliar-user comprehension test when available.
+- [x] Record initial founder feedback and move simulation selection into a distinct Step 0.
+- [ ] Confirm the revised interaction with the founder; record an unfamiliar-user test when available.
 
 ### Success criteria and files
 
@@ -82,7 +83,8 @@ Likely files: prototype UI/routes or local prototype artifact, this folder's des
 
 Delivered: authenticated `/app/:workspace_slug/setup-preview`, isolated local simulation and tests.
 See [prototype boundaries, walkthrough, JSON mapping and usability script](PROTOTYPE.md). Technical
-verification is complete; founder feedback and available unfamiliar-user research are not yet recorded.
+verification is complete. Initial founder feedback led to Step 0 and an explicit, cancellable restart;
+confirmation of that revision and available unfamiliar-user research remain pending.
 
 ## Stage 3 — Common journey and routing recipe
 

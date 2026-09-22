@@ -20,7 +20,7 @@ The founder's local walkthrough exposed substantial onboarding friction after te
 The [UX assessment](../docs/monitor-setup/UX_ASSESSMENT.md) and its six-stage redesign are approved.
 Track implementation and individual commits in the [guided setup plan](../docs/monitor-setup/IMPLEMENTATION.md)
 and [progress log](../docs/monitor-setup/PROGRESS.md). Stage 1 is complete; Stage 2's routing/JSON
-prototype is implemented and technically verified, with founder review pending. This is additional product
+prototype is implemented and technically verified, with founder review in progress. This is additional product
 work, not a retroactive change to the completed Tasks 1–26; independent usability validation is now
 an additional readiness criterion for self-guided partner onboarding. Task 27 deployment and real
 partner invitations remain separate follow-ups. Local data reset is permitted but not presently needed.
@@ -34,8 +34,10 @@ authorization/result/manual-finish screens and recovery scenarios. Desktop/mobil
 browser walkthroughs passed; the [review guide](../docs/monitor-setup/PROTOTYPE.md) records limits and
 the browser-console caveat. Final checks passed 679 backend tests (two existing exclusions), 94 frontend
 tests, TypeScript, audit and asset build. No Stage 2 database migration/reset was needed. Founder
-feedback and independent usability validation remain pending; Stage 3 production drafts have not started.
+confirmation of the feedback revision and independent usability validation remain pending; Stage 3 production drafts have not started.
 Stage 2 implementation commit: `7184381`; review notes and progress are tracked in the redesign documents.
+Initial founder feedback found the staged navigation clearer but scenario changes confusing. Scenario
+selection is now Step 0, with explicit restart confirmation and cancellation preserving current work.
 
 ## 1. How to use this document
 

@@ -1,6 +1,6 @@
 # Guided monitor setup — progress
 
-## Status: Stage 2 implemented — founder review pending
+## Status: Stage 2 implemented — founder feedback revision ready for review
 
 - Research/history: [original setup research](RESEARCH.md), [UX assessment](UX_ASSESSMENT.md)
 - Approved scope and acceptance criteria: [implementation plan](IMPLEMENTATION.md)
@@ -11,7 +11,7 @@
 | Stage | Status | Completed / pending |
 | --- | --- | --- |
 | 1. Honest saving and readiness | Complete | Saving, approval guards, manual readiness, copy, analytics and regressions verified |
-| 2. Routing journey prototype | Implemented; review pending | Five-stage prototype, JSON comparison, recovery paths and technical checks complete; human feedback pending |
+| 2. Routing journey prototype | Implemented; review in progress | Initial feedback implemented: explicit Step 0 and safe restart; revised interaction confirmation and unfamiliar-user feedback pending |
 | 3. Common draft and routing recipe | Not started | Draft model, typed editors, combined proof pending |
 | 4. First run and manual completion | Not started | Coordinated authorization/review and value metrics pending |
 | 5. Other recipes and guidance | Not started | JSON, sources, text and walkthrough pending |
@@ -36,6 +36,21 @@
   approval and separate recent-authentication/provider-spend boundaries remain unchanged.
 
 ## Session log
+
+### 2026-09-21 — Founder feedback: scenario selection belongs in Step 0
+
+- Founder finds the staged journey easier to understand, but scenario selection during later steps
+  makes the reset surprising. Requested an explicit Step 0 before the five-step journey.
+- Implemented: choose output shape/scenario before starting; later changes use a separate
+  restart screen with reset scope explained. Keep the current draft/history until replacement is
+  explicitly started, and provide a cancel path. No production behavior or route changes.
+- Existing saved previews resume unchanged. A simulated upstream fix records recovery without changing
+  the scenario identity. Added five component regressions for selection, cancellation, replacement,
+  storage failure and backwards-compatible draft recovery, plus a model assertion for scenario identity.
+- Verified browser selection → Step 2 → cancel/recover → explicit restart at Step 1. The asset rebuild
+  reloaded the test tab mid-check; resumed from its saved state and repeated the restart successfully.
+- Final `mix precommit`: **679 backend tests passed, 2 existing exclusions; 99 frontend tests passed**;
+  TypeScript, audit, formatting and asset build passed. No provider calls or database changes.
 
 ### 2026-09-21 — Stage 2 implementation and technical verification complete
 

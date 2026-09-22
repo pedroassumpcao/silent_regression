@@ -1,6 +1,6 @@
 # Stage 2 — guided setup prototype and review script
 
-Status: implemented and technically verified; founder feedback pending. No unfamiliar-user study
+Status: implemented and technically verified; founder review in progress. No unfamiliar-user study
 has been performed. This document records the design, boundaries, evidence, and next decisions.
 
 ## Open the preview
@@ -18,7 +18,7 @@ button to that journey while testing this separate design.
 
 ## What this prototype does—and does not do
 
-- Five connected stages: request → examples → reviewed proof → bounded authorization → result/manual
+- Step 0 chooses the simulation before the five connected stages: request → examples → reviewed proof → bounded authorization → result/manual
   completion. One primary next action per stage, with Back and Save and exit kept secondary.
 - Fictional allow/deny inputs, a fixed mock request/model, editable monitor name and expected answers.
   Credentials, arbitrary prompts, real provider/model choice, import, and new case creation are NOT
@@ -46,6 +46,9 @@ button to that journey while testing this separate design.
 
 ## Default routing walkthrough
 
+0. **Choose simulation:** select Classification / routing and Passing outputs, then Start simulation.
+   Output shape and scenario are chosen together before starting; neither control appears during
+   Steps 1–5. These choices are for this prototype only, not how real monitor outcomes are determined.
 1. **Connect request:** read the mock policy and optionally change the name. Expand rendered requests
    to see message order, exact input interpolation, and the output-token cap. Continue to examples.
 2. **Add examples:** `action=allow` expects `approved`; `action=deny` expects `rejected`. The latter is
@@ -69,8 +72,16 @@ button to that journey while testing this separate design.
 
 ## Exercise the failure and return paths
 
-Open **Preview controls** to choose a scenario. Replacing a started simulation asks for confirmation
-and replaces only its local mock history. These controls are for reviewers, not proposed customer UI.
+Use **Start a different simulation** to return to Step 0. Choose output shape/scenario, review the
+reset warning, then explicitly press **Start new simulation**. This resets the current tab's name,
+expected answers, proof, progress and mock history, and starts Step 1. Merely selecting an option
+changes nothing in the current draft. **Keep current simulation** cancels and returns to the same
+screen with edits intact. If saving the replacement fails, the old draft remains available.
+Existing saved journeys from before this revision resume without being reset.
+
+Retrying after a simulated upstream fix is different: it retains the chosen scenario and history,
+and requires fresh authorization. It no longer silently relabels Wrong allowed label as Passing outputs.
+These controls are for reviewers, not proposed customer UI.
 
 | Scenario | Try | Expected behavior |
 | --- | --- | --- |
@@ -84,7 +95,7 @@ and replaces only its local mock history. These controls are for reviewers, not 
 
 ## Structured JSON architecture check
 
-Select **Structured JSON**, then repeat the journey. The example expects
+Select **Structured JSON** in Step 0, start the simulation, then repeat the journey. The example expects
 `{"decision":"approved"}` for allow and `{"decision":"rejected"}` for deny. Invalid type
 `{"decision":42}` fails shared and case checks. A well-formed but wrong decision passes shared
 checks and fails the input-specific value expectation. Whitespace/key order are not full-string
@@ -118,8 +129,25 @@ data only if a concrete migration requires it.
 
 ## Founder review and unfamiliar-user script
 
-Founder review is pending. Record comments here with date, scenario, stage, observed confusion,
-proposed adjustment and decision; do not silently change the historical UX assessment.
+### Founder feedback — 2026-09-21
+
+- **Observation:** the staged navigation is easier to understand, but changing the scenario from a
+  later step causes a confusing restart.
+- **Request/decision:** scenario and output-shape selection belong in a distinct Step 0. Implemented
+  a separate selection screen plus an explicit, cancellable restart, preserving current work until
+  replacement succeeds. This applies onboarding guidance by separating the reviewer's scenario choice
+  from the monitor-setup journey itself.
+- **Verification:** added coverage for initial selection, multi-choice start, cancellation with unsaved
+  edits, history reset only on explicit confirmation, failed-save preservation and old-draft recovery.
+  Simulated retries preserve the scenario identity. Full checks passed 679 backend tests (2 existing
+  exclusions), 99 frontend tests, TypeScript, audit and build. Browser checks confirmed cancellation
+  returns to the previous step and explicit restart begins at Step 1; Step 0 has no horizontal overflow
+  at 390px. The temporary viewport override was reset.
+- **Still pending:** founder confirmation of the revised interaction; unfamiliar-user comprehension
+  research remains separate. Positive feedback on navigation is not approval of every other criterion.
+
+Record further comments here with date, scenario, stage, observed confusion, proposed adjustment and
+decision; do not silently change the historical UX assessment.
 
 For the first review, do the default routing journey without consulting the detailed instructions
 above, then try Wrong allowed label and Structured JSON. Answer:
