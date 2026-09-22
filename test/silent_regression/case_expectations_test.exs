@@ -53,6 +53,50 @@ defmodule SilentRegression.CaseExpectationsTest do
     assert evaluation.error == nil
   end
 
+  test "required text is an additive case check with strict shape and nonempty literal alternatives" do
+    for alternatives <- [[123], [nil], ["!!!"], [], ["x", "X"]] do
+      assert {:error, _} =
+               CaseExpectations.normalize(nil, %{
+                 "checks" => [
+                   %{"id" => "answer", "type" => "required_text", "alternatives" => alternatives}
+                 ]
+               })
+    end
+
+    assert {:ok, normalized} =
+             CaseExpectations.normalize(nil, %{
+               "checks" => [
+                 %{
+                   "id" => "answer",
+                   "type" => "required_text",
+                   "alternatives" => ["insufficient evidence", "cannot determine"]
+                 }
+               ]
+             })
+
+    assert normalized.schema_version == "case_expectation_v1"
+
+    for {output, expected} <- [
+          {"CANNOT—DETERMINE", :pass},
+          {"cannot determineXYZ", :fail},
+          {"unsure", :fail}
+        ] do
+      assert CaseExpectations.evaluate(
+               normalized.schema_version,
+               normalized.expectation,
+               normalized.fingerprint,
+               output
+             ).status == expected
+    end
+
+    assert CaseExpectations.evaluate(
+             normalized.schema_version,
+             normalized.expectation,
+             "stale",
+             "cannot determine"
+           ).status == :evaluator_error
+  end
+
   test "fingerprint rejects changed expectation content" do
     assert {:ok, normalized} =
              CaseExpectations.normalize("case_expectation_v1", %{

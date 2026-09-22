@@ -22,7 +22,7 @@ Keep advanced authoring available. No AI authoring or exploratory execution mode
 | 2 | Clickable routing journey and JSON architecture check | Founder feedback addressed; external research pending Stage 6 |
 | 3 | Coherent authoring draft, common journey, and routing recipe | Complete |
 | 4 | Integrated first run, result review, and manual completion | Complete |
-| 5 | JSON, sources, and text recipes plus contextual guidance | Not started |
+| 5 | JSON, sources, and text recipes plus contextual guidance | Complete |
 | 6 | Independent usability validation and final corrections | Not started |
 
 ## Stage 1 — Correct misleading behavior
@@ -159,11 +159,17 @@ Extend the same architecture to supported workflows without hiding their detecti
 
 ### Tasks
 
-- [ ] Structured JSON: typed required fields/types and per-case values/ranges; flag unsupported schema features.
-- [ ] Sources: allowed/required IDs and declared attribution; explain syntactic, not general factual, checking.
-- [ ] Text: required/prohibited literals and explicit alternatives; explain paraphrase limitations.
-- [ ] Provide user-reviewed local proof candidates and recipe-specific contextual examples.
-- [ ] Update local walkthrough, demo links, revision guidance, and tests for all recipes.
+- [x] Structured JSON: typed required fields/types and per-case values/ranges; flag unsupported schema features.
+- [x] Sources: allowed/required IDs and declared attribution; explain syntactic, not general factual, checking.
+- [x] Text: required/prohibited literals and explicit alternatives; explain paraphrase limitations.
+- [x] Provide user-reviewed local proof candidates and recipe-specific contextual examples.
+- [x] Update local walkthrough, demo links, revision guidance, and tests for all recipes.
+
+Delivered: four Step 0 recipe choices with one saved journey, typed JSON target/tolerance editors,
+source sets and optional explicit attribution, shared/per-case literal text, and bounded production proof.
+An additive recipe-allowlist migration preserves existing data. Routing v1 identities remain stable.
+See [the current walkthrough and limits](GUIDED_SETUP.md). Normal first-run consent, owner permissions,
+immutable evidence and on-demand finish are reused without new routes or execution state machines.
 
 ### Success criteria and files
 
@@ -194,9 +200,9 @@ Likely files: usability script/findings, focused corrections and regression test
 
 ## Post-implementation and decisions
 
-- [ ] Keep the alpha plan and local walkthrough linked to current progress.
-- [ ] Verify keyboard/focus/loading/error states and responsive layout in a browser.
-- [ ] Check bounded drafts, render cost, authorization/idempotency and immutable-history behavior.
+- [x] Keep the alpha plan and local walkthrough linked to current progress.
+- [x] Verify keyboard/focus/loading/error states and responsive layout in a browser.
+- [x] Check bounded drafts, render cost, authorization/idempotency and immutable-history behavior.
 - Data reset is authorized by the founder but not planned; prefer additive changes and preserve evidence.
 - Deployment, real invitations/onboarding, and paid provider calls remain separate follow-ups.
 

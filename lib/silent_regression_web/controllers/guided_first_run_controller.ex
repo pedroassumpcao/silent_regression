@@ -151,6 +151,7 @@ defmodule SilentRegressionWeb.GuidedFirstRunController do
 
     %{
       monitor: Map.take(state.contract.monitor, [:id, :name, :state, :cadence]),
+      recipe: state.draft.recipe,
       original: state.original?,
       completed: state.completed? == true,
       can_finish: state.can_finish? == true,
@@ -221,13 +222,7 @@ defmodule SilentRegressionWeb.GuidedFirstRunController do
             &1.evaluator_engine_version == snapshot.evaluator_engine_version)
       )
 
-    expected =
-      get_in(observation.case_version.expectation, [
-        "checks",
-        Access.at(0),
-        "allowed_values",
-        Access.at(0)
-      ])
+    expected = SilentRegression.GuidedSetups.Recipes.summary(observation.case_version.expectation)
 
     checks =
       if evaluation,

@@ -134,7 +134,7 @@ export function DashboardView({
 
         {activation && <ActivationCard activation={activation} />}
 
-        {guidedDrafts.length > 0 && <section aria-label="Saved routing drafts" className="space-y-3"><h2 className="text-lg font-semibold">Continue a saved setup</h2>{guidedDrafts.map(draft => <Card key={draft.id}><CardContent className="flex flex-wrap items-center justify-between gap-3 pt-5"><div><p className="font-medium">{draft.name || "Untitled routing monitor"}</p><p className="text-sm text-muted-foreground">Workspace draft · no provider calls yet</p></div><Button asChild variant="outline"><Link href={`/app/${workspace.slug}/setup-drafts/${draft.id}`}>Resume setup <ArrowRight /></Link></Button></CardContent></Card>)}</section>}
+        {guidedDrafts.length > 0 && <section aria-label="Saved monitor drafts" className="space-y-3"><h2 className="text-lg font-semibold">Continue a saved setup</h2>{guidedDrafts.map(draft => <Card key={draft.id}><CardContent className="flex flex-wrap items-center justify-between gap-3 pt-5"><div><p className="font-medium">{draft.name || "Untitled monitor"}</p><p className="text-sm text-muted-foreground">Workspace draft · no provider calls yet</p></div><Button asChild variant="outline"><Link href={`/app/${workspace.slug}/setup-drafts/${draft.id}`}>Resume setup <ArrowRight /></Link></Button></CardContent></Card>)}</section>}
 
         {monitors.length === 0 ? (
           <EmptyMonitors createPath={createPath} demoPath={demoPath} />

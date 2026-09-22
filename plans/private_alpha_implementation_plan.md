@@ -20,7 +20,7 @@ The founder's local walkthrough exposed substantial onboarding friction after te
 The [UX assessment](../docs/monitor-setup/UX_ASSESSMENT.md) and its six-stage redesign are approved.
 Track implementation and individual commits in the [guided setup plan](../docs/monitor-setup/IMPLEMENTATION.md)
 and [progress log](../docs/monitor-setup/PROGRESS.md). Stage 1 is complete; Stage 2's routing/JSON
-prototype is implemented and technically verified, with founder feedback addressed. Stages 3–4 are complete. This is additional product
+prototype is implemented and technically verified, with founder feedback addressed. Stages 3–5 are complete. This is additional product
 work, not a retroactive change to the completed Tasks 1–26; independent usability validation is now
 an additional readiness criterion for self-guided partner onboarding. Task 27 deployment and real
 partner invitations remain separate follow-ups. Local data reset is permitted but not presently needed.
@@ -50,8 +50,17 @@ initial reference captures appear in history. See the updated [routing guide](..
 for recovery and metric definitions. Final checks: 708 backend tests (2 exclusions), 111 frontend tests,
 TypeScript, audit, formatting and assets. A dedicated fake-provider browser/database verified the loop;
 no external provider call, real-key usage or development-data wipe occurred. The additive review-event
-migration is applied locally. Stage 5's remaining recipes are next; deployment/partner onboarding remain deferred.
+migration is applied locally. Deployment/partner onboarding remain deferred.
 Stage 4 implementation commit: `320dbcb`.
+
+Stage 5 extends the saved journey to bounded JSON fields/values/tolerances, source-ID sets/declared
+attribution, and shared/per-case literal text. Step 0 chooses the recipe; later changes start a separate
+draft. Historical routing fingerprints and contract history remain intact. Recipe-specific limits,
+examples and recovery guidance are in the [all-recipes walkthrough](../docs/monitor-setup/GUIDED_SETUP.md).
+The additive recipe constraint migration is applied locally; no reset or live calls. Final verification:
+726 backend tests (2 exclusions), 119 frontend tests, TypeScript, audit, format, assets and diff checks.
+Fake-only browser evidence covers JSON completion, source/text proof and mobile layout. Stage 6's
+independent unfamiliar-user validation is next, not replaced by automated tests or founder approval.
 
 ## 1. How to use this document
 

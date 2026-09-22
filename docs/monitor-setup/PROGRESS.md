@@ -1,6 +1,6 @@
 # Guided monitor setup — progress
 
-## Status: Stage 4 complete — Stage 5 next
+## Status: Stage 5 complete — Stage 6 next
 
 - Research/history: [original setup research](RESEARCH.md), [UX assessment](UX_ASSESSMENT.md)
 - Approved scope and acceptance criteria: [implementation plan](IMPLEMENTATION.md)
@@ -14,10 +14,18 @@
 | 2. Routing journey prototype | Implemented; founder direction accepted | Step 0, safe restart and practice/on-demand distinction addressed; independent research tracked in Stage 6 |
 | 3. Common draft and routing recipe | Complete | Bounded workspace drafts, typed routing editors, combined reviewed proof and atomic handoff verified |
 | 4. First run and manual completion | Complete | Guided owner approval, bounded capture, fingerprint-bound review and atomic on-demand completion verified |
-| 5. Other recipes and guidance | Not started | JSON, sources, text and walkthrough pending |
+| 5. Other recipes and guidance | Complete | JSON/source/text editors, bounded reviewed proof, first-run reuse and walkthrough verified |
 | 6. Independent usability validation | Not started | Test script, external participants and findings pending |
 
 ## Architectural decisions
+
+- 2026-09-22: Stage 5 selects an immutable recipe at Step 0; changing recipes starts a separate
+  draft. Keep Routing v1 input/fingerprint semantics intact. Extend the existing bounded draft table
+  additively, not the execution model. New recipes compile to production deterministic rules and
+  case expectations; no hidden prompt changes or provider calls. JSON is a bounded top-level field
+  editor, not a JSON Schema implementation. Sources are syntactic; text alternatives are literal.
+  Review retains all per-case candidates, while shared fixtures retain a bounded reviewed subset
+  that proves every critical rule's pass/fail branches. Never waive coverage automatically.
 
 - 2026-09-22: Stage 4 reuses sealed guided drafts, contracts, baseline snapshots and capture jobs;
   no parallel execution state machine or capture table. The same page advances through explicit
@@ -62,6 +70,40 @@
   approval and separate recent-authentication/provider-spend boundaries remain unchanged.
 
 ## Session log
+
+### 2026-09-21 local / 2026-09-22 UTC — Stage 5 completed
+
+- Added real Step 0 selection for routing, JSON, sources and text. Recipe identity stays fixed;
+  switching starts a separate draft with fresh review. Practice remains distinct. Dashboard, demo
+  handoff, preview link, first-run summaries and correction copies now support the whole recipe set.
+- Added typed required JSON scalar fields and per-case exact values/numeric tolerances, source-ID
+  sets and optional trailing literal attribution, shared required/prohibited text and per-case literal
+  alternatives. Contextual examples are illustrative only, never silently installed as requirements.
+- New compilers reuse the exact request builder and deterministic evaluators. Bounded proposals have
+  positive and negative case evidence and full critical-rule coverage; all judgments remain explicit.
+  Shared fixtures use a reviewed result-pattern subset while sealed drafts retain full per-case review.
+  Added case `required_text` using the existing normalized literal matcher, not abstention semantics.
+  Invalid non-string alternatives now return validation errors instead of raising during normalization.
+- JSON capability limits, source syntax/attribution scope, literal/paraphrase/negation blind spots and
+  advanced escape hatches are visible in the editor and walkthrough. JSON field edits invalidate only
+  affected values; all content edits reset proof. Unsupported declarations are rejected, not ignored.
+- Browser verification: Step 0 text choice → empty draft → incomplete save/exit; JSON incomplete number
+  → dashboard resume → seven reviewed proof proposals → owner approval → fake metadata verification →
+  one fake capture → refresh → expected/actual result → finish with scheduling off. Source/text editors
+  and both proof outcomes inspected; 390px text editor/proof layout and H1 focus passed without overflow.
+  No console warnings/errors captured. This is technical verification, not independent usability evidence.
+- Browser used port 4002 and `silent_regression_test_guided_stage5`, guarded to fake adapters with only
+  capture workers, no scheduler/notification queues. Development monitor records were not modified.
+  The temporary server/tab are stopped/closed; disposable test evidence remains in that separate DB.
+  The additive migration was applied in development/test; no wipe, new dependency or external call.
+- Browser findings corrected: earlier steps no longer display later-step proof instructions; configured
+  attribution is visibly expanded; JSON validation identifies the affected example/field.
+- Final `mix precommit`: **726 backend tests passed, 2 existing exclusions; 119 frontend tests passed**.
+  TypeScript, audit, formatting, asset build and `git diff --check` passed. Tests include all new recipes
+  through one-capture completion, tenant/stale-review guards, routing identity compatibility, correction
+  copies, source/literal counterexamples and maximum 20-case/4-field review persistence.
+- Stage 6's unfamiliar-user script/observations remain next. Deployment and real invitations/onboarding
+  are still deferred; paid provider calls need separate authorization.
 
 ### 2026-09-21 local / 2026-09-22 UTC — Stage 4 completed
 
@@ -211,6 +253,15 @@
 
 ## Verification and commits
 
+### Stage 5
+
+- Guide: [all recipes, local walkthrough, recovery and limits](GUIDED_SETUP.md).
+- Build/onboarding/shadcn skills kept the phase tracked, one next action and installed primitives;
+  no component/dependency replacement. The JSON editor is deliberately not a general schema importer:
+  see [JSON Schema's distinct required/property/extra-key semantics](https://json-schema.org/understanding-json-schema/reference/object).
+- New recipe allowlist migration is additive. A rollback retains history but older application code
+  cannot interpret the new recipes or `required_text` case type. No historical contract is rewritten.
+
 ### Stage 4
 
 - Implementation commit: `320dbcb` — guided first capture, reviewed results and on-demand completion.
@@ -280,7 +331,8 @@
 - Browser back/forward cannot be cancelled by Inertia's before-visit hook. Stage 3 now recovers bounded
   explicitly saved drafts (including invalid partial authoring); it does not promise background autosave
   or recovery of keystrokes that were never saved.
-- The advanced template/rule/case UI remains available. Routing now has real guided authoring, while
-  non-routing recipes and unified first-run/result completion remain Stages 5 and 4 respectively.
+- The advanced template/rule/case UI remains available. All four recipes now share real guided authoring
+  and first-run/result completion; broader schemas, semantic evaluation and independent usability remain
+  outside the completed implementation scope.
 - Tab-local storage and local result simulation are disposable prototype boundaries, not reusable
   persistence/evaluation authority. Keep the production server-side guards and immutable audit history.

@@ -57,6 +57,53 @@ defmodule SilentRegressionWeb.GuidedSetupControllerTest do
     assert id == draft.id
   end
 
+  for recipe <- ~w(json sources text) do
+    @recipe recipe
+    test "#{recipe} starts through Step 0 and retains its recipe on the first-run page", %{
+      conn: conn,
+      scope: scope,
+      base: base
+    } do
+      response = post(conn, base, %{recipe: @recipe})
+      [draft] = GuidedSetups.list(scope)
+      assert draft.recipe == @recipe
+
+      assert get(conn, redirected_to(response))
+             |> inertia_props()
+             |> Map.get(:draft)
+             |> Map.get(:recipe) == @recipe
+
+      raw = recipe_raw_fixture(scope, @recipe)
+
+      put(conn, base <> "/#{draft.id}", %{
+        raw: raw,
+        revision: draft.revision,
+        intent: "continue",
+        step: "examples"
+      })
+
+      {:ok, draft} = GuidedSetups.get(scope, draft.id)
+
+      post(conn, base <> "/#{draft.id}/review", %{
+        revision: draft.revision,
+        judgments: judgments(draft)
+      })
+
+      {:ok, draft} = GuidedSetups.get(scope, draft.id)
+      response = post(conn, base <> "/#{draft.id}/seal", %{revision: draft.revision})
+      page = get(conn, redirected_to(response))
+      assert inertia_component(page) == "Monitors/GuidedFirstRun"
+      assert inertia_props(page).recipe == @recipe
+      assert inertia_props(page).checks.ready
+      assert Repo.aggregate(SilentRegression.Captures.CaptureRun, :count) == 0
+    end
+  end
+
+  test "unknown recipe cannot create a draft", %{conn: conn, scope: scope, base: base} do
+    assert post(conn, base, %{recipe: "arbitrary"}).status == 404
+    assert GuidedSetups.list(scope) == []
+  end
+
   test "server prevents skipping review, records partial proof, and seals only current fully reviewed configuration",
        %{conn: conn, scope: scope, base: base} do
     draft = draft_fixture(scope)

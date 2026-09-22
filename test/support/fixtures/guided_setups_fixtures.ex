@@ -1,6 +1,6 @@
 defmodule SilentRegression.GuidedSetupsFixtures do
   alias SilentRegression.{GuidedSetups, MonitorSetupsFixtures}
-  alias SilentRegression.GuidedSetups.Routing
+  alias SilentRegression.GuidedSetups.{Recipes, Routing}
 
   def raw_fixture(scope) do
     credential = MonitorSetupsFixtures.valid_credential_fixture(scope)
@@ -38,8 +38,64 @@ defmodule SilentRegression.GuidedSetupsFixtures do
     draft
   end
 
+  def recipe_raw_fixture(scope, recipe) when recipe in ~w(json sources text) do
+    common = raw_fixture(scope) |> Map.delete("labelsText")
+
+    {settings, expected} =
+      case recipe do
+        "json" ->
+          {%{
+             "fields" => [
+               %{"key" => "total", "type" => "number"},
+               %{"key" => "paid", "type" => "boolean"}
+             ]
+           },
+           Jason.encode!(%{
+             "total" => %{"value" => "12.5", "tolerance" => "0.01"},
+             "paid" => %{"value" => "false", "tolerance" => ""}
+           })}
+
+        "sources" ->
+          {%{
+             "allowedText" => "billing\nrefunds",
+             "requiredText" => "refunds",
+             "factText" => "Refunds within 30 days",
+             "factSourceId" => "refunds",
+             "distance" => "100"
+           }, "refunds"}
+
+        "text" ->
+          {%{
+             "requiredText" => "Consult a professional",
+             "prohibitedText" => "guaranteed outcome"
+           }, "cannot determine\ninsufficient information"}
+      end
+
+    row = %{
+      hd(common["cases"])
+      | "expected" => expected,
+        "variables" => %{"action" => "[fake:recipe=#{recipe}] input"}
+    }
+
+    Map.merge(common, %{
+      "settings" => settings,
+      "cases" => [row],
+      "name" => "Guided #{recipe}",
+      "instruction" => "Use the supplied input."
+    })
+  end
+
+  def recipe_draft_fixture(scope, recipe) do
+    {:ok, draft} = GuidedSetups.create(scope, recipe)
+
+    {:ok, draft} =
+      GuidedSetups.save(scope, draft.id, draft.revision, recipe_raw_fixture(scope, recipe))
+
+    draft
+  end
+
   def judgments(draft) do
-    {:ok, compiled} = Routing.compile(draft.raw)
+    {:ok, compiled} = Recipes.compile(draft)
 
     Enum.map(
       compiled.proof,

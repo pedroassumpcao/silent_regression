@@ -117,6 +117,15 @@ defmodule SilentRegression.Providers.FakeOpenAI do
       true ->
         output_text =
           cond do
+            String.contains?(request_text, "[fake:recipe=json]") ->
+              ~s({"total":12.5,"paid":false})
+
+            String.contains?(request_text, "[fake:recipe=sources]") ->
+              "Refunds within 30 days [refunds]"
+
+            String.contains?(request_text, "[fake:recipe=text]") ->
+              "Consult a professional. Cannot determine"
+
             secret == "sk-test-output-maybe" or
                 String.contains?(request_text, "[fake:output=maybe]") ->
               "maybe"

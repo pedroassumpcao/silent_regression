@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { router } from "@inertiajs/react"
 import { GuidedSetupView, type GuidedSetupProps, type RoutingRaw } from "@/pages/Monitors/GuidedSetup"
+import GuidedSetupStart from "@/pages/Monitors/GuidedSetupStart"
+import { reconcileJsonValues } from "@/components/guided-recipe-editors"
 
 vi.mock("@inertiajs/react", async importOriginal => ({ ...await importOriginal<typeof import("@inertiajs/react")>(), Head: () => null }))
 afterEach(() => vi.restoreAllMocks())
@@ -18,6 +20,79 @@ const props: GuidedSetupProps = {
 }
 
 describe("saved guided routing setup", () => {
+  it("chooses the recipe in Step 0 before creating any draft", async () => {
+    const post = vi.spyOn(router, "post").mockImplementation(() => {})
+    render(<GuidedSetupStart auth={props.auth} />)
+    expect(screen.getByText(/Step 0/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("radio", { name: /Structured JSON/ }))
+    expect(post).not.toHaveBeenCalled()
+    await userEvent.click(screen.getByRole("button", { name: "Start saved setup" }))
+    expect(post).toHaveBeenCalledWith("/app/acme/setup-drafts", { recipe: "json" }, expect.anything())
+    expect(screen.getByText(/Changing recipes later requires a separate draft/)).toBeInTheDocument()
+  })
+
+  it("does not ask for later proof review while still editing examples", () => {
+    render(<GuidedSetupView {...props} step="examples" journey={{ ...props.journey, stage: "checks", blockers: ["Review each proposed judgment."] }} />)
+    expect(screen.queryByText("Review each proposed judgment.")).not.toBeInTheDocument()
+  })
+
+  it("edits typed JSON targets, retains unfinished numbers, and discloses unsupported schema features", async () => {
+    const put = vi.spyOn(router, "put").mockImplementation(() => {})
+    const { labelsText: _, ...common } = raw
+    const jsonRaw = { ...common, settings: { fields: [{ key: "total", type: "number" }] }, cases: [{ ...raw.cases[0], expected: JSON.stringify({ total: { value: "12.5", tolerance: "0.01" } }) }] }
+    render(<GuidedSetupView {...props} step="examples" draft={{ ...props.draft, recipe: "json", rawJson: JSON.stringify(jsonRaw) }} />)
+    expect(screen.getByText(/Not a JSON Schema editor/)).toBeInTheDocument()
+    expect(screen.queryByLabelText("Allowed labels — one per line")).not.toBeInTheDocument()
+    await userEvent.clear(screen.getByLabelText("total expected target for example 1"))
+    await userEvent.type(screen.getByLabelText("total expected target for example 1"), "12.")
+    await userEvent.click(screen.getByRole("button", { name: "Save and exit" }))
+    const saved = put.mock.calls[0][1] as { raw: { cases: Array<{ expected: string }> } }
+    expect(JSON.parse(saved.raw.cases[0].expected).total).toEqual({ value: "12.", tolerance: "0.01" })
+  })
+
+  it("only clears affected JSON values and never implicitly chooses values for new fields", () => {
+    const expected = JSON.stringify({ total: { value: "12.5", tolerance: "0" }, label: { value: "known", tolerance: "" } })
+    const before = [{ key: "total", type: "number" }, { key: "label", type: "string" }]
+    expect(JSON.parse(reconcileJsonValues(expected, before, [{ key: "total", type: "string" }, { key: "label", type: "string" }, { key: "new", type: "string" }]))).toEqual({ label: { value: "known", tolerance: "" } })
+    expect(reconcileJsonValues("{", before, [])).toBe("{")
+    expect(reconcileJsonValues("{}", [{ key: "constructor", type: "string" }], [{ key: "constructor", type: "string" }])).toBe("{}")
+  })
+
+  it("requires an explicit empty string choice rather than prefilling a known answer", async () => {
+    const put = vi.spyOn(router, "put").mockImplementation(() => {})
+    const { labelsText: _, ...common } = raw
+    const jsonRaw = { ...common, settings: { fields: [{ key: "label", type: "string" }] }, cases: [{ ...raw.cases[0], expected: "" }] }
+    render(<GuidedSetupView {...props} step="examples" draft={{ ...props.draft, recipe: "json", rawJson: JSON.stringify(jsonRaw) }} />)
+    await userEvent.click(screen.getByRole("button", { name: "Use empty string for label" }))
+    await userEvent.click(screen.getByRole("button", { name: "Save and exit" }))
+    const saved = put.mock.calls[0][1] as { raw: { cases: Array<{ expected: string }> } }
+    expect(JSON.parse(saved.raw.cases[0].expected)).toEqual({ label: { value: "", tolerance: "" } })
+  })
+
+  it("presents source syntax, optional attribution and explicit per-case sets", async () => {
+    const put = vi.spyOn(router, "put").mockImplementation(() => {})
+    const { labelsText: _, ...common } = raw
+    const sourceRaw = { ...common, settings: { allowedText: "billing\nrefunds", requiredText: "", factText: "", factSourceId: "", distance: "100" }, cases: [{ ...raw.cases[0], expected: "refunds" }] }
+    render(<GuidedSetupView {...props} step="examples" draft={{ ...props.draft, recipe: "sources", rawJson: JSON.stringify(sourceRaw) }} />)
+    expect(screen.getByText(/syntactic checks—not source retrieval/)).toBeInTheDocument()
+    await userEvent.click(screen.getByText("Optional: attach a declared phrase to one source"))
+    await userEvent.type(screen.getByLabelText("Declared phrase alternatives — one per line"), "Refunds within 30 days")
+    await userEvent.type(screen.getByLabelText("Source ID that must follow the phrase"), "refunds")
+    await userEvent.click(screen.getByRole("button", { name: "Save and exit" }))
+    expect(put.mock.calls[0][1]).toMatchObject({ raw: { settings: { factText: "Refunds within 30 days", factSourceId: "refunds" }, cases: [{ expected: "refunds" }] } })
+  })
+
+  it("separates shared text alternatives from the case answer and explains semantic blind spots", async () => {
+    const put = vi.spyOn(router, "put").mockImplementation(() => {})
+    const { labelsText: _, ...common } = raw
+    const textRaw = { ...common, settings: { requiredText: "Disclosure", prohibitedText: "Guarantee" }, cases: [{ ...raw.cases[0], expected: "cannot determine" }] }
+    render(<GuidedSetupView {...props} step="examples" draft={{ ...props.draft, recipe: "text", rawJson: JSON.stringify(textRaw) }} />)
+    expect(screen.getByText(/paraphrases and contradictions are not understood/)).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText("Literal answer alternatives for example 1 — one per line"), "\ninsufficient evidence")
+    await userEvent.click(screen.getByRole("button", { name: "Save and exit" }))
+    expect(put.mock.calls[0][1]).toMatchObject({ raw: { settings: { requiredText: "Disclosure", prohibitedText: "Guarantee" }, cases: [{ expected: "cannot determine\ninsufficient evidence" }] } })
+  })
+
   it("saves incomplete inputs with the exact displayed revision", async () => {
     const put = vi.spyOn(router, "put").mockImplementation(() => {})
     render(<GuidedSetupView {...props} />)

@@ -8,8 +8,8 @@ defmodule SilentRegressionWeb.GuidedSetupController do
 
   def new(conn, _params), do: render_inertia(conn, "Monitors/GuidedSetupStart", %{})
 
-  def create(conn, _params) do
-    case GuidedSetups.create(conn.assigns.current_scope) do
+  def create(conn, params) do
+    case GuidedSetups.create(conn.assigns.current_scope, Map.get(params, "recipe", "routing")) do
       {:ok, draft} -> redirect(conn, to: draft_path(conn, draft.id, "request"))
       _ -> send_resp(conn, :not_found, "Not found")
     end
@@ -35,6 +35,7 @@ defmodule SilentRegressionWeb.GuidedSetupController do
         render_inertia(conn, "Monitors/GuidedSetup", %{
           draft: %{
             id: draft.id,
+            recipe: draft.recipe,
             revision: draft.revision,
             raw_json: Jason.encode!(draft.raw),
             reviewed_ids: Map.keys(draft.reviews)

@@ -1,22 +1,29 @@
 defmodule SilentRegression.GuidedSetups do
-  @moduledoc "Workspace-scoped routing authoring with stale-tab guards and explicit proof review."
+  @moduledoc "Workspace-scoped recipe authoring with stale-tab guards and explicit proof review."
   import Ecto.Query
   alias SilentRegression.Accounts.Scope
   alias SilentRegression.Workspaces.{Membership, Workspace}
-  alias SilentRegression.GuidedSetups.{Draft, Routing}
+  alias SilentRegression.GuidedSetups.{Draft, Proof, Recipes, Routing}
   alias SilentRegression.{Audit, ContractAuthoring, MonitorSetups, ProviderCredentials, Repo}
 
-  def create(%Scope{
-        workspace: %Workspace{id: workspace_id},
-        membership: %Membership{},
-        user: %{id: user_id}
-      }) do
+  def create(scope, recipe \\ "routing")
+
+  def create(
+        %Scope{
+          workspace: %Workspace{id: workspace_id},
+          membership: %Membership{},
+          user: %{id: user_id}
+        },
+        recipe
+      )
+      when recipe in ~w(routing json sources text) do
     Repo.transaction(fn ->
       draft =
         Repo.insert!(%Draft{
           workspace_id: workspace_id,
           created_by_user_id: user_id,
-          raw: Routing.empty()
+          recipe: recipe,
+          raw: Recipes.empty(recipe)
         })
 
       audit!(draft, user_id, "created")
@@ -24,7 +31,7 @@ defmodule SilentRegression.GuidedSetups do
     end)
   end
 
-  def create(%Scope{}), do: {:error, :workspace_required}
+  def create(%Scope{}, _), do: {:error, :invalid_recipe}
 
   def list(%Scope{workspace: %Workspace{id: id}, membership: %Membership{}}) do
     Repo.all(
@@ -60,20 +67,24 @@ defmodule SilentRegression.GuidedSetups do
   def guided_monitor?(%Scope{}, _monitor_id), do: false
 
   def save(scope, id, revision, raw) do
-    with :ok <- Routing.validate_raw(raw) do
-      mutate(scope, id, revision, fn draft ->
-        reviews = if raw == draft.raw, do: draft.reviews, else: %{}
-        updated = update!(draft, raw: raw, reviews: reviews)
-        audit!(updated, scope.user.id, "saved")
-        updated
-      end)
-    end
+    mutate(scope, id, revision, fn draft ->
+      case Recipes.validate_raw(draft.recipe, raw) do
+        :ok ->
+          reviews = if raw == draft.raw, do: draft.reviews, else: %{}
+          updated = update!(draft, raw: raw, reviews: reviews)
+          audit!(updated, scope.user.id, "saved")
+          updated
+
+        _ ->
+          Repo.rollback(:invalid_draft)
+      end
+    end)
   end
 
   def review(scope, id, revision, judgments)
       when is_list(judgments) and length(judgments) <= 60 do
     mutate(scope, id, revision, fn draft ->
-      with {:ok, compiled} <- Routing.compile(draft.raw),
+      with {:ok, compiled} <- Recipes.compile(draft),
            true <- valid_partial_judgments?(compiled.proof, judgments) do
         now = DateTime.to_iso8601(DateTime.utc_now(:second))
 
@@ -86,6 +97,7 @@ defmodule SilentRegression.GuidedSetups do
                "actor_user_id" => scope.user.id,
                "reviewed_at" => now,
                "output_text" => row.output,
+               "failed_rule_ids" => row.failed_rule_ids,
                "case_key" => row.case_key,
                "case_fingerprint" => row.case_fingerprint,
                "expectation_fingerprint" => row.expectation_fingerprint,
@@ -94,6 +106,7 @@ defmodule SilentRegression.GuidedSetups do
              })}
           end)
 
+        if byte_size(Jason.encode!(reviews)) > 90_000, do: Repo.rollback(:proof_review_required)
         updated = update!(draft, reviews: reviews)
         audit!(updated, scope.user.id, "proof_reviewed", %{"fingerprint" => compiled.identity})
         updated
@@ -133,7 +146,7 @@ defmodule SilentRegression.GuidedSetups do
             ensure_revision!(draft, revision)
 
             with %{stage: :review} <- state_for(scope, draft),
-                 {:ok, compiled} <- Routing.compile(draft.raw),
+                 {:ok, compiled} <- Recipes.compile(draft),
                  {:ok, %{monitor: monitor}} <-
                    MonitorSetups.start(scope, %{
                      name: draft.raw["name"],
@@ -165,11 +178,18 @@ defmodule SilentRegression.GuidedSetups do
                  {:ok, _} <- MonitorSetups.complete(scope, monitor.id),
                  {:ok, _} <-
                    ContractAuthoring.save_draft(scope, monitor.id, %{
-                     template_key: "classification",
+                     template_key: Recipes.template(draft.recipe),
                      assistance_mode: "self_serve",
                      root: compiled.root
                    }),
-                 :ok <- persist_shared_fixtures(scope, monitor.id, compiled.proof, draft.reviews) do
+                 :ok <-
+                   persist_shared_fixtures(
+                     scope,
+                     monitor.id,
+                     compiled.proof,
+                     draft.reviews,
+                     draft.recipe
+                   ) do
               sealed =
                 update!(draft, monitor_id: monitor.id, sealed_at: DateTime.utc_now(:second))
 
@@ -212,7 +232,7 @@ defmodule SilentRegression.GuidedSetups do
         compilation =
           with {:ok, _} <- Routing.configuration(draft.raw),
                :ok <- connection_ready(scope, draft.raw),
-               do: Routing.compile(draft.raw)
+               do: Recipes.compile(draft)
 
         case compilation do
           {:error, {stage, message}} ->
@@ -332,18 +352,22 @@ defmodule SilentRegression.GuidedSetups do
     })
   end
 
-  defp persist_shared_fixtures(scope, monitor_id, proof, reviews) do
-    proof
-    |> Enum.uniq_by(& &1.output)
+  defp persist_shared_fixtures(scope, monitor_id, proof, reviews, recipe) do
+    fixtures =
+      if recipe == "routing",
+        do: Enum.uniq_by(proof, & &1.output),
+        else: Proof.shared_fixtures(proof)
+
+    fixtures
     |> Enum.with_index(1)
     |> Enum.reduce_while(:ok, fn {row, index}, :ok ->
       status = reviews[row.fingerprint]["shared"]
 
       attrs = %{
-        name: "Reviewed routing proof #{index}",
+        name: "Reviewed #{recipe} proof #{index}",
         output_text: row.output,
         expected_status: status,
-        expected_failed_rule_ids: if(status == "fail", do: ["allowed_label"], else: [])
+        expected_failed_rule_ids: row.failed_rule_ids
       }
 
       case ContractAuthoring.add_fixture(scope, monitor_id, attrs) do

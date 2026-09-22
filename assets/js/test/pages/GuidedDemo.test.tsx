@@ -56,6 +56,11 @@ const baseProps: GuidedDemoProps = {
 }
 
 describe("GuidedDemoView", () => {
+  it("hands off completed practice to the real Step 0 recipe chooser", () => {
+    render(<GuidedDemoView {...baseProps} flash={{}} progress={{ ...baseProps.progress, status: "completed", completedSteps: ["request", "expectation", "reference", "incident"], completedCount: 4 }} />)
+    expect(screen.getByRole("link", { name: "Build a real monitor" })).toHaveAttribute("href", "/app/acme-ai/setup-drafts/new")
+  })
+
   it("offers a sealed zero-call walkthrough before credential setup", () => {
     render(<GuidedDemoView {...baseProps} flash={{}} />)
 

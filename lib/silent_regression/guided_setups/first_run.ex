@@ -4,7 +4,7 @@ defmodule SilentRegression.GuidedSetups.FirstRun do
   alias SilentRegression.Accounts.Scope
   alias SilentRegression.{Baselines, ContractAuthoring, MonitorOperations, ProductAnalytics, Repo}
   alias SilentRegression.Baselines.BaselineSnapshot
-  alias SilentRegression.GuidedSetups.{Draft, Routing}
+  alias SilentRegression.GuidedSetups.{Draft, Recipes}
   alias SilentRegression.Monitors.{Fingerprint, Monitor}
   alias SilentRegression.ProductAnalytics.ProductEvent
   alias SilentRegression.Workspaces.{Membership, Workspace}
@@ -18,7 +18,7 @@ defmodule SilentRegression.GuidedSetups.FirstRun do
            Repo.get_by(Draft, workspace_id: workspace_id, monitor_id: monitor_id),
          {:ok, contract} <- ContractAuthoring.get_state(scope, monitor_id),
          {:ok, baseline} <- Baselines.get_state(scope, monitor_id),
-         {:ok, compiled} <- Routing.compile(draft.raw) do
+         {:ok, compiled} <- Recipes.compile(draft) do
       snapshot = baseline.snapshot
       current = contract.contract_version
       # Guided evidence describes the original recipe. Later advanced changes must not be
@@ -55,7 +55,7 @@ defmodule SilentRegression.GuidedSetups.FirstRun do
   def corrected_draft(scope, monitor_id) do
     with {:ok, state} <- get_state(scope, monitor_id) do
       Repo.transaction(fn ->
-        draft = unwrap!(SilentRegression.GuidedSetups.create(scope))
+        draft = unwrap!(SilentRegression.GuidedSetups.create(scope, state.draft.recipe))
 
         unwrap!(
           SilentRegression.GuidedSetups.save(scope, draft.id, draft.revision, state.draft.raw)

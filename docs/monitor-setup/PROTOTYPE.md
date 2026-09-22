@@ -1,7 +1,13 @@
 # Stage 2 — guided setup prototype and review script
 
-Status: implemented and technically verified; founder review in progress. No unfamiliar-user study
-has been performed. This document records the design, boundaries, evidence, and next decisions.
+Stage 5 update: real saved setup now offers routing, JSON, source-ID and text recipes.
+Use Monitors → Create monitor for Step 0, or the real-setup link after this practice flow.
+See [the current local walkthrough](GUIDED_SETUP.md). This historical preview still uses fictional
+routing/JSON scenarios only; its settings and judgments never transfer into a real draft.
+
+Status: historical prototype, implemented and technically verified; founder feedback was accepted
+and addressed. No unfamiliar-user study has been performed. This document records the original
+design, boundaries and evidence; current delivery is tracked in IMPLEMENTATION.md and PROGRESS.md.
 
 ## Open the preview
 

@@ -13,7 +13,7 @@ defmodule SilentRegression.CaseExpectations do
   @none_schema "no_case_expectation"
   @schema_version "case_expectation_v1"
   @fingerprint_schema "case-expectation-fingerprint-v1"
-  @check_types ~w(label json_value json_number source_ids abstention)
+  @check_types ~w(label json_value json_number source_ids abstention required_text)
   @numeric_comparisons ~w(strict mathematical)
   @max_checks 20
   @max_expectation_bytes 40_000
@@ -250,6 +250,21 @@ defmodule SilentRegression.CaseExpectations do
     end
   end
 
+  defp validate_check(%{"id" => id, "type" => "required_text", "alternatives" => values} = check)
+       when map_size(check) == 3 do
+    with :ok <- validate_check_id(id),
+         {:ok, values} <- validate_alternatives(values),
+         true <- Enum.all?(values, &(Text.normalize(&1) != "")) do
+      {:ok, %{"id" => id, "type" => "required_text", "alternatives" => values}}
+    else
+      false ->
+        invalid("invalid_alternatives", "Literal alternatives cannot normalize to empty text.")
+
+      error ->
+        error
+    end
+  end
+
   defp validate_check(%{"type" => type}) when type not in @check_types do
     invalid("unsupported_check_type", "Case expectation check type is unsupported.")
   end
@@ -283,7 +298,7 @@ defmodule SilentRegression.CaseExpectations do
             byte_size(value) <= Limits.alternative_bytes()
         end)
 
-    normalized_values = Enum.map(values, &Text.normalize/1)
+    normalized_values = if valid?, do: Enum.map(values, &Text.normalize/1), else: []
 
     if valid? and Enum.uniq(normalized_values) == normalized_values,
       do: {:ok, values},
@@ -584,6 +599,32 @@ defmodule SilentRegression.CaseExpectations do
           "expected_abstention_mismatch",
           "The case-specific abstention expectation did not match.",
           evidence
+        )
+  end
+
+  defp evaluate_check(%{"type" => "required_text"} = check, context) do
+    matched =
+      Enum.find(
+        check["alternatives"],
+        &Text.contains_normalized_literal?(context.normalized_output, &1)
+      )
+
+    if is_nil(matched),
+      do:
+        result(
+          check,
+          :fail,
+          "expected_text_missing",
+          "No declared case-specific literal alternative is present.",
+          %{}
+        ),
+      else:
+        result(
+          check,
+          :pass,
+          "expected_text_present",
+          "A declared case-specific literal alternative is present; meaning is not evaluated.",
+          %{"matched_alternative" => Evidence.text(matched)}
         )
   end
 

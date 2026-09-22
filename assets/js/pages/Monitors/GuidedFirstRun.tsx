@@ -7,9 +7,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { SharedPageProps } from "@/types/page"
+import { recipeGuidance } from "@/components/guided-recipe-editors"
 
 type Blocker = { code: string; message: string }
 export type GuidedFirstRunProps = {
+  recipe?: "routing" | "json" | "sources" | "text"
   auth: SharedPageProps["auth"]
   monitor: { id: string; name: string; state: string; cadence: string }
   original: boolean; completed: boolean; canFinish: boolean; reviewed: boolean
@@ -85,7 +87,7 @@ export function GuidedFirstRunView(props: GuidedFirstRunProps & { flash?: Shared
         {!original && <Alert variant="destructive"><AlertTitle>Configuration changed outside this guided flow</AlertTitle><AlertDescription>The original proof no longer describes this configuration. Continue through <Link className="underline" href={`${base}/contract`}>advanced checks</Link> and <Link className="underline" href={`${base}/baseline`}>reference review</Link>.</AlertDescription></Alert>}
 
         {!snapshot && !checks.approved && <Panel title="Approve the checks you reviewed" description="This is owner approval of the exact saved rules and proof. It makes no provider calls. The next action separately authorizes a bounded real capture.">
-          <p className="text-sm leading-6">The shared check allows only your routing labels. Each input must also return its independently chosen correct label. These synthetic examples test the checks; they are not model outputs.</p>
+          <p className="text-sm leading-6">{recipeGuidance[props.recipe || "routing"]} These synthetic examples test the checks; they are not model outputs.</p>
           <details><summary className="cursor-pointer text-sm font-medium">Review synthetic proof and exact shared rules</summary><div className="mt-4 space-y-3">{checks.proof.map(row => <article key={row.id} className="space-y-2 rounded-lg border p-3"><h2 className="font-medium">{row.name}</h2><Code>{row.inputJson}</Code>{row.context && <Code>{row.context}</Code>}<p className="text-sm">Expected: {row.expected} · Synthetic output: {row.output}</p><p className="text-sm">Shared: {row.shared} · Case: {row.specific}</p><p className="text-xs text-muted-foreground">{row.reason}</p></article>)}<Code>{checks.rootJson}</Code><h2 className="text-sm font-medium">Current shared proof fixtures</h2>{checks.fixtures.map((fixture, index) => <p key={index} className="break-all text-sm">{fixture.name}: {fixture.outputText} → {fixture.expectedStatus}</p>)}</div></details>
           <Confirmation checked={confirmed} onChange={value => setConfirmation(value ? identity : null)}>I reviewed and approve these saved checks and proof.</Confirmation>
           <Button id="guided-approve-checks" disabled={!owner || !original || !checks.ready || !confirmed || form.processing} onClick={() => submit("approve-checks", { identity: { contract_id: checks.identity.contractId, fingerprint: checks.identity.fingerprint, coverage_fingerprint: checks.identity.coverageFingerprint } })}>Approve checks and continue <ArrowRight /></Button>
@@ -105,7 +107,7 @@ export function GuidedFirstRunView(props: GuidedFirstRunProps & { flash?: Shared
           {snapshot.observations.map((row, index) => <article key={row.id} aria-label={`Result ${index + 1}`} className="space-y-4 rounded-xl border p-4">
             <h2 className="font-medium">{row.name}</h2>
             <div><p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Input</p><Code>{row.inputJson}</Code>{row.context && <Code>{row.context}</Code>}</div>
-            <dl className="grid gap-4 sm:grid-cols-2"><div><dt className="text-xs text-muted-foreground">Expected label</dt><dd className="break-all font-mono">{row.expected}</dd></div><div><dt className="text-xs text-muted-foreground">Actual provider output</dt><dd className="whitespace-pre-wrap break-all font-mono">{row.output ?? "No output captured"}</dd></div></dl>
+            <dl className="grid gap-4 sm:grid-cols-2"><div><dt className="text-xs text-muted-foreground">Declared expectation</dt><dd className="whitespace-pre-wrap break-all font-mono">{row.expected}</dd></div><div><dt className="text-xs text-muted-foreground">Actual provider output</dt><dd className="whitespace-pre-wrap break-all font-mono">{row.output ?? "No output captured"}</dd></div></dl>
             <div className="flex flex-wrap gap-2"><Badge variant={row.shared === "pass" ? "secondary" : "destructive"}>Shared: {row.shared || "not evaluated"}</Badge><Badge variant={row.specific === "pass" ? "secondary" : "destructive"}>Case: {row.specific || "not evaluated"}</Badge><Badge variant="outline">Completion: {row.completion || row.status}</Badge></div>
             <div className="space-y-1 text-sm leading-6 text-muted-foreground"><p className="font-medium text-foreground">Why this result?</p>{row.failure && <p>{row.failure}</p>}{row.reasons.map((reason, i) => <p key={i}>{reason}</p>)}</div>
           </article>)}
