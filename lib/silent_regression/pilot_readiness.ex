@@ -258,11 +258,11 @@ defmodule SilentRegression.PilotReadiness do
   end
 
   defp step_href(:credential, slug, _monitor), do: "/app/#{slug}/credentials"
-  defp step_href(:workflow, slug, nil), do: "/app/#{slug}/monitors/new"
-  defp step_href(:cases, slug, nil), do: "/app/#{slug}/monitors/new"
-  defp step_href(:contract, slug, nil), do: "/app/#{slug}/monitors/new"
-  defp step_href(:baseline, slug, nil), do: "/app/#{slug}/monitors/new"
-  defp step_href(:schedule, slug, nil), do: "/app/#{slug}/monitors/new"
+  defp step_href(:workflow, slug, nil), do: "/app/#{slug}/setup-drafts/new"
+  defp step_href(:cases, slug, nil), do: "/app/#{slug}/setup-drafts/new"
+  defp step_href(:contract, slug, nil), do: "/app/#{slug}/setup-drafts/new"
+  defp step_href(:baseline, slug, nil), do: "/app/#{slug}/setup-drafts/new"
+  defp step_href(:schedule, slug, nil), do: "/app/#{slug}/setup-drafts/new"
 
   defp step_href(:workflow, slug, monitor),
     do: "/app/#{slug}/monitors/#{monitor.id}/setup"

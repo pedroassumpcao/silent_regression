@@ -2,7 +2,7 @@ defmodule SilentRegressionWeb.AppController do
   use SilentRegressionWeb, :controller
 
   alias SilentRegression.Accounts.Scope
-  alias SilentRegression.{Baselines, MonitorSetups, PilotReadiness, Workspaces}
+  alias SilentRegression.{Baselines, GuidedSetups, MonitorSetups, PilotReadiness, Workspaces}
 
   def entry(conn, _params) do
     case Workspaces.default_workspace_scope(conn.assigns.current_scope) do
@@ -33,6 +33,11 @@ defmodule SilentRegressionWeb.AppController do
       activation: PilotReadiness.onboarding(scope),
       current_section: current_section,
       monitors: Enum.map(MonitorSetups.list_summaries(scope), &summary_prop(scope, &1)),
+      guided_drafts:
+        Enum.map(
+          GuidedSetups.list(scope),
+          &%{id: &1.id, name: &1.raw["name"], updated_at: &1.updated_at}
+        ),
       release_stage: "Private alpha",
       workspace: %{name: scope.workspace.name, slug: scope.workspace.slug}
     })

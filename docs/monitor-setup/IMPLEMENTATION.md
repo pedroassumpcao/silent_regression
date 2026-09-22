@@ -19,8 +19,8 @@ Keep advanced authoring available. No AI authoring or exploratory execution mode
 | Stage | Deliverable | Status |
 | --- | --- | --- |
 | 1 | Honest saving, safe check approval, and accurate progress | Complete |
-| 2 | Clickable routing journey and JSON architecture check | Implemented; founder review in progress |
-| 3 | Coherent authoring draft, common journey, and routing recipe | Not started |
+| 2 | Clickable routing journey and JSON architecture check | Founder feedback addressed; external research pending Stage 6 |
+| 3 | Coherent authoring draft, common journey, and routing recipe | Complete |
 | 4 | Integrated first run, result review, and manual completion | Not started |
 | 5 | JSON, sources, and text recipes plus contextual guidance | Not started |
 | 6 | Independent usability validation and final corrections | Not started |
@@ -97,15 +97,20 @@ Replace scattered editors with a coherent mutable authoring draft without weaken
 
 ### Tasks
 
-- [ ] Add bounded/versioned draft storage, recipe identity/version, optimistic concurrency and review state.
-- [ ] Preserve partially entered JSON/lists; separate raw authoring values from executable validation.
-- [ ] Derive authoritative journey stage, blockers, and next action server-side.
-- [ ] Implement typed ordered request/messages, derived variable inputs, labels, and per-input expectations.
-- [ ] Present exact rendered request preview; preserve advanced provider-native JSON and limits.
-- [ ] Associate proposed proof outputs with cases and evaluate shared checks and case expectations separately.
-- [ ] Require explicit user-confirmed judgments bound to exact case/check/output fingerprints.
-- [ ] Seal monitor/case/contract snapshots transactionally only at the review/run boundary.
-- [ ] Preserve existing approved history and successor configuration behavior; test stale tabs/reloads/tenancy.
+- [x] Add bounded/versioned draft storage, recipe identity/version, optimistic concurrency and review state.
+- [x] Preserve partially entered JSON/lists; separate raw authoring values from executable validation.
+- [x] Derive authoritative journey stage, blockers, and next action server-side.
+- [x] Implement typed ordered request/messages, derived variable inputs, labels, and per-input expectations.
+- [x] Present exact rendered request preview; preserve advanced provider-native JSON and limits.
+- [x] Associate proposed proof outputs with cases and evaluate shared checks and case expectations separately.
+- [x] Require explicit user-confirmed judgments bound to exact case/check/output fingerprints.
+- [x] Seal monitor/case snapshots and reviewed contract/proof provenance transactionally at the review/run boundary.
+- [x] Preserve existing approved history and successor configuration behavior; test stale tabs/reloads/tenancy.
+
+Delivered: [saved routing setup guide and verification](GUIDED_SETUP.md). The handoff creates a
+shared-contract **draft**, not an approved contract: owner approval and provider-spend authorization
+remain separate existing safeguards. Sealed authoring/review provenance is immutable. Stage 4 will
+coordinate those safeguards in the unified journey; do not mark the full real first-run UX complete yet.
 
 ### Success criteria and files
 

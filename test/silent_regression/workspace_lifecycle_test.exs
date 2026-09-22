@@ -118,6 +118,7 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
     test "explicit deletion is irreversible and purge removes customer data but keeps a receipt" do
       scope = workspace_scope_fixture()
       fixture = approved_baseline_fixture(scope)
+      {:ok, guided_draft} = SilentRegression.GuidedSetups.create(scope)
 
       assert {:ok, _monitor} =
                MonitorOperations.configure(scope, fixture.monitor.id, %{cadence: :manual})
@@ -179,6 +180,7 @@ defmodule SilentRegression.WorkspaceLifecycleTest do
       assert Repo.get(Incident, incident.id) == nil
       assert Repo.get(Delivery, delivery.id) == nil
       assert Repo.get(Setup, successor_setup.id) == nil
+      assert Repo.get(SilentRegression.GuidedSetups.Draft, guided_draft.id) == nil
 
       assert %{status: :completed, completed_at: ^at} =
                Repo.get!(DeletionReceipt, receipt.id)

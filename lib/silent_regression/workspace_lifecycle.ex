@@ -576,6 +576,7 @@ defmodule SilentRegression.WorkspaceLifecycle do
         (SELECT id FROM contract_versions WHERE workspace_id = $1)
       """,
       "DELETE FROM contract_versions WHERE workspace_id = $1",
+      "DELETE FROM guided_setup_drafts WHERE workspace_id = $1",
       "DELETE FROM monitor_setups WHERE workspace_id = $1",
       "DELETE FROM product_events WHERE workspace_id = $1",
       "DELETE FROM monitors WHERE workspace_id = $1",

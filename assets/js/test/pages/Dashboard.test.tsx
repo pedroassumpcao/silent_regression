@@ -73,7 +73,7 @@ describe("DashboardView", () => {
 
     const createLinks = screen.getAllByRole("link", { name: /create your first monitor/i })
     expect(createLinks).toHaveLength(2)
-    expect(createLinks[0]).toHaveAttribute("href", "/app/acme-ai/monitors/new")
+    expect(createLinks[0]).toHaveAttribute("href", "/app/acme-ai/setup-drafts/new")
     expect(screen.getByText(/Setup does not call your provider\./)).toBeInTheDocument()
   })
 

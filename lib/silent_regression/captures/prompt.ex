@@ -5,8 +5,12 @@ defmodule SilentRegression.Captures.Prompt do
 
   @placeholder ~r/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/
 
+  def variable_names(template) when is_binary(template) do
+    @placeholder |> Regex.scan(template, capture: :all_but_first) |> List.flatten() |> Enum.uniq()
+  end
+
   def render(template, variables) when is_binary(template) and is_map(variables) do
-    keys = @placeholder |> Regex.scan(template, capture: :all_but_first) |> List.flatten()
+    keys = variable_names(template)
 
     with {:ok, replacements} <- replacements(keys, variables),
          rendered <-

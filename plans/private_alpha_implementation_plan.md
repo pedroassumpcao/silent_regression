@@ -20,7 +20,7 @@ The founder's local walkthrough exposed substantial onboarding friction after te
 The [UX assessment](../docs/monitor-setup/UX_ASSESSMENT.md) and its six-stage redesign are approved.
 Track implementation and individual commits in the [guided setup plan](../docs/monitor-setup/IMPLEMENTATION.md)
 and [progress log](../docs/monitor-setup/PROGRESS.md). Stage 1 is complete; Stage 2's routing/JSON
-prototype is implemented and technically verified, with founder feedback addressed. Stage 3 is starting. This is additional product
+prototype is implemented and technically verified, with founder feedback addressed. Stage 3 is complete. This is additional product
 work, not a retroactive change to the completed Tasks 1–26; independent usability validation is now
 an additional readiness criterion for self-guided partner onboarding. Task 27 deployment and real
 partner invitations remain separate follow-ups. Local data reset is permitted but not presently needed.
@@ -40,6 +40,11 @@ Initial founder feedback found the staged navigation clearer but scenario change
 selection is now Step 0, with explicit restart confirmation and cancellation preserving current work.
 Further feedback clarified that this is a practice-only preview, never converted into a real monitor.
 "Finish setup" replaces "manual mode"; on-demand real checks and scheduled checks are explained separately.
+Stage 3 adds workspace-saved routing drafts, typed requests/examples, production-backed combined proof,
+stale-tab protection and atomic no-spend handoff. See the [real routing setup guide](../docs/monitor-setup/GUIDED_SETUP.md).
+Final checks: 694 backend tests (2 exclusions), 104 frontend tests, TypeScript, audit and asset build.
+The additive draft migration is applied locally; restart Phoenix for the request-log filter change.
+Stage 4 unified authorization/result completion is next; no new live call or data wipe was performed.
 
 ## 1. How to use this document
 

@@ -78,6 +78,13 @@ defmodule SilentRegressionWeb.Router do
     get "/", AppController, :index
     get "/demo", GuidedDemoController, :show
     get "/setup-preview", SetupPreviewController, :show
+    get "/setup-drafts/new", GuidedSetupController, :new
+    post "/setup-drafts", GuidedSetupController, :create
+    get "/setup-drafts/:id", GuidedSetupController, :show
+    get "/setup-drafts/:id/:step", GuidedSetupController, :show
+    put "/setup-drafts/:id", GuidedSetupController, :update
+    post "/setup-drafts/:id/review", GuidedSetupController, :review
+    post "/setup-drafts/:id/seal", GuidedSetupController, :seal
     post "/demo/start", GuidedDemoController, :start
     post "/demo/steps/:step", GuidedDemoController, :complete_step
     get "/monitors", AppController, :monitors

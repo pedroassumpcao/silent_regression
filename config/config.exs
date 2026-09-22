@@ -132,6 +132,7 @@ config :phoenix, :filter_parameters, [
   "expectation",
   "expectation_json",
   "case_import",
+  "raw",
   "output",
   "output_text",
   "contract",
