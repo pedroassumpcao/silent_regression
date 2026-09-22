@@ -77,6 +77,7 @@ defmodule SilentRegressionWeb.Router do
 
     get "/", AppController, :index
     get "/demo", GuidedDemoController, :show
+    get "/setup-preview", SetupPreviewController, :show
     post "/demo/start", GuidedDemoController, :start
     post "/demo/steps/:step", GuidedDemoController, :complete_step
     get "/monitors", AppController, :monitors
