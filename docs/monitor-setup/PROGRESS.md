@@ -100,6 +100,7 @@
   Those checks justify continued iteration, not a self-guided-usability claim.
 - Stage 6 remains incomplete and will reopen against a recorded build/cohort. This deferral does not
   authorize deployment, invitations or provider calls and does not alter Gate D.
+- Deferral decision and roadmap update: `3a55128`.
 
 ### 2026-09-22 — Stage 6 study kit prepared; observations pending
 

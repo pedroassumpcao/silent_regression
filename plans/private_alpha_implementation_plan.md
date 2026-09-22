@@ -79,6 +79,7 @@ participants cannot currently be arranged. This does not block Task 27 deploymen
 concierge-assisted first onboarding, but it keeps the self-guided readiness claim open. Reopen the study
 on the deployed build as closed design partners onboard; structured notes are sufficient and recordings
 are optional with consent. Deployment, invitations and live calls still require their existing approvals.
+Stage 6 deferral decision and roadmap update: `3a55128`.
 
 ## 1. How to use this document
 
